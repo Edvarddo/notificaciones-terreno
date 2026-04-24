@@ -242,14 +242,21 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     return { ok: true }
   }
 
-  const actualizarRegistro = async ({ id, codigo, observacion }) => {
+  const actualizarRegistro = async ({ id, codigo, observacion, hora, esNoUrbana }) => {
     limpiarMensajes()
 
     const codigoLimpio = String(codigo ?? '').trim().toUpperCase()
     const observacionLimpia = String(observacion ?? '').trim() || '.'
+    const horaLimpia = String(hora ?? '').trim()
 
     if (!codigoLimpio) {
       const msg = 'El codigo no puede quedar vacio'
+      setErrorMsg(msg)
+      return { ok: false, error: msg }
+    }
+
+    if (!horaLimpia || !/^[0-9]{4}$/.test(horaLimpia)) {
+      const msg = 'La hora debe tener 4 digitos, por ejemplo 1435'
       setErrorMsg(msg)
       return { ok: false, error: msg }
     }
@@ -258,6 +265,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       await actualizarRegistroPorId(id, {
         codigo: codigoLimpio,
         observacion: observacionLimpia,
+        hora: horaLimpia,
+        es_no_urbana: Boolean(esNoUrbana),
       })
     } catch (error) {
       const msg = `No se pudo actualizar: ${error.message}`

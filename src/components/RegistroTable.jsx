@@ -1,32 +1,50 @@
 import { useState } from 'react'
 import IdHighlight from './IdHighlight'
+import IconList from './IconList'
+import CodigoDialog from '../features/CodigoDialog'
 
 const CODIGOS_EXITOSOS = new Set(['D2', 'D4', 'E1'])
 const CODIGOS_BUSQUEDA = new Set(['B3', 'B7', 'B10'])
-const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B5'])
+const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B2', 'B5', 'F4'])
 
 function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescargarCsv }) {
   const [editandoId, setEditandoId] = useState(null)
   const [codigoEdit, setCodigoEdit] = useState('')
   const [observacionEdit, setObservacionEdit] = useState('')
+  const [horaEdit, setHoraEdit] = useState('')
+  const [esNoUrbanaEdit, setEsNoUrbanaEdit] = useState(false)
+  const [dialogoCodigoEditAbierto, setDialogoCodigoEditAbierto] = useState(false)
 
   const iniciarEdicion = (registro) => {
     setEditandoId(registro.id)
     setCodigoEdit(registro.codigo || '')
+    setHoraEdit(registro.hora || '')
     setObservacionEdit(registro.observacion || '')
+    setEsNoUrbanaEdit(Boolean(registro.es_no_urbana))
+    setDialogoCodigoEditAbierto(false)
   }
 
   const cancelarEdicion = () => {
     setEditandoId(null)
     setCodigoEdit('')
+    setHoraEdit('')
     setObservacionEdit('')
+    setEsNoUrbanaEdit(false)
+    setDialogoCodigoEditAbierto(false)
+  }
+
+  const seleccionarCodigoEdit = (codigoElegido) => {
+    setCodigoEdit(codigoElegido)
+    setDialogoCodigoEditAbierto(false)
   }
 
   const guardarEdicion = async (id) => {
     const ok = await onActualizarRegistro({
       id,
       codigo: codigoEdit,
+      hora: horaEdit,
       observacion: observacionEdit,
+      esNoUrbana: esNoUrbanaEdit,
     })
 
     if (ok?.ok) {
@@ -143,23 +161,64 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
 
                     <td>
                       {enEdicion ? (
-                        <input
-                          className="input-tabla"
-                          type="text"
-                          value={codigoEdit}
-                          onChange={(e) =>
-                            setCodigoEdit(
-                              e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-                            )
-                          }
-                        />
+                        <div className="input-icon-row">
+                          <input
+                            className="input-base input-con-icono"
+                            type="text"
+                            value={codigoEdit}
+                            onChange={(e) =>
+                              setCodigoEdit(
+                                e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+                              )
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="boton-icono"
+                            onClick={() => setDialogoCodigoEditAbierto(true)}
+                            title="Codigos frecuentes"
+                            aria-label="Codigos frecuentes"
+                          >
+                            <IconList />
+                          </button>
+                        </div>
                       ) : (
                         r.codigo
                       )}
                     </td>
 
-                    <td>{r.hora}</td>
-                    <td>{r.es_no_urbana ? 'RURAL' : 'URB'}</td>
+                    <td>
+                      {enEdicion ? (
+                        <input
+                          className="input-tabla"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={4}
+                          value={horaEdit}
+                          onChange={(e) =>
+                            setHoraEdit(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))
+                          }
+                        />
+                      ) : (
+                        r.hora
+                      )}
+                    </td>
+                    <td>
+                      {enEdicion ? (
+                        <select
+                          className="input-tabla"
+                          value={esNoUrbanaEdit ? 'RURAL' : 'URB'}
+                          onChange={(e) =>
+                            setEsNoUrbanaEdit(e.target.value === 'RURAL')
+                          }
+                        >
+                          <option value="URB">URB</option>
+                          <option value="RURAL">RURAL</option>
+                        </select>
+                      ) : (
+                        r.es_no_urbana ? 'RURAL' : 'URB'
+                      )}
+                    </td>
 
                     <td>
                       {enEdicion ? (
@@ -207,6 +266,13 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
               })}
             </tbody>
           </table>
+          <CodigoDialog
+            abierto={dialogoCodigoEditAbierto}
+            titulo="Codigos frecuentes"
+            valorActual={codigoEdit}
+            onClose={() => setDialogoCodigoEditAbierto(false)}
+            onSelect={seleccionarCodigoEdit}
+          />
         </div>
       )}
     </div>

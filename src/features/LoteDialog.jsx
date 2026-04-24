@@ -22,6 +22,7 @@ function LoteDialog({
   esNoUrbanaLote,
   onEsNoUrbanaLoteChange,
   onGuardarLote,
+  ultimoIdAgregadoLote,
 }) {
   if (!abierto) return null
 
@@ -40,6 +41,12 @@ function LoteDialog({
         </div>
 
         <div className="dialogo-contenido">
+          {ultimoIdAgregadoLote ? (
+            <div className="mensaje-agregado-lote">
+              ID agregado: <strong>{ultimoIdAgregadoLote}</strong>
+            </div>
+          ) : null}
+
           <div className="acciones-lote-dialogo">
             <button
               type="button"
@@ -65,41 +72,6 @@ function LoteDialog({
               <div id="qr-reader-lote"></div>
             </div>
           )}
-
-          <div className="tabla-wrapper tabla-wrapper-lote">
-            <table className="tabla-registros">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>ID NOTIFICACION</th>
-                  <th>ACCION</th>
-                </tr>
-              </thead>
-              <tbody>
-                {idsTemporales.length === 0 ? (
-                  <tr>
-                    <td colSpan="3">No hay IDs cargados en el lote.</td>
-                  </tr>
-                ) : (
-                  idsTemporales.map((id, index) => (
-                    <tr key={id}>
-                      <td>{index + 1}</td>
-                      <td><IdHighlight value={id} /></td>
-                      <td>
-                        <button
-                          type="button"
-                          className="boton-quitar-fila"
-                          onClick={() => onQuitarId(id)}
-                        >
-                          Quitar
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
 
           <div className="lote-formulario">
             <label className="campo-label">
@@ -168,6 +140,41 @@ function LoteDialog({
               />
               <span>No urbana / rural</span>
             </label>
+
+            <div className="tabla-wrapper tabla-wrapper-lote">
+              <table className="tabla-registros">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>ID NOTIFICACION</th>
+                    <th>ACCION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {idsTemporales.length === 0 ? (
+                    <tr>
+                      <td colSpan="3">No hay IDs cargados en el lote.</td>
+                    </tr>
+                  ) : (
+                    idsTemporales.map((id, index) => (
+                      <tr key={id}>
+                        <td>{index + 1}</td>
+                        <td><IdHighlight value={id} /></td>
+                        <td>
+                          <button
+                            type="button"
+                            className="boton-quitar-fila"
+                            onClick={() => onQuitarId(id)}
+                          >
+                            Quitar
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             <div className="acciones">
               <button

@@ -27,6 +27,11 @@ export const CODIGOS = [
           'No contestan o abren la puerta en el domicilio (se debe dejar aviso)',
       },
       {
+        codigo: 'F4',
+        descripcion:
+          'Luego de dos gestiones B3, la notificación se deja negativa',
+      },
+      {
         codigo: 'B5',
         descripcion:
           'Persona adulta nos indica que el requerido no vive en el domicilio',
@@ -59,6 +64,10 @@ export const CODIGOS = [
         codigo: 'A3',
         descripcion:
           'Hace falta informacion como manzana, numeracion, numero de departamento, block, nombre de calle',
+      },
+      {
+        codigo: 'B2',
+        descripcion: 'Domicilio deshabitado',
       },
     ],
   },

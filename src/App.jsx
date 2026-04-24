@@ -19,9 +19,14 @@ function App() {
 
   const inputIdRef = useRef(null)
 
+  const hayModalAbierto = dialogoCodigoAbierto || dialogoLoteAbierto || dialogoCodigoLoteAbierto
+
   const [fechaCertificacion] = useState(() => {
     const hoy = new Date()
-    return hoy.toISOString().split('T')[0]
+    const y = hoy.getFullYear()
+    const m = String(hoy.getMonth() + 1).padStart(2, '0')
+    const d = String(hoy.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
   })
 
   const registro = useRegistroForm()
@@ -37,15 +42,44 @@ function App() {
     setTimeout(() => inputIdRef.current?.focus(), 50)
   }
 
+  const obtenerHoraActual = () => {
+    const ahora = new Date()
+    const horas = String(ahora.getHours()).padStart(2, '0')
+    const minutos = String(ahora.getMinutes()).padStart(2, '0')
+    return `${horas}${minutos}`
+  }
+
   const notificaciones = useNotificaciones({
     fechaCertificacion,
     enfocarId,
   })
 
+  const [ultimoIdAgregadoLote, setUltimoIdAgregadoLote] = useState('')
+  const ultimoIdAgregadoLoteTimer = useRef(null)
+
+  const vibrar = (duracion = 200) => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(duracion)
+    }
+  }
+
   useEffect(() => {
     notificaciones.cargar()
     enfocarId()
   }, [])
+
+  useEffect(() => {
+    const body = document.body
+    if (hayModalAbierto) {
+      body.classList.add('modal-abierto')
+    } else {
+      body.classList.remove('modal-abierto')
+    }
+
+    return () => {
+      body.classList.remove('modal-abierto')
+    }
+  }, [hayModalAbierto])
 
   const qrIndividual = useQrScanner({
     elementId: 'qr-reader',
@@ -53,6 +87,7 @@ function App() {
     onDecoded: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
       registro.setIdNotificacion(idExtraido)
+      vibrar(200)
       notificaciones.setMensaje('QR leído correctamente')
       await qrIndividual.detenerEscaneo()
       enfocarId()
@@ -65,16 +100,32 @@ function App() {
     onDecoded: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
 
-      lote.agregarIdTemporal(idExtraido, (idDuplicado) => {
+      const resultado = lote.agregarIdTemporal(idExtraido, (idDuplicado) => {
         notificaciones.setMensaje(`ID repetido omitido: ${idDuplicado}`)
       })
 
-      notificaciones.setMensaje(`Agregado al lote: ${idExtraido}`)
+      if (resultado.agregado) {
+        vibrar(200)
+        notificaciones.setMensaje(`Agregado al lote: ${idExtraido}`)
+        setUltimoIdAgregadoLote(idExtraido)
+
+        if (ultimoIdAgregadoLoteTimer.current) {
+          clearTimeout(ultimoIdAgregadoLoteTimer.current)
+        }
+
+        ultimoIdAgregadoLoteTimer.current = setTimeout(() => {
+          setUltimoIdAgregadoLote('')
+          ultimoIdAgregadoLoteTimer.current = null
+        }, 2200)
+      }
     },
   })
 
   const abrirDialogoLote = () => {
     notificaciones.limpiarMensajes()
+    if (!lote.horaLote) {
+      lote.setHoraLote(obtenerHoraActual())
+    }
     setDialogoLoteAbierto(true)
   }
 
@@ -256,6 +307,7 @@ function App() {
           onObservacionChange={lote.setObservacionLote}
           esNoUrbanaLote={lote.esNoUrbanaLote}
           onEsNoUrbanaLoteChange={lote.setEsNoUrbanaLote}
+          ultimoIdAgregadoLote={ultimoIdAgregadoLote}
           onGuardarLote={guardarLote}
         />
       </div>
