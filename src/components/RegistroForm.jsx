@@ -59,11 +59,9 @@ function RegistroForm({
         </div>
       </label>
 
-      {escaneando && (
-        <div className="qr-inline">
-          <div id="qr-reader"></div>
-        </div>
-      )}
+      <div className={`qr-inline ${escaneando ? '' : 'qr-inline-oculto'}`}>
+        <div id="qr-reader"></div>
+      </div>
 
       <label className="campo-label">
         Codigo

@@ -97,6 +97,7 @@ function App() {
 
   const qrIndividual = useQrScanner({
     qrRegionId: 'qr-reader',
+    onError: notificaciones.setErrorMsg,
     onDetected: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
 
@@ -110,11 +111,11 @@ function App() {
       await qrIndividual.detenerEscaneo()
       enfocarId()
     },
-    enabled: !hayModalAbierto,
   })
 
   const qrLote = useQrScanner({
     qrRegionId: 'qr-reader-lote',
+    onError: notificaciones.setErrorMsg,
     onDetected: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
 
@@ -143,7 +144,6 @@ function App() {
         notificaciones.setErrorMsg(`La ID ${resultado.id} ya estaba escaneada`)
       }
     },
-    enabled: dialogoLoteAbierto,
   })
 
   const abrirDialogoLote = () => {

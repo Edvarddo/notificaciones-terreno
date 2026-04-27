@@ -864,6 +864,14 @@ body {
   background: #000;
 }
 
+.qr-inline-oculto {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border-width: 0;
+  margin: 0;
+}
+
 #qr-reader,
 #qr-reader-lote {
   width: 100%;

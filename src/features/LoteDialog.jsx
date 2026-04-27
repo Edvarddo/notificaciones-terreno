@@ -67,11 +67,9 @@ function LoteDialog({
             </button>
           </div>
 
-          {escaneandoLote && (
-            <div className="qr-inline qr-inline-lote">
-              <div id="qr-reader-lote"></div>
-            </div>
-          )}
+          <div className={`qr-inline qr-inline-lote ${escaneandoLote ? '' : 'qr-inline-oculto'}`}>
+            <div id="qr-reader-lote"></div>
+          </div>
 
           <div className="lote-formulario">
             <label className="campo-label">
