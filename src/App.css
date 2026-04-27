@@ -711,5 +711,101 @@ body.modal-abierto {
 .boton-tabla.cancelar {
   color: #c62828;
   border-color: #ef9a9a;
+
+  /* Mejoras para tabla mejorada */
+  .tabla-registros tbody tr.fila-editando {
+    background-color: #fef9e7;
+    transition: background-color 0.2s ease;
+  }
+
+  .tabla-registros td.td-id,
+  .tabla-registros td.td-codigo {
+    font-weight: 500;
+  }
+
+  .tabla-registros td.td-descripcion {
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+    max-width: 200px;
+  }
+
+  .desc-codigo-edit {
+    display: block;
+    background: #f0f7ff;
+    padding: 6px;
+    border-radius: 4px;
+    color: var(--color-primario);
+    font-weight: 500;
+  }
+
+  .desc-codigo-vacia {
+    color: #999;
+  }
+
+  .codigo-badge {
+    display: inline-block;
+    background: var(--color-secundario);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 13px;
+  }
+
+  .tipo-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 12px;
+  }
+
+  .tipo-badge.tipo-urbana {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+
+  .tipo-badge.tipo-rural {
+    background: #fff3e0;
+    color: #e65100;
+  }
+
+  .input-tabla.input-id,
+  .input-tabla.input-codigo,
+  .input-tabla.input-hora {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+  }
+
+  .input-tabla.input-observacion {
+    min-width: 150px;
+  }
+
+  .input-tabla:focus {
+    border-color: var(--color-primario);
+    box-shadow: 0 0 0 3px rgba(11, 60, 93, 0.1);
+  }
+
+  .select-tabla {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--color-borde);
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    background: white;
+  }
+
+  .select-tabla:focus {
+    border-color: var(--color-primario);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(11, 60, 93, 0.1);
+  }
+
+  .td-acciones {
+    text-align: center;
+    white-space: nowrap;
+  }
   background: #ffebee;
 }

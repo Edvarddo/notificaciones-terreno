@@ -4,7 +4,7 @@ import {
   insertarRegistro,
   insertarLote,
   eliminarRegistroPorId,
-  existeIdNotificacion,
+  existeIdNotificacionEnFecha,
   actualizarRegistroPorId,
 } from '../services/notificaciones'
 
@@ -14,10 +14,13 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const [guardandoLote, setGuardandoLote] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [mensajes, setMensajes] = useState([])
+  const [estadisticas, setEstadisticas] = useState({ puntos: 0 })
 
   const limpiarMensajes = () => {
     setMensaje('')
     setErrorMsg('')
+    setMensajes([])
   }
 
     const cargar = async () => {
@@ -55,7 +58,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
 
     try {
-      const yaExiste = await existeIdNotificacion(idLimpio)
+      const yaExiste = await existeIdNotificacionEnFecha(idLimpio, fechaCertificacion)
       if (yaExiste) {
         const msg = 'Ya existe un registro con esa ID de notificacion'
         setErrorMsg(msg)
@@ -189,7 +192,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     for (const id of idsNormalizados) {
       try {
-        const yaExiste = await existeIdNotificacion(id)
+        const yaExiste = await existeIdNotificacionEnFecha(id, fechaCertificacion)
         if (yaExiste) {
           const msg = `No se puede guardar el lote porque la ID ${id} ya existe en la base de datos`
           setErrorMsg(msg)
@@ -270,9 +273,12 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     cargando,
     guardandoLote,
     mensaje,
+    mensajes,
     errorMsg,
+    estadisticas,
     setMensaje,
     setErrorMsg,
+    setMensajes,
     limpiarMensajes,
     cargar,
     guardarRegistro,

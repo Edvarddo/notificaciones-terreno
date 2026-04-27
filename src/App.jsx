@@ -85,13 +85,12 @@ function App() {
   }, [hayModalAbierto])
 
   const qrIndividual = useQrScanner({
-    elementId: 'qr-reader',
-    onError: notificaciones.setErrorMsg,
-    onDecoded: async (decodedText) => {
+    qrRegionId: 'qr-reader',
+    onDetected: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
 
       if (!/^\d{1,8}$/.test(idExtraido)) {
-        notificaciones.setMensaje('QR inválido: ID no numérica o mayor a 8 dígitos')
+        notificaciones.setErrorMsg('QR inválido: ID no numérica o mayor a 8 dígitos')
         return
       }
 
@@ -100,16 +99,16 @@ function App() {
       await qrIndividual.detenerEscaneo()
       enfocarId()
     },
+    enabled: !hayModalAbierto,
   })
 
   const qrLote = useQrScanner({
-    elementId: 'qr-reader-lote',
-    onError: notificaciones.setErrorMsg,
-    onDecoded: async (decodedText) => {
+    qrRegionId: 'qr-reader-lote',
+    onDetected: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
 
       if (!/^\d{1,8}$/.test(idExtraido)) {
-        notificaciones.setMensaje('QR inválido: ID no numérica o mayor a 8 dígitos')
+        notificaciones.setErrorMsg('QR inválido: ID no numérica o mayor a 8 dígitos')
         return
       }
 
@@ -118,7 +117,7 @@ function App() {
       })
 
       if (resultado.agregado) {
-        notificaciones.agregarMensajeApiable(`Escaneado ${resultado.id} con éxito`, 'success')
+        notificaciones.setMensaje(`Escaneado ${resultado.id} con éxito`)
         setUltimoIdAgregadoLote(idExtraido)
 
         if (ultimoIdAgregadoLoteTimer.current) {
@@ -130,9 +129,10 @@ function App() {
           ultimoIdAgregadoLoteTimer.current = null
         }, 2200)
       } else {
-        notificaciones.agregarMensajeApiable(`La ID ${resultado.id} ya estaba escaneada`, 'error')
+        notificaciones.setErrorMsg(`La ID ${resultado.id} ya estaba escaneada`)
       }
     },
+    enabled: dialogoLoteAbierto,
   })
 
   const abrirDialogoLote = () => {
@@ -143,8 +143,8 @@ function App() {
     setDialogoLoteAbierto(true)
   }
 
-  const cerrarDialogoLote = async () => {
-    await qrLote.detenerEscaneo()
+  const cerrarDialogoLote = () => {
+    qrLote.detenerEscaneo().catch(() => {})
     setDialogoLoteAbierto(false)
   }
 

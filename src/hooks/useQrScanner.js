@@ -81,7 +81,23 @@ export default function useQrScanner({ onDetected, enabled = true, qrRegionId = 
     }
   }, [enabled, cameraId, onDetected, qrRegionId])
 
-  return { stop: () => instanceRef.current?.stop?.(), start: () => {} }
-}
+  const detenerEscaneo = async () => {
+    if (instanceRef.current) {
+      try {
+        await instanceRef.current.stop()
+        await instanceRef.current.clear()
+      } catch {}
+    }
+  }
 
-export default useQrScanner
+  const iniciarEscaneo = () => {
+    // El scanning comienza automáticamente cuando enabled es true
+  }
+
+  return { 
+    detenerEscaneo, 
+    iniciarEscaneo,
+    stop: detenerEscaneo, 
+    start: iniciarEscaneo 
+  }
+}

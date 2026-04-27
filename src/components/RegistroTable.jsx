@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import IdHighlight from './IdHighlight'
+import { MAPA_CODIGOS } from '../constants/codigos'
 
 const CODIGOS_EXITOSOS = new Set(['D2', 'D4', 'E1'])
 const CODIGOS_BUSQUEDA = new Set(['B3', 'B7', 'B10'])
@@ -7,25 +8,37 @@ const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B5'])
 
 function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescargarCsv }) {
   const [editandoId, setEditandoId] = useState(null)
+  const [idNotificacionEdit, setIdNotificacionEdit] = useState('')
   const [codigoEdit, setCodigoEdit] = useState('')
+  const [horaEdit, setHoraEdit] = useState('')
+  const [esNoUrbanaEdit, setEsNoUrbanaEdit] = useState(false)
   const [observacionEdit, setObservacionEdit] = useState('')
 
   const iniciarEdicion = (registro) => {
     setEditandoId(registro.id)
+    setIdNotificacionEdit(registro.id_notificacion || '')
     setCodigoEdit(registro.codigo || '')
+    setHoraEdit(registro.hora || '')
+    setEsNoUrbanaEdit(registro.es_no_urbana || false)
     setObservacionEdit(registro.observacion || '')
   }
 
   const cancelarEdicion = () => {
     setEditandoId(null)
+    setIdNotificacionEdit('')
     setCodigoEdit('')
+    setHoraEdit('')
+    setEsNoUrbanaEdit(false)
     setObservacionEdit('')
   }
 
   const guardarEdicion = async (id) => {
     const ok = await onActualizarRegistro({
       id,
+      id_notificacion: idNotificacionEdit,
       codigo: codigoEdit,
+      hora: horaEdit,
+      es_no_urbana: esNoUrbanaEdit,
       observacion: observacionEdit,
     })
 
@@ -33,6 +46,10 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
       cancelarEdicion()
     }
   }
+
+  const codigoLimpioView = (codigo) => String(codigo || '').trim().toUpperCase()
+  const descripcionCodigo = (codigo) => MAPA_CODIGOS[codigoLimpioView(codigo)] || ''
+  const codigoLimpioEdit = codigoLimpioView(codigoEdit)
 
   const resumen = registros.reduce(
     (acc, r) => {
@@ -123,73 +140,128 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
           <table className="tabla-registros">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>COD</th>
+                <th>ID NOTIF</th>
+                <th>CÓDIGO</th>
+                <th>DESCRIPCIÓN</th>
                 <th>HORA</th>
                 <th>TIPO</th>
-                <th>OBS</th>
-                <th>ACCION</th>
+                <th>OBSERVACIÓN</th>
+                <th>ACCIÓN</th>
               </tr>
             </thead>
             <tbody>
               {registros.map((r) => {
                 const enEdicion = editandoId === r.id
+                const descCodigo = descripcionCodigo(enEdicion ? codigoEdit : r.codigo)
 
                 return (
-                  <tr key={r.id}>
-                    <td>
-                      <IdHighlight value={r.id_notificacion} />
-                    </td>
-
-                    <td>
+                  <tr key={r.id} className={enEdicion ? 'fila-editando' : ''}>
+                    <td className="td-id">
                       {enEdicion ? (
                         <input
-                          className="input-tabla"
+                          className="input-tabla input-id"
                           type="text"
-                          value={codigoEdit}
-                          onChange={(e) =>
-                            setCodigoEdit(
-                              e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-                            )
-                          }
+                          inputMode="numeric"
+                          value={idNotificacionEdit}
+                          onChange={(e) => setIdNotificacionEdit(e.target.value.replace(/[^\d]/g, '').slice(0, 8))}
                         />
                       ) : (
-                        r.codigo
+                        <IdHighlight value={r.id_notificacion} />
                       )}
                     </td>
 
-                    <td>{r.hora}</td>
-                    <td>{r.es_no_urbana ? 'RURAL' : 'URB'}</td>
-
-                    <td>
+                    <td className="td-codigo">
                       {enEdicion ? (
                         <input
-                          className="input-tabla"
+                          className="input-tabla input-codigo"
+                          type="text"
+                          value={codigoEdit}
+                          placeholder="P.ej: D2"
+                          onChange={(e) =>
+                            setCodigoEdit(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10))
+                          }
+                        />
+                      ) : (
+                        <span className="codigo-badge">{codigoLimpioView(r.codigo)}</span>
+                      )}
+                    </td>
+
+                    <td className="td-descripcion">
+                      {enEdicion ? (
+                        descCodigo ? (
+                          <span className="desc-codigo-edit">{descCodigo}</span>
+                        ) : (
+                          <span className="desc-codigo-vacia">Sin definición</span>
+                        )
+                      ) : (
+                        descCodigo || <span className="desc-codigo-vacia">—</span>
+                      )}
+                    </td>
+
+                    <td className="td-hora">
+                      {enEdicion ? (
+                        <input
+                          className="input-tabla input-hora"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="HHMM"
+                          value={horaEdit}
+                          maxLength="4"
+                          onChange={(e) => setHoraEdit(e.target.value.replace(/[^\d]/g, '').slice(0, 4))}
+                        />
+                      ) : (
+                        r.hora
+                      )}
+                    </td>
+
+                    <td className="td-tipo">
+                      {enEdicion ? (
+                        <select
+                          className="select-tabla"
+                          value={esNoUrbanaEdit ? 'rural' : 'urbana'}
+                          onChange={(e) => setEsNoUrbanaEdit(e.target.value === 'rural')}
+                        >
+                          <option value="urbana">Urbana</option>
+                          <option value="rural">Rural</option>
+                        </select>
+                      ) : (
+                        <span className={`tipo-badge tipo-${r.es_no_urbana ? 'rural' : 'urbana'}`}>
+                          {r.es_no_urbana ? 'RURAL' : 'URB'}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="td-observacion">
+                      {enEdicion ? (
+                        <input
+                          className="input-tabla input-observacion"
                           type="text"
                           value={observacionEdit}
                           onChange={(e) => setObservacionEdit(e.target.value)}
                         />
                       ) : (
-                        r.observacion
+                        <span title={r.observacion}>{r.observacion}</span>
                       )}
                     </td>
 
-                    <td>
+                    <td className="td-acciones">
                       {enEdicion ? (
                         <div className="acciones-tabla">
                           <button
                             type="button"
                             className="boton-tabla guardar"
                             onClick={() => guardarEdicion(r.id)}
+                            title="Guardar cambios"
                           >
-                            Guardar
+                            ✓
                           </button>
                           <button
                             type="button"
                             className="boton-tabla cancelar"
                             onClick={cancelarEdicion}
+                            title="Cancelar edición"
                           >
-                            Cancelar
+                            ✕
                           </button>
                         </div>
                       ) : (
@@ -197,8 +269,9 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
                           type="button"
                           className="boton-tabla editar"
                           onClick={() => iniciarEdicion(r)}
+                          title="Editar registro"
                         >
-                          Editar
+                          ✎
                         </button>
                       )}
                     </td>
