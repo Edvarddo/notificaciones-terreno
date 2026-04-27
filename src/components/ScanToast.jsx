@@ -1,11 +1,6 @@
-function ScanToast({ visible, text, type = 'success' }) {
-  if (!visible || !text) return null
-
-  return (
-    <div className={`scan-toast scan-toast-${type}`}>
-      {text}
-    </div>
-  )
+import React from 'react'
+export default function ScanToast({ children }) {
+  return <div className="scan-toast">{children}</div>
 }
 
 export default ScanToast

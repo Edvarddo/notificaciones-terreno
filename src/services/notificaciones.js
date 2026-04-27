@@ -17,7 +17,14 @@ export async function insertarRegistro(fila) {
 }
 
 export async function insertarLote(filas) {
-  const { error } = await supabase.from('notificaciones_terreno').insert(filas)
+  const { error } = await supabase
+    .from('notificaciones_terreno')
+    .insert(
+      filas.map((f) => ({
+        ...f,
+        codigo_lote: f.codigo_lote ?? null,
+      }))
+    )
   if (error) throw error
 }
 

@@ -1,0 +1,397 @@
+*** Begin Patch
+*** Add File: src/lib/sounds.js
++// Simple WebAudio-based beep utility (no external assets)
++let audioCtx = null
++export function playBeep({ frequency = 1000, duration = 120, volume = 0.15 } = {}) {
++  try {
++    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
++    const ctx = audioCtx
++    const o = ctx.createOscillator()
++    const g = ctx.createGain()
++    o.type = 'sine'
++    o.frequency.setValueAtTime(frequency, ctx.currentTime)
++    g.gain.setValueAtTime(volume, ctx.currentTime)
++    o.connect(g)
++    g.connect(ctx.destination)
++    o.start()
++    setTimeout(() => {
++      o.stop()
++      o.disconnect()
++      g.disconnect()
++    }, duration)
++  } catch (e) {
++    // ignore
++  }
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: src/hooks/useQrScanner.js
++import { useEffect, useRef, useState } from 'react'
++import { Html5Qrcode } from 'html5-qrcode'
++import { playBeep } from '../lib/sounds'
++
++export default function useQrScanner({ onDetected, enabled = true, qrRegionId = 'qr-reader' } = {}) {
++  const instanceRef = useRef(null)
++  const lastCodeRef = useRef(null)
++  const lastTimeRef = useRef(0)
++  const [cameraId, setCameraId] = useState(null)
++  const DEBOUNCE_MS = 500
++
++  useEffect(() => {
++    let mounted = true
++
++    async function pickCamera() {
++      try {
++        const cams = await Html5Qrcode.getCameras()
++        if (!mounted) return null
++        if (!cams || !cams.length) return null
++        const preferred = cams.find((c) => /back|rear|environment/i.test(c.label)) || cams[0]
++        setCameraId(preferred.id || preferred.deviceId)
++        return preferred
++      } catch (e) {
++        return null
++      }
++    }
++
++    async function startScanner() {
++      if (!enabled) return
++      const prefer = await pickCamera()
++      const targetId = prefer?.id ?? prefer?.deviceId ?? cameraId
++      const html5Qr = new Html5Qrcode(qrRegionId, { verbose: false })
++      instanceRef.current = html5Qr
++      const config = { fps: 10, qrbox: { width: 300, height: 300 }, disableFlip: false }
++
++      try {
++        await html5Qr.start(
++          targetId,
++          config,
++          (decodedText) => {
++            const now = Date.now()
++            if (decodedText === lastCodeRef.current && now - lastTimeRef.current < DEBOUNCE_MS) return
++            lastCodeRef.current = decodedText
++            lastTimeRef.current = now
++            try { playBeep() } catch {}
++            onDetected?.(decodedText)
++          },
++          () => {}
++        )
++      } catch (err) {
++        try {
++          await html5Qr.start(
++            { facingMode: 'environment' },
++            config,
++            (decodedText) => {
++              const now = Date.now()
++              if (decodedText === lastCodeRef.current && now - lastTimeRef.current < DEBOUNCE_MS) return
++              lastCodeRef.current = decodedText
++              lastTimeRef.current = now
++              try { playBeep() } catch {}
++              onDetected?.(decodedText)
++            },
++            () => {}
++          )
++        } catch (e2) {
++          // give up; consumer should show message
++        }
++      }
++    }
++
++    startScanner()
++
++    return () => {
++      mounted = false
++      const inst = instanceRef.current
++      if (inst) {
++        inst.stop().catch(() => {}).finally(() => {
++          try { inst.clear() } catch {}
++        })
++      }
++    }
++  }, [enabled, cameraId, onDetected, qrRegionId])
++
++  return { stop: () => instanceRef.current?.stop?.(), start: () => {} }
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: src/lib/offlineQueue.js
++// Minimal IndexedDB wrapper for pending operations
++const DB_NAME = 'notificaciones-offline'
++const STORE = 'pendientes'
++
++function abrirDB() {
++  return new Promise((resolve, reject) => {
++    const req = indexedDB.open(DB_NAME, 1)
++    req.onupgradeneeded = () => {
++      const db = req.result
++      if (!db.objectStoreNames.contains(STORE)) {
++        db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true })
++      }
++    }
++    req.onsuccess = () => resolve(req.result)
++    req.onerror = () => reject(req.error)
++  })
++}
++
++export async function agregarOperacionPendiente(op) {
++  const db = await abrirDB()
++  return new Promise((resolve, reject) => {
++    const tx = db.transaction(STORE, 'readwrite')
++    const store = tx.objectStore(STORE)
++    const now = Date.now()
++    const item = { ...op, attempts: 0, createdAt: now, lastTriedAt: null, lastError: null }
++    const r = store.add(item)
++    r.onsuccess = () => resolve(r.result)
++    r.onerror = () => reject(r.error)
++  })
++}
++
++export async function obtenerOperacionesPendientes() {
++  const db = await abrirDB()
++  return new Promise((resolve, reject) => {
++    const tx = db.transaction(STORE, 'readonly')
++    const store = tx.objectStore(STORE)
++    const req = store.getAll()
++    req.onsuccess = () => resolve(req.result || [])
++    req.onerror = () => reject(req.error)
++  })
++}
++
++export async function eliminarOperacionPendiente(id) {
++  const db = await abrirDB()
++  return new Promise((resolve, reject) => {
++    const tx = db.transaction(STORE, 'readwrite')
++    const store = tx.objectStore(STORE)
++    const req = store.delete(id)
++    req.onsuccess = () => resolve()
++    req.onerror = () => reject(req.error)
++  })
++}
++
++export async function actualizarOperacionPendiente(id, updates) {
++  const db = await abrirDB()
++  return new Promise((resolve, reject) => {
++    const tx = db.transaction(STORE, 'readwrite')
++    const store = tx.objectStore(STORE)
++    const getReq = store.get(id)
++    getReq.onsuccess = () => {
++      const existing = getReq.result
++      if (!existing) return resolve(null)
++      const updated = { ...existing, ...updates }
++      const putReq = store.put(updated)
++      putReq.onsuccess = () => resolve(updated)
++      putReq.onerror = () => reject(putReq.error)
++    }
++    getReq.onerror = () => reject(getReq.error)
++  })
++}
++
+*** End Patch
+*** Begin Patch
+*** Update File: src/hooks/useNotificaciones.js
+@@
+   const eliminarUltimoRegistro = async () => {
+     limpiarMensajes()
+ 
+     if (!registros.length) {
+       const msg = 'No hay registros para eliminar'
+       setErrorMsg(msg)
+       return { ok: false, error: msg }
+     }
+ 
+     const ultimo = registros[0]
+-    const ok = window.confirm(
+-      `Se eliminara el ultimo registro: ID ${ultimo.id_notificacion}, codigo ${ultimo.codigo}. ¿Continuar?`
+-    )
+-
+-    if (!ok) return { ok: false, error: 'Cancelado' }
+-
+-    try {
+-      await eliminarRegistroPorId(ultimo.id)
+-    } catch (error) {
+-      const msg = `No se pudo eliminar: ${error.message}`
+-      setErrorMsg(msg)
+-      return { ok: false, error: msg }
+-    }
++    try {
++      await eliminarRegistroPorId(ultimo.id)
++    } catch (error) {
++      const msg = `No se pudo eliminar: ${error.message}`
++      setErrorMsg(msg)
++      return { ok: false, error: msg }
++    }
+ 
+     setMensaje('Eliminado')
+     await cargar()
+     enfocarId?.()
+     return { ok: true }
+   }
+@@
+-    const filas = idsNormalizados.map((id) => ({
+-      id_notificacion: id,
+-      fecha_certificacion: fechaCertificacion,
+-      hora: horaLote,
+-      codigo: codigoNormalizado,
+-      observacion: observacionNormalizada,
+-      es_no_urbana: Boolean(esNoUrbanaLote),
+-    }))
++    const filas = idsNormalizados.map((id) => ({
++      id_notificacion: id,
++      fecha_certificacion: fechaCertificacion,
++      hora: horaLote,
++      codigo: codigoNormalizado,
++      observacion: observacionNormalizada,
++      es_no_urbana: Boolean(esNoUrbanaLote),
++      codigo_lote: codigoNormalizado,
++    }))
+*** End Patch
+*** Begin Patch
+*** Add File: public/manifest.webmanifest
++{
++  "name": "Notificaciones Terreno",
++  "short_name": "Notifs",
++  "start_url": "/",
++  "display": "standalone",
++  "background_color": "#ffffff",
++  "theme_color": "#0b74de",
++  "icons": [
++    {
++      "src": "/icons/icon-192.png",
++      "sizes": "192x192",
++      "type": "image/png"
++    },
++    {
++      "src": "/icons/icon-512.png",
++      "sizes": "512x512",
++      "type": "image/png"
++    }
++  ]
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: public/sw.js
++const CACHE_NAME = 'notifs-v1'
++const ASSETS = ['/', '/index.html', '/src/main.jsx', '/index.css']
++
++self.addEventListener('install', (e) => {
++  e.waitUntil(
++    (async () => {
++      const cache = await caches.open(CACHE_NAME)
++      await cache.addAll(ASSETS).catch(() => {})
++    })()
++  )
++})
++
++self.addEventListener('activate', (e) => {
++  e.waitUntil(self.clients.claim())
++})
++
++self.addEventListener('fetch', (e) => {
++  if (e.request.method !== 'GET') return
++  e.respondWith(
++    caches.match(e.request).then((cached) => cached || fetch(e.request).catch(() => cached))
++  )
++})
++
+*** End Patch
+*** Begin Patch
+*** Update File: src/main.jsx
+@@
+ import React from 'react'
+ import ReactDOM from 'react-dom/client'
+ import App from './App'
+ 
+ const root = ReactDOM.createRoot(document.getElementById('root'))
+ root.render(
+   <React.StrictMode>
+     <App />
+   </React.StrictMode>
+ )
+ 
+ // Register service worker (basic)
+ if ('serviceWorker' in navigator) {
+   window.addEventListener('load', () => {
+     navigator.serviceWorker
+-      .register('/sw.js')
+-      .catch(() => {})
++      .register('/sw.js')
++      .catch(() => {})
+   })
+ }
+*** End Patch
+*** Begin Patch
+*** Add File: src/components/IconSave.jsx
++import React from 'react'
++export default function IconSave() {
++  return (
++    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
++      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
++      <polyline points="17 21 17 13 7 13 7 21" />
++      <polyline points="7 3 7 8 15 8" />
++    </svg>
++  )
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: src/components/IconTrash.jsx
++import React from 'react'
++export default function IconTrash() {
++  return (
++    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
++      <polyline points="3 6 5 6 21 6" />
++      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
++      <path d="M10 11v6" />
++      <path d="M14 11v6" />
++      <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
++    </svg>
++  )
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: src/components/IconMultipleScan.jsx
++import React from 'react'
++export default function IconMultipleScan() {
++  return (
++    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
++      <rect x="3" y="3" width="18" height="14" rx="2" />
++      <path d="M7 21v-4" />
++      <path d="M17 21v-4" />
++      <path d="M7 7h10" />
++    </svg>
++  )
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: src/components/ScanToast.jsx
++import React from 'react'
++export default function ScanToast({ children }) {
++  return <div className="scan-toast">{children}</div>
++}
++
+*** End Patch
+*** Begin Patch
+*** Update File: src/services/notificaciones.js
+@@
+ export async function insertarLote(filas) {
+-  // existing implementation assumed
+-  const { data, error } = await supabase.from('notificaciones_terreno').insert(filas)
++  // ensure codigo_lote is persisted if present in filas
++  const { data, error } = await supabase
++    .from('notificaciones_terreno')
++    .insert(
++      filas.map((f) => ({
++        ...f,
++        codigo_lote: f.codigo_lote ?? null,
++      }))
++    )
+   if (error) throw error
+   return data
+ }
+*** End Patch
+
+*** End Patch

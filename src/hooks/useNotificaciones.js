@@ -116,12 +116,6 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
 
     const ultimo = registros[0]
-    const ok = window.confirm(
-      `Se eliminara el ultimo registro: ID ${ultimo.id_notificacion}, codigo ${ultimo.codigo}. ¿Continuar?`
-    )
-
-    if (!ok) return { ok: false, error: 'Cancelado' }
-
     try {
       await eliminarRegistroPorId(ultimo.id)
     } catch (error) {
@@ -219,6 +213,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       codigo: codigoNormalizado,
       observacion: observacionNormalizada,
       es_no_urbana: Boolean(esNoUrbanaLote),
+      codigo_lote: codigoNormalizado,
     }))
 
     try {
