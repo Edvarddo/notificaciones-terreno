@@ -22,6 +22,17 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const [mensajes, setMensajes] = useState([])
   const [estadisticas, setEstadisticas] = useState({ puntos: 0 })
 
+  const agregarMensajeVisual = (texto, tipo = 'success') => {
+    setMensajes((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        texto,
+        tipo,
+      },
+    ])
+  }
+
   const esErrorDeRed = (error) => {
     const mensaje = String(error?.message || error || '')
     return (
@@ -39,10 +50,14 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     let sincronizados = 0
 
     for (const pendiente of pendientes) {
-      if (pendiente.tipo !== 'guardarRegistro') continue
+      if (pendiente.tipo !== 'guardarRegistro' && pendiente.tipo !== 'guardarLote') continue
 
       try {
-        await insertarRegistro(pendiente.payload)
+        if (pendiente.tipo === 'guardarRegistro') {
+          await insertarRegistro(pendiente.payload)
+        } else {
+          await insertarLote(pendiente.payload.filas || [])
+        }
         await eliminarOperacionPendiente(pendiente.id)
         sincronizados += 1
       } catch (error) {
@@ -55,6 +70,12 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     if (sincronizados > 0) {
       setMensaje(`Sincronizados ${sincronizados} registro(s) pendientes`)
+      agregarMensajeVisual(
+        sincronizados === 1
+          ? '1 notificación pendiente fue sincronizada'
+          : `${sincronizados} notificaciones pendientes fueron sincronizadas`,
+        'sincronizado'
+      )
       await cargar()
     }
   }
@@ -145,6 +166,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         }
 
         setMensaje('Sin conexion: registro pendiente de sincronizacion')
+        agregarMensajeVisual('Guardado sin internet. Quedo pendiente de sincronizacion.', 'pendiente')
         enfocarId?.()
         return { ok: true, offline: true }
       }
@@ -197,6 +219,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         }
 
         setMensaje('Sin conexion: registro pendiente de sincronizacion')
+        agregarMensajeVisual('Guardado sin internet. Quedo pendiente de sincronizacion.', 'pendiente')
         enfocarId?.()
         return { ok: true, offline: true }
       }
@@ -297,6 +320,42 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     const observacionNormalizada = observacionLote.trim() || '.'
 
+    const filas = idsNormalizados.map((id) => ({
+      id_notificacion: id,
+      fecha_certificacion: fechaCertificacion,
+      hora: horaLote,
+      codigo: codigoNormalizado,
+      observacion: observacionNormalizada,
+      es_no_urbana: Boolean(esNoUrbanaLote),
+      codigo_lote: codigoNormalizado,
+    }))
+
+    if (!navigator.onLine) {
+      try {
+        await agregarOperacionPendiente({
+          tipo: 'guardarLote',
+          payload: {
+            filas,
+          },
+        })
+      } catch (queueError) {
+        const msg = `No se pudo guardar el lote sin conexion: ${queueError.message}`
+        setErrorMsg(msg)
+        await onBeforeError?.()
+        return { ok: false, error: msg }
+      }
+
+      setMensaje(`Lote pendiente de sincronizacion: ${idsTemporales.length} registro(s)`)
+      agregarMensajeVisual(
+        idsTemporales.length === 1
+          ? '1 notificación del lote quedó pendiente sin internet.'
+          : `${idsTemporales.length} notificaciones del lote quedaron pendientes sin internet.`,
+        'pendiente'
+      )
+      await onSuccess?.()
+      return { ok: true, offline: true }
+    }
+
     for (const id of idsNormalizados) {
       try {
         const yaExiste = await existeIdNotificacionEnFecha(id, fechaCertificacion)
@@ -316,20 +375,36 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     setGuardandoLote(true)
 
-    const filas = idsNormalizados.map((id) => ({
-      id_notificacion: id,
-      fecha_certificacion: fechaCertificacion,
-      hora: horaLote,
-      codigo: codigoNormalizado,
-      observacion: observacionNormalizada,
-      es_no_urbana: Boolean(esNoUrbanaLote),
-      codigo_lote: codigoNormalizado,
-    }))
-
     try {
       await insertarLote(filas)
     } catch (error) {
       setGuardandoLote(false)
+
+      if (esErrorDeRed(error)) {
+        try {
+          await agregarOperacionPendiente({
+            tipo: 'guardarLote',
+            payload: {
+              filas,
+            },
+          })
+        } catch (queueError) {
+          const msg = `No se pudo guardar el lote sin conexion: ${queueError.message}`
+          setErrorMsg(msg)
+          await onBeforeError?.()
+          return { ok: false, error: msg }
+        }
+
+        setMensaje(`Lote pendiente de sincronizacion: ${idsTemporales.length} registro(s)`)
+        agregarMensajeVisual(
+          idsTemporales.length === 1
+            ? '1 notificación del lote quedó pendiente sin internet.'
+            : `${idsTemporales.length} notificaciones del lote quedaron pendientes sin internet.`,
+          'pendiente'
+        )
+        await onSuccess?.()
+        return { ok: true, offline: true }
+      }
 
       const msg = error.message?.toLowerCase().includes('duplicate')
         ? 'No se puede guardar el lote porque una o más IDs ya existen'

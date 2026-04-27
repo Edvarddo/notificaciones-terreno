@@ -252,6 +252,67 @@ body {
   border: 1px solid #f5c6c6;
 }
 
+.mensajes-apilables {
+  position: relative;
+  min-height: 0;
+}
+
+.mensaje-apilable {
+  position: fixed;
+  right: 16px;
+  max-width: min(380px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.16);
+  font-size: 14px;
+  line-height: 1.35;
+  z-index: 1200;
+  backdrop-filter: blur(8px);
+}
+
+.mensaje-apilable-success {
+  background: rgba(232, 245, 233, 0.97);
+  border-color: #c8e6c9;
+  color: #1b5e20;
+}
+
+.mensaje-apilable-error {
+  background: rgba(253, 236, 236, 0.97);
+  border-color: #f5c6c6;
+  color: #a61b1b;
+}
+
+.mensaje-apilable-pendiente {
+  background: linear-gradient(135deg, rgba(255, 248, 230, 0.98), rgba(255, 243, 224, 0.98));
+  border-color: #ffd59a;
+  color: #8a5a00;
+}
+
+.mensaje-apilable-sincronizado {
+  background: linear-gradient(135deg, rgba(227, 242, 253, 0.98), rgba(232, 244, 253, 0.98));
+  border-color: #90caf9;
+  color: #0d47a1;
+}
+
+.mensaje-apilable-pendiente::before,
+.mensaje-apilable-sincronizado::before {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.mensaje-apilable-pendiente::before {
+  content: 'Pendiente offline';
+}
+
+.mensaje-apilable-sincronizado::before {
+  content: 'Sincronizado';
+}
+
 .seccion-registros {
   margin-top: 24px;
 }
