@@ -30,11 +30,12 @@ export async function eliminarRegistroPorId(id) {
   if (error) throw error
 }
 
-export async function existeIdNotificacion(idNotificacion) {
+export async function existeIdNotificacionEnFecha(idNotificacion, fechaCertificacion) {
   const { data, error } = await supabase
     .from('notificaciones_terreno')
     .select('id')
     .eq('id_notificacion', idNotificacion)
+    .eq('fecha_certificacion', fechaCertificacion)
     .limit(1)
 
   if (error) throw error
@@ -48,4 +49,21 @@ export async function actualizarRegistroPorId(id, cambios) {
     .eq('id', id)
 
   if (error) throw error
+}
+
+export async function obtenerEstadisticas(fechaCertificacion) {
+  const { data, error } = await supabase
+    .from('notificaciones_terreno')
+    .select('codigo_lote')
+    .eq('fecha_certificacion', fechaCertificacion)
+
+  if (error) throw error
+
+  const cargaTotal = data?.length || 0
+  const puntos = new Set(data?.filter(r => r.codigo_lote).map(r => r.codigo_lote) || []).size
+
+  return {
+    cargaTotal,
+    puntos,
+  }
 }

@@ -8,6 +8,9 @@ function useQrScanner({ elementId, onDecoded, onError }) {
   const iniciandoRef = useRef(false)
   const onDecodedRef = useRef(onDecoded)
   const onErrorRef = useRef(onError)
+  const ultimoCodigoRef = useRef(null)
+  const ultimoTiempoRef = useRef(0)
+  const DEBOUNCE_MS = 500 // esperar 500ms antes de procesar otro código
 
   useEffect(() => {
     onDecodedRef.current = onDecoded
@@ -24,6 +27,8 @@ function useQrScanner({ elementId, onDecoded, onError }) {
 
   const detenerEscaneo = async () => {
     iniciandoRef.current = false
+    ultimoCodigoRef.current = null
+    ultimoTiempoRef.current = 0
 
     try {
       if (qrRef.current) {
@@ -71,6 +76,18 @@ function useQrScanner({ elementId, onDecoded, onError }) {
           },
           async (decodedText) => {
             if (cancelado) return
+
+            // Evitar procesar el mismo código múltiples veces
+            const ahora = Date.now()
+            if (
+              ultimoCodigoRef.current === decodedText &&
+              ahora - ultimoTiempoRef.current < DEBOUNCE_MS
+            ) {
+              return
+            }
+
+            ultimoCodigoRef.current = decodedText
+            ultimoTiempoRef.current = ahora
             await onDecodedRef.current?.(decodedText)
           },
           () => {

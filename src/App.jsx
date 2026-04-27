@@ -4,6 +4,7 @@ import './App.css'
 import { MAPA_CODIGOS } from './constants/codigos'
 import RegistroForm from './components/RegistroForm'
 import RegistroTable from './components/RegistroTable'
+import IconTrash from './components/IconTrash'
 import CodigoDialog from './features/CodigoDialog'
 import LoteDialog from './features/LoteDialog'
 import useQrScanner from './hooks/useQrScanner'
@@ -11,15 +12,23 @@ import useNotificaciones from './hooks/useNotificaciones'
 import useLoteForm from './hooks/useLoteForm'
 import useRegistroForm from './hooks/useRegistroForm'
 import { extraerIdDesdeQr } from './utils/qr'
+import ConsultaHistorico from './pages/ConsultaHistorico'
 
 function App() {
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
   const [dialogoLoteAbierto, setDialogoLoteAbierto] = useState(false)
   const [dialogoCodigoLoteAbierto, setDialogoCodigoLoteAbierto] = useState(false)
+  const [dialogoEliminarAbierto, setDialogoEliminarAbierto] = useState(false)
 
   const inputIdRef = useRef(null)
+  const [mostrarConsulta, setMostrarConsulta] = useState(false)
+  const [menuAbierto, setMenuAbierto] = useState(false)
 
-  const hayModalAbierto = dialogoCodigoAbierto || dialogoLoteAbierto || dialogoCodigoLoteAbierto
+  const hayModalAbierto =
+    dialogoCodigoAbierto ||
+    dialogoLoteAbierto ||
+    dialogoCodigoLoteAbierto ||
+    dialogoEliminarAbierto
 
   const [fechaCertificacion] = useState(() => {
     const hoy = new Date()
@@ -57,12 +66,6 @@ function App() {
   const [ultimoIdAgregadoLote, setUltimoIdAgregadoLote] = useState('')
   const ultimoIdAgregadoLoteTimer = useRef(null)
 
-  const vibrar = (duracion = 200) => {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(duracion)
-    }
-  }
-
   useEffect(() => {
     notificaciones.cargar()
     enfocarId()
@@ -86,9 +89,14 @@ function App() {
     onError: notificaciones.setErrorMsg,
     onDecoded: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
+
+      if (!/^\d{1,8}$/.test(idExtraido)) {
+        notificaciones.setMensaje('QR inválido: ID no numérica o mayor a 8 dígitos')
+        return
+      }
+
       registro.setIdNotificacion(idExtraido)
-      vibrar(200)
-      notificaciones.setMensaje('QR leído correctamente')
+      notificaciones.setMensaje(`Escaneado ${idExtraido} con éxito`)
       await qrIndividual.detenerEscaneo()
       enfocarId()
     },
@@ -100,13 +108,17 @@ function App() {
     onDecoded: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
 
+      if (!/^\d{1,8}$/.test(idExtraido)) {
+        notificaciones.setMensaje('QR inválido: ID no numérica o mayor a 8 dígitos')
+        return
+      }
+
       const resultado = lote.agregarIdTemporal(idExtraido, (idDuplicado) => {
         notificaciones.setMensaje(`ID repetido omitido: ${idDuplicado}`)
       })
 
       if (resultado.agregado) {
-        vibrar(200)
-        notificaciones.setMensaje(`Agregado al lote: ${idExtraido}`)
+        notificaciones.agregarMensajeApiable(`Escaneado ${resultado.id} con éxito`, 'success')
         setUltimoIdAgregadoLote(idExtraido)
 
         if (ultimoIdAgregadoLoteTimer.current) {
@@ -117,6 +129,8 @@ function App() {
           setUltimoIdAgregadoLote('')
           ultimoIdAgregadoLoteTimer.current = null
         }, 2200)
+      } else {
+        notificaciones.agregarMensajeApiable(`La ID ${resultado.id} ya estaba escaneada`, 'error')
       }
     },
   })
@@ -171,6 +185,19 @@ function App() {
     })
   }
 
+  const abrirDialogoEliminarUltimo = () => {
+    if (!notificaciones.registros.length) {
+      notificaciones.setErrorMsg('No hay registros para eliminar')
+      return
+    }
+    setDialogoEliminarAbierto(true)
+  }
+
+  const confirmarEliminarUltimo = async () => {
+    await notificaciones.eliminarUltimoRegistro()
+    setDialogoEliminarAbierto(false)
+  }
+
   const descargarCsv = () => {
     const filas = notificaciones.registros.map((r) => ({
       id_notificacion: r.id_notificacion ?? '',
@@ -217,14 +244,121 @@ function App() {
     <div className="pagina">
       <div className="contenedor">
         <div className="header-box">
-          <h1 className="titulo-header">Poder Judicial</h1>
-          <p className="subtitulo-header">Registro de notificaciones en terreno</p>
+          <div className="header-top">
+            <div>
+              <h1 className="titulo-header">Poder Judicial</h1>
+              <p className="subtitulo-header">Registro de notificaciones en terreno</p>
+            </div>
+
+            {!mostrarConsulta ? (
+              <div className="menu-wrapper">
+                <button
+                  type="button"
+                  className="menu-hamburguesa"
+                  aria-label="Abrir menu"
+                  aria-expanded={menuAbierto}
+                  onClick={() => setMenuAbierto((prev) => !prev)}
+                >
+                  ☰
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
+
+        {menuAbierto ? (
+          <>
+            <div className="menu-backdrop" onClick={() => setMenuAbierto(false)} />
+            <aside className="menu-sidebar" aria-label="Menu principal">
+              <div className="menu-sidebar-header">
+                <span>Menu</span>
+                <button
+                  type="button"
+                  className="menu-cerrar"
+                  aria-label="Cerrar menu"
+                  onClick={() => setMenuAbierto(false)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="menu-item"
+                onClick={() => {
+                  setMostrarConsulta(true)
+                  setMenuAbierto(false)
+                }}
+              >
+                Consultar Fechas Anteriores
+              </button>
+            </aside>
+          </>
+        ) : null}
+
+        {dialogoEliminarAbierto ? (
+          <div className="dialogo-overlay top" onClick={() => setDialogoEliminarAbierto(false)}>
+            <div className="dialogo-codigos dialogo-confirmar" onClick={(e) => e.stopPropagation()}>
+              <div className="dialogo-header">
+                <h3 className="dialogo-titulo">Confirmar eliminacion</h3>
+                <button
+                  type="button"
+                  className="dialogo-cerrar"
+                  onClick={() => setDialogoEliminarAbierto(false)}
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              <div className="dialogo-contenido">
+                <p className="dialogo-texto-eliminar">
+                  Vas a eliminar el ultimo registro guardado.
+                </p>
+                <p className="dialogo-texto-eliminar">
+                  <strong>ID:</strong> {notificaciones.registros[0]?.id_notificacion} |{' '}
+                  <strong>Codigo:</strong> {notificaciones.registros[0]?.codigo}
+                </p>
+
+                <div className="acciones-confirmar-eliminar">
+                  <button
+                    type="button"
+                    className="boton-secundario"
+                    onClick={() => setDialogoEliminarAbierto(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="boton-peligro"
+                    onClick={confirmarEliminarUltimo}
+                  >
+                    <span className="boton-con-icono">
+                      <IconTrash />
+                      Si, eliminar
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="fecha-box">
           <strong>Fecha de certificacion:</strong> {fechaCertificacion}
+          {notificaciones.sincronizandoPendientes ? (
+            <div className="estado-sync estado-sync-en-proceso">Sincronizando pendientes...</div>
+          ) : null}
+          {notificaciones.pendientesSync > 0 ? (
+            <div className="estado-sync estado-sync-pendiente">
+              Pendientes offline: {notificaciones.pendientesSync}
+            </div>
+          ) : null}
         </div>
 
+        {mostrarConsulta ? (
+          <ConsultaHistorico onVolver={() => setMostrarConsulta(false)} />
+        ) : (
+          <>
         <RegistroForm
           inputIdRef={inputIdRef}
           idNotificacion={registro.idNotificacion}
@@ -246,7 +380,7 @@ function App() {
           onEsNoUrbanaChange={registro.setEsNoUrbana}
           cargando={notificaciones.cargando}
           onGuardar={guardar}
-          onEliminarUltimo={notificaciones.eliminarUltimoRegistro}
+          onEliminarUltimo={abrirDialogoEliminarUltimo}
           onAbrirLote={abrirDialogoLote}
           dialogoLoteAbierto={dialogoLoteAbierto}
         />
@@ -259,11 +393,24 @@ function App() {
           <div className="mensaje-error">{notificaciones.errorMsg}</div>
         ) : null}
 
+        <div className="mensajes-apilables">
+          {notificaciones.mensajes.map((msg, index) => (
+            <div
+              key={msg.id}
+              className={`mensaje-apilable mensaje-apilable-${msg.tipo}`}
+              style={{ bottom: `${20 + index * 80}px` }}
+            >
+              {msg.texto}
+            </div>
+          ))}
+        </div>
+
         <RegistroTable
           registros={notificaciones.registros}
           onRecargar={notificaciones.cargar}
           onActualizarRegistro={notificaciones.actualizarRegistro}
           onDescargarCsv={descargarCsv}
+          puntos={notificaciones.estadisticas.puntos}
         />
 
         <CodigoDialog
@@ -310,6 +457,8 @@ function App() {
           ultimoIdAgregadoLote={ultimoIdAgregadoLote}
           onGuardarLote={guardarLote}
         />
+          </>
+        )}
       </div>
     </div>
   )
