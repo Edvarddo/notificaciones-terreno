@@ -5,6 +5,7 @@ import { MAPA_CODIGOS } from './constants/codigos'
 import RegistroForm from './components/RegistroForm'
 import RegistroTable from './components/RegistroTable'
 import IconTrash from './components/IconTrash'
+import MenuLateral from './components/MenuLateral'
 import CodigoDialog from './features/CodigoDialog'
 import LoteDialog from './features/LoteDialog'
 import useQrScanner from './hooks/useQrScanner'
@@ -65,6 +66,16 @@ function App() {
 
   const [ultimoIdAgregadoLote, setUltimoIdAgregadoLote] = useState('')
   const ultimoIdAgregadoLoteTimer = useRef(null)
+
+  const irAConsulta = () => {
+    setMostrarConsulta(true)
+    setMenuAbierto(false)
+  }
+
+  const irAFormulario = () => {
+    setMostrarConsulta(false)
+    setMenuAbierto(false)
+  }
 
   useEffect(() => {
     notificaciones.cargar()
@@ -242,6 +253,24 @@ function App() {
 
   return (
     <div className="pagina">
+      <button
+        type="button"
+        className="menu-flotante"
+        aria-label="Abrir menu"
+        aria-expanded={menuAbierto}
+        onClick={() => setMenuAbierto((prev) => !prev)}
+      >
+        ☰
+      </button>
+
+      <MenuLateral
+        abierto={menuAbierto}
+        vistaConsulta={mostrarConsulta}
+        onCerrar={() => setMenuAbierto(false)}
+        onIrConsulta={irAConsulta}
+        onIrFormulario={irAFormulario}
+      />
+
       <div className="contenedor">
         <div className="header-box">
           <div className="header-top">
@@ -249,52 +278,8 @@ function App() {
               <h1 className="titulo-header">Poder Judicial</h1>
               <p className="subtitulo-header">Registro de notificaciones en terreno</p>
             </div>
-
-            {!mostrarConsulta ? (
-              <div className="menu-wrapper">
-                <button
-                  type="button"
-                  className="menu-hamburguesa"
-                  aria-label="Abrir menu"
-                  aria-expanded={menuAbierto}
-                  onClick={() => setMenuAbierto((prev) => !prev)}
-                >
-                  ☰
-                </button>
-              </div>
-            ) : null}
           </div>
         </div>
-
-        {menuAbierto ? (
-          <>
-            <div className="menu-backdrop" onClick={() => setMenuAbierto(false)} />
-            <aside className="menu-sidebar" aria-label="Menu principal">
-              <div className="menu-sidebar-header">
-                <span>Menu</span>
-                <button
-                  type="button"
-                  className="menu-cerrar"
-                  aria-label="Cerrar menu"
-                  onClick={() => setMenuAbierto(false)}
-                >
-                  ×
-                </button>
-              </div>
-
-              <button
-                type="button"
-                className="menu-item"
-                onClick={() => {
-                  setMostrarConsulta(true)
-                  setMenuAbierto(false)
-                }}
-              >
-                Consultar Fechas Anteriores
-              </button>
-            </aside>
-          </>
-        ) : null}
 
         {dialogoEliminarAbierto ? (
           <div className="dialogo-overlay top" onClick={() => setDialogoEliminarAbierto(false)}>
@@ -345,18 +330,52 @@ function App() {
 
         <div className="fecha-box">
           <strong>Fecha de certificacion:</strong> {fechaCertificacion}
-          {notificaciones.sincronizandoPendientes ? (
-            <div className="estado-sync estado-sync-en-proceso">Sincronizando pendientes...</div>
-          ) : null}
-          {notificaciones.pendientesSync > 0 ? (
-            <div className="estado-sync estado-sync-pendiente">
-              Pendientes offline: {notificaciones.pendientesSync}
-            </div>
-          ) : null}
         </div>
 
+        {notificaciones.sincronizandoPendientes || notificaciones.pendientesSync > 0 ? (
+          <div className="pendientes-panel pendientes-panel-activo">
+            <div className="pendientes-panel-header">
+              <div>
+                <span className="pendientes-kicker">Pendientes offline</span>
+                <h3>Cola de sincronización</h3>
+              </div>
+              <div className="pendientes-total">{notificaciones.pendientesSync}</div>
+            </div>
+
+            {notificaciones.sincronizandoPendientes ? (
+              <div className="pendientes-vacio">Sincronizando pendientes ahora mismo...</div>
+            ) : (
+              <>
+                <div className="pendientes-resumen">
+                  <span>Registro: {notificaciones.pendientesPorTipo.guardarRegistro}</span>
+                  <span>Lote: {notificaciones.pendientesPorTipo.guardarLote}</span>
+                </div>
+
+                <div className="pendientes-lista">
+                  {notificaciones.pendientesDetalle.map((pendiente) => (
+                    <div key={pendiente.id} className={`pendiente-item pendiente-${pendiente.tipo}`}>
+                      <div className="pendiente-item-top">
+                        <strong>{pendiente.descripcion}</strong>
+                        <span>{pendiente.tipo === 'guardarRegistro' ? 'Registro' : 'Lote'}</span>
+                      </div>
+                      <div className="pendiente-item-meta">
+                        {pendiente.fecha ? <span>Fecha: {pendiente.fecha}</span> : null}
+                        {pendiente.codigo ? <span>Codigo: {pendiente.codigo}</span> : null}
+                        <span>Intentos: {pendiente.attempts}</span>
+                      </div>
+                      {pendiente.lastError ? (
+                        <p className="pendiente-item-error">Ultimo error: {pendiente.lastError}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
+
         {mostrarConsulta ? (
-          <ConsultaHistorico onVolver={() => setMostrarConsulta(false)} />
+          <ConsultaHistorico onVolver={irAFormulario} />
         ) : (
           <>
         <RegistroForm
