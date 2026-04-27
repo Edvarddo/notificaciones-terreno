@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   obtenerRegistros,
   insertarRegistro,
@@ -7,6 +7,11 @@ import {
   existeIdNotificacionEnFecha,
   actualizarRegistroPorId,
 } from '../services/notificaciones'
+import {
+  agregarOperacionPendiente,
+  obtenerOperacionesPendientes,
+  eliminarOperacionPendiente,
+} from '../lib/offlineQueue'
 
 function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const [registros, setRegistros] = useState([])
@@ -16,6 +21,54 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const [errorMsg, setErrorMsg] = useState('')
   const [mensajes, setMensajes] = useState([])
   const [estadisticas, setEstadisticas] = useState({ puntos: 0 })
+
+  const esErrorDeRed = (error) => {
+    const mensaje = String(error?.message || error || '')
+    return (
+      !navigator.onLine ||
+      /fetch|network|failed to fetch|networkerror|load failed/i.test(mensaje)
+    )
+  }
+
+  const sincronizarPendientes = async () => {
+    if (!navigator.onLine) return
+
+    const pendientes = await obtenerOperacionesPendientes().catch(() => [])
+    if (!pendientes.length) return
+
+    let sincronizados = 0
+
+    for (const pendiente of pendientes) {
+      if (pendiente.tipo !== 'guardarRegistro') continue
+
+      try {
+        await insertarRegistro(pendiente.payload)
+        await eliminarOperacionPendiente(pendiente.id)
+        sincronizados += 1
+      } catch (error) {
+        if (/duplicate|unique/i.test(String(error?.message || ''))) {
+          await eliminarOperacionPendiente(pendiente.id)
+          sincronizados += 1
+        }
+      }
+    }
+
+    if (sincronizados > 0) {
+      setMensaje(`Sincronizados ${sincronizados} registro(s) pendientes`)
+      await cargar()
+    }
+  }
+
+  useEffect(() => {
+    sincronizarPendientes()
+
+    const manejarOnline = () => {
+      sincronizarPendientes().catch(() => {})
+    }
+
+    window.addEventListener('online', manejarOnline)
+    return () => window.removeEventListener('online', manejarOnline)
+  }, [])
 
   const limpiarMensajes = () => {
     setMensaje('')
@@ -66,6 +119,36 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         return { ok: false, error: msg }
       }
     } catch (error) {
+      if (esErrorDeRed(error)) {
+        try {
+          await agregarOperacionPendiente({
+            tipo: 'guardarRegistro',
+            payload: {
+              id_notificacion: idLimpio,
+              fecha_certificacion: fechaCertificacion,
+              hora: new Date()
+                .toLocaleTimeString('es-CL', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                })
+                .replace(':', ''),
+              codigo: codigoLimpio,
+              observacion: observacionLimpia,
+              es_no_urbana: Boolean(esNoUrbana),
+            },
+          })
+        } catch (queueError) {
+          const msg = `No se pudo guardar sin conexion: ${queueError.message}`
+          setErrorMsg(msg)
+          return { ok: false, error: msg }
+        }
+
+        setMensaje('Sin conexion: registro pendiente de sincronizacion')
+        enfocarId?.()
+        return { ok: true, offline: true }
+      }
+
       const msg = `No se pudo validar la ID: ${error.message}`
       setErrorMsg(msg)
       return { ok: false, error: msg }
@@ -93,6 +176,30 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       })
     } catch (error) {
       setCargando(false)
+
+      if (esErrorDeRed(error)) {
+        try {
+          await agregarOperacionPendiente({
+            tipo: 'guardarRegistro',
+            payload: {
+              id_notificacion: idLimpio,
+              fecha_certificacion: fechaCertificacion,
+              hora,
+              codigo: codigoLimpio,
+              observacion: observacionLimpia,
+              es_no_urbana: Boolean(esNoUrbana),
+            },
+          })
+        } catch (queueError) {
+          const msg = `No se pudo guardar sin conexion: ${queueError.message}`
+          setErrorMsg(msg)
+          return { ok: false, error: msg }
+        }
+
+        setMensaje('Sin conexion: registro pendiente de sincronizacion')
+        enfocarId?.()
+        return { ok: true, offline: true }
+      }
 
       const msg = error.message?.toLowerCase().includes('duplicate')
         ? 'Ya existe un registro con esa ID de notificacion'
@@ -240,11 +347,11 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     return { ok: true }
   }
 
-  const actualizarRegistro = async ({ id, codigo, observacion }) => {
+  const actualizarRegistro = async ({ id, codigo, hora, es_no_urbana }) => {
     limpiarMensajes()
 
     const codigoLimpio = String(codigo ?? '').trim().toUpperCase()
-    const observacionLimpia = String(observacion ?? '').trim() || '.'
+    const horaLimpia = String(hora ?? '').trim()
 
     if (!codigoLimpio) {
       const msg = 'El codigo no puede quedar vacio'
@@ -252,10 +359,17 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       return { ok: false, error: msg }
     }
 
+    if (!/^\d{4}$/.test(horaLimpia)) {
+      const msg = 'La hora debe tener 4 digitos, por ejemplo 1435'
+      setErrorMsg(msg)
+      return { ok: false, error: msg }
+    }
+
     try {
       await actualizarRegistroPorId(id, {
         codigo: codigoLimpio,
-        observacion: observacionLimpia,
+        hora: horaLimpia,
+        es_no_urbana: Boolean(es_no_urbana),
       })
     } catch (error) {
       const msg = `No se pudo actualizar: ${error.message}`
