@@ -429,6 +429,7 @@ function App() {
           onRecargar={notificaciones.cargar}
           onActualizarRegistro={notificaciones.actualizarRegistro}
           onDescargarCsv={descargarCsv}
+          cargaTotal={notificaciones.estadisticas.cargaTotal}
           puntos={notificaciones.estadisticas.puntos}
         />
 

@@ -6,11 +6,12 @@ const CODIGOS_EXITOSOS = new Set(['D2', 'D4', 'E1'])
 const CODIGOS_BUSQUEDA = new Set(['B3', 'B7', 'B10'])
 const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B5'])
 
-function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescargarCsv }) {
+function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescargarCsv, cargaTotal = 0, puntos = 0 }) {
   const [editandoId, setEditandoId] = useState(null)
   const [codigoEdit, setCodigoEdit] = useState('')
   const [horaEdit, setHoraEdit] = useState('')
   const [esNoUrbanaEdit, setEsNoUrbanaEdit] = useState(false)
+  const [observacionEdit, setObservacionEdit] = useState('')
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
 
   const iniciarEdicion = (registro) => {
@@ -18,6 +19,7 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
     setCodigoEdit(registro.codigo || '')
     setHoraEdit(registro.hora || '')
     setEsNoUrbanaEdit(registro.es_no_urbana || false)
+    setObservacionEdit(registro.observacion || '')
   }
 
   const cancelarEdicion = () => {
@@ -25,6 +27,7 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
     setCodigoEdit('')
     setHoraEdit('')
     setEsNoUrbanaEdit(false)
+    setObservacionEdit('')
     setDialogoCodigoAbierto(false)
   }
 
@@ -34,6 +37,7 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
       codigo: codigoEdit,
       hora: horaEdit,
       es_no_urbana: esNoUrbanaEdit,
+      observacion: observacionEdit,
     })
 
     if (ok?.ok) {
@@ -90,6 +94,16 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
       </div>
 
       <div className="resumen-grid">
+        <div className="resumen-card">
+          <div className="resumen-label">Carga total</div>
+          <div className="resumen-valor">{cargaTotal}</div>
+        </div>
+
+        <div className="resumen-card">
+          <div className="resumen-label">Puntos (direcciones)</div>
+          <div className="resumen-valor">{puntos}</div>
+        </div>
+
         <div className="resumen-card">
           <div className="resumen-label">Total notificaciones hechas</div>
           <div className="resumen-valor">{resumen.total}</div>
@@ -207,7 +221,16 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
                     </td>
 
                     <td className="td-observacion td-observacion-ancha">
-                      <span title={r.observacion}>{r.observacion}</span>
+                      {enEdicion ? (
+                        <input
+                          className="input-tabla input-observacion"
+                          type="text"
+                          value={observacionEdit}
+                          onChange={(e) => setObservacionEdit(e.target.value)}
+                        />
+                      ) : (
+                        <span title={r.observacion}>{r.observacion}</span>
+                      )}
                     </td>
 
                     <td className="td-acciones">

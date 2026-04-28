@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   obtenerRegistros,
   insertarRegistro,
@@ -6,6 +6,7 @@ import {
   eliminarRegistroPorId,
   existeIdNotificacionEnFecha,
   actualizarRegistroPorId,
+  obtenerEstadisticas,
 } from '../services/notificaciones'
 import {
   agregarOperacionPendiente,
@@ -15,6 +16,7 @@ import {
 } from '../lib/offlineQueue'
 
 function useNotificaciones({ fechaCertificacion, enfocarId }) {
+  const timersMensajesRef = useRef(new Map())
   const [registros, setRegistros] = useState([])
   const [cargando, setCargando] = useState(false)
   const [guardandoLote, setGuardandoLote] = useState(false)
@@ -30,15 +32,34 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     guardarLote: 0,
   })
 
-  const agregarMensajeVisual = (texto, tipo = 'success') => {
+  const quitarMensajeVisual = (id) => {
+    const timer = timersMensajesRef.current.get(id)
+    if (timer) {
+      clearTimeout(timer)
+      timersMensajesRef.current.delete(id)
+    }
+
+    setMensajes((prev) => prev.filter((mensaje) => mensaje.id !== id))
+  }
+
+  const agregarMensajeVisual = (texto, tipo = 'success', duracion = 4500) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
     setMensajes((prev) => [
       ...prev,
       {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        id,
         texto,
         tipo,
       },
     ])
+
+    const timer = setTimeout(() => {
+      timersMensajesRef.current.delete(id)
+      setMensajes((prev) => prev.filter((mensaje) => mensaje.id !== id))
+    }, duracion)
+
+    timersMensajesRef.current.set(id, timer)
   }
 
   const esErrorDeRed = (error) => {
@@ -186,15 +207,26 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   }, [])
 
   const limpiarMensajes = () => {
+    timersMensajesRef.current.forEach((timer) => clearTimeout(timer))
+    timersMensajesRef.current.clear()
     setMensaje('')
     setErrorMsg('')
     setMensajes([])
   }
 
+  useEffect(() => {
+    return () => {
+      timersMensajesRef.current.forEach((timer) => clearTimeout(timer))
+      timersMensajesRef.current.clear()
+    }
+  }, [])
+
     const cargar = async () => {
     try {
         const data = await obtenerRegistros(fechaCertificacion)
         setRegistros(data)
+        const stats = await obtenerEstadisticas(fechaCertificacion)
+        setEstadisticas(stats)
     } catch (error) {
         setErrorMsg(`No se pudieron cargar los registros: ${error.message}`)
     }
@@ -520,11 +552,12 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     return { ok: true }
   }
 
-  const actualizarRegistro = async ({ id, codigo, hora, es_no_urbana }) => {
+  const actualizarRegistro = async ({ id, codigo, hora, es_no_urbana, observacion }) => {
     limpiarMensajes()
 
     const codigoLimpio = String(codigo ?? '').trim().toUpperCase()
     const horaLimpia = String(hora ?? '').trim()
+    const observacionLimpia = String(observacion ?? '').trim() || '.'
 
     if (!codigoLimpio) {
       const msg = 'El codigo no puede quedar vacio'
@@ -543,6 +576,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         codigo: codigoLimpio,
         hora: horaLimpia,
         es_no_urbana: Boolean(es_no_urbana),
+        observacion: observacionLimpia,
       })
     } catch (error) {
       const msg = `No se pudo actualizar: ${error.message}`
