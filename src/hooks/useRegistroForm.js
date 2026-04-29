@@ -6,6 +6,9 @@ function useRegistroForm() {
   const [observacion, setObservacion] = useState('')
   const [comentarios, setComentarios] = useState('')
   const [esNoUrbana, setEsNoUrbana] = useState(false)
+  const [mostraTribunal, setMostraTribunal] = useState(false)
+  const [rit, setRit] = useState('')
+  const [año, setAño] = useState('')
 
   const OBSERVACIONES_SUGERIDAS = {
     D2: '.',
@@ -39,6 +42,9 @@ function useRegistroForm() {
     setObservacion('')
     setComentarios('')
     setEsNoUrbana(false)
+    setMostraTribunal(false)
+    setRit('')
+    setAño('')
   }
 
   const handleCodigoManualChange = (e) => {
@@ -52,11 +58,17 @@ function useRegistroForm() {
     observacion,
     comentarios,
     esNoUrbana,
+    mostraTribunal,
+    rit,
+    año,
     setIdNotificacion,
     setCodigo,
     setObservacion,
     setComentarios,
     setEsNoUrbana,
+    setMostraTribunal,
+    setRit,
+    setAño,
     limpiarFormulario,
     handleCodigoManualChange,
   }

@@ -194,7 +194,7 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
           <table className="tabla-registros tabla-registros-ancha">
             <thead>
               <tr>
-                <th>ID NOTIF</th>
+                <th>ID / RIT</th>
                 <th>CÓDIGO</th>
                 <th>HORA</th>
                 <th>TIPO</th>
@@ -210,7 +210,13 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
                 return (
                   <tr key={r.id} className={`${enEdicion ? 'fila-editando' : ''} ${r.es_rebajada ? 'fila-rebajada' : ''}`.trim()}>
                     <td className="td-id td-id-fija">
-                      <IdHighlight value={r.id_notificacion} />
+                      {r.id_notificacion ? (
+                        <IdHighlight value={r.id_notificacion} />
+                      ) : r.rit ? (
+                        <span className="tribunal-badge">{r.rit}-{r.año}</span>
+                      ) : (
+                        <span className="sin-id">--</span>
+                      )}
                     </td>
 
                     <td className="td-codigo td-codigo-editable">

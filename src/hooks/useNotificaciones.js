@@ -285,6 +285,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     observacion,
     comentarios,
     esNoUrbana,
+    rit,
+    año,
   }) => {
     limpiarMensajes()
 
@@ -292,8 +294,19 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     const codigoLimpio = codigo.trim().toUpperCase()
     const observacionLimpia = observacion.trim() || '.'
     const comentariosLimpios = comentarios.trim() || ''
+    const ritLimpio = rit?.trim() || ''
+    const conTribunal = ritLimpio && año
 
-    if (!/^\d{1,8}$/.test(idLimpio)) {
+    // Validar que tenga ID DE NOTIFICACIÓN o RIT + AÑO (pero no ambos nulos)
+    if (!idLimpio && !conTribunal) {
+      const msg = 'Ingresa ID de notificación o activa Tribunal (RIT + Año)'
+      setErrorMsg(msg)
+      enfocarId?.()
+      return { ok: false, error: msg }
+    }
+
+    // Si tiene ID, validar formato
+    if (idLimpio && !/^\d{1,8}$/.test(idLimpio)) {
       const msg = 'El ID debe ser numerico y maximo 8 digitos'
       setErrorMsg(msg)
       enfocarId?.()
@@ -309,12 +322,15 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     const codigoLote = generarCodigoLote()
 
     try {
-      const yaExiste = await existeIdNotificacionEnFecha(idLimpio, fechaCertificacion)
-      if (yaExiste) {
-        const msg = 'Ya existe un registro con esa ID de notificacion'
-        setErrorMsg(msg)
-        enfocarId?.()
-        return { ok: false, error: msg }
+      // Solo validar duplicado si tiene ID de notificación
+      if (idLimpio) {
+        const yaExiste = await existeIdNotificacionEnFecha(idLimpio, fechaCertificacion)
+        if (yaExiste) {
+          const msg = 'Ya existe un registro con esa ID de notificacion'
+          setErrorMsg(msg)
+          enfocarId?.()
+          return { ok: false, error: msg }
+        }
       }
     } catch (error) {
       if (esErrorDeRed(error)) {
@@ -322,7 +338,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
           await agregarOperacionPendiente({
             tipo: 'guardarRegistro',
             payload: {
-              id_notificacion: idLimpio,
+              id_notificacion: idLimpio || null,
               fecha_certificacion: fechaCertificacion,
               hora: new Date()
                 .toLocaleTimeString('es-CL', {
@@ -336,6 +352,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
               comentarios: comentariosLimpios,
               es_no_urbana: Boolean(esNoUrbana),
               codigo_lote: codigoLote,
+              rit: ritLimpio || null,
+              año: año || null,
             },
           })
         } catch (queueError) {
@@ -370,7 +388,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     try {
       await insertarRegistro({
-        id_notificacion: idLimpio,
+        id_notificacion: idLimpio || null,
         fecha_certificacion: fechaCertificacion,
         hora,
         codigo: codigoLimpio,
@@ -378,6 +396,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         comentarios: comentariosLimpios,
         es_no_urbana: Boolean(esNoUrbana),
         codigo_lote: codigoLote,
+        rit: ritLimpio || null,
+        año: año || null,
       })
     } catch (error) {
       setCargando(false)
@@ -387,7 +407,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
           await agregarOperacionPendiente({
             tipo: 'guardarRegistro',
             payload: {
-              id_notificacion: idLimpio,
+              id_notificacion: idLimpio || null,
               fecha_certificacion: fechaCertificacion,
               hora,
               codigo: codigoLimpio,
@@ -395,6 +415,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
               comentarios: comentariosLimpios,
               es_no_urbana: Boolean(esNoUrbana),
               codigo_lote: codigoLote,
+              rit: ritLimpio || null,
+              año: año || null,
             },
           })
         } catch (queueError) {

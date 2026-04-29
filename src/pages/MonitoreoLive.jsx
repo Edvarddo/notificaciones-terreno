@@ -139,7 +139,7 @@ function MonitoreoLive({ fechaCertificacion }) {
           <thead>
             <tr>
               <th>ID</th>
-              <th>ID Notif</th>
+              <th>ID Notif / RIT</th>
               <th>Codigo</th>
               <th>Hora</th>
               <th>Observacion</th>
@@ -156,7 +156,15 @@ function MonitoreoLive({ fechaCertificacion }) {
               return (
                 <tr key={r.id} className={enEdicion ? 'fila-editando' : ''}>
                   <td>{r.id}</td>
-                  <td>{r.id_notificacion}</td>
+                  <td>
+                    {r.id_notificacion ? (
+                      r.id_notificacion
+                    ) : r.rit ? (
+                      <span className="tribunal-badge">{r.rit}-{r.año}</span>
+                    ) : (
+                      <span className="sin-id">--</span>
+                    )}
+                  </td>
                   <td>{r.codigo}</td>
                   <td>{r.hora}</td>
                   <td>{r.observacion}</td>

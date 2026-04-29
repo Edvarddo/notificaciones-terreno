@@ -39,9 +39,19 @@ CREATE POLICY allow_delete_public
 -- 7. AGREGAR NUEVAS COLUMNAS (si aún no existen)
 -- Comentarios: campo de texto para observaciones adicionales (no aparece en CSV)
 -- es_rebajada: boolean para controlar si aparece en CSV (true = no aparece en CSV)
+-- rit: RIT del tribunal para notificaciones sin ID de notificación
+-- año: Año del caso para notificaciones de tribunal
+
+-- Hacer id_notificacion nullable para permitir registros de tribunal
+-- Primero: eliminar la restricción NOT NULL si existe
+ALTER TABLE public.notificaciones_terreno ALTER COLUMN id_notificacion DROP NOT NULL;
+
+-- Agregar las nuevas columnas
 ALTER TABLE public.notificaciones_terreno
 ADD COLUMN IF NOT EXISTS comentarios TEXT DEFAULT '',
-ADD COLUMN IF NOT EXISTS es_rebajada BOOLEAN DEFAULT false;
+ADD COLUMN IF NOT EXISTS es_rebajada BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS rit VARCHAR(20),
+ADD COLUMN IF NOT EXISTS año INTEGER;
 
 -- 8. PRUEBA: Inserta un registro desde SQL y observa que aparece en MonitoreoLive
 INSERT INTO public.notificaciones_terreno 

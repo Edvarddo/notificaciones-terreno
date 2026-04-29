@@ -22,6 +22,19 @@ function RegistroForm({
   onComentariosChange,
   esNoUrbana,
   onEsNoUrbanaChange,
+  mostraTribunal,
+  onMostraTribunal,
+  ocrTribunalActivo,
+  ocrTribunalProcesando,
+  ocrTribunalTexto,
+  ocrTribunalVideoRef,
+  onIniciarOcrTribunal,
+  onDetenerOcrTribunal,
+  onCapturarOcrTribunal,
+  rit,
+  onRitChange,
+  año,
+  onAñoChange,
   cargando,
   onGuardar,
   onEliminarUltimo,
@@ -138,6 +151,75 @@ function RegistroForm({
           onChange={(e) => onComentariosChange(e.target.value)}
         />
       </label>
+
+      <button
+        type="button"
+        className={`boton-tribunal ${mostraTribunal ? 'tribunal-activo' : ''}`}
+        onClick={onMostraTribunal}
+        disabled={cargando}
+        title="Notificación de tribunal (sin ID)"
+      >
+        {mostraTribunal ? 'Tribunal (activo)' : 'Tribunal'}
+      </button>
+
+      {mostraTribunal && (
+        <div className="tribunal-campos">
+          <label className="campo-label">
+            RIT
+            <input
+              className="input-base"
+              type="text"
+              placeholder="Ej: 12-2024-00123"
+              value={rit}
+              onChange={(e) => onRitChange(e.target.value)}
+            />
+          </label>
+
+          <label className="campo-label">
+            Año
+            <input
+              className="input-base"
+              type="number"
+              inputMode="numeric"
+              placeholder="Ej: 2024"
+              value={año}
+              onChange={(e) => onAñoChange(parseInt(e.target.value) || '')}
+            />
+          </label>
+
+          <div className="tribunal-ocr-panel">
+            <div className="tribunal-ocr-acciones">
+              <button
+                type="button"
+                className={`boton-tribunal ocr ${ocrTribunalActivo ? 'tribunal-activo' : ''}`}
+                onClick={ocrTribunalActivo ? onDetenerOcrTribunal : onIniciarOcrTribunal}
+                disabled={cargando}
+              >
+                {ocrTribunalActivo ? 'Cerrar cámara OCR' : 'Abrir cámara OCR'}
+              </button>
+
+              <button
+                type="button"
+                className="boton-tribunal ocr-capturar"
+                onClick={onCapturarOcrTribunal}
+                disabled={cargando || ocrTribunalProcesando || !ocrTribunalActivo}
+              >
+                {ocrTribunalProcesando ? 'Leyendo...' : 'Capturar texto'}
+              </button>
+            </div>
+
+            <div className={`ocr-video-wrap ${ocrTribunalActivo ? '' : 'ocr-video-oculto'}`}>
+              <video ref={ocrTribunalVideoRef} className="ocr-video" autoPlay muted playsInline />
+            </div>
+
+            {ocrTribunalTexto ? (
+              <div className="ocr-texto-resultante">
+                <strong>Texto detectado:</strong> {ocrTribunalTexto}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       <label className="check-row">
         <input
