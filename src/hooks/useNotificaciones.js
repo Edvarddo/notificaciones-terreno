@@ -632,12 +632,13 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     return { ok: true }
   }
 
-  const actualizarRegistro = async ({ id, codigo, hora, es_no_urbana, observacion }) => {
+  const actualizarRegistro = async ({ id, codigo, hora, es_no_urbana, observacion, comentarios }) => {
     limpiarMensajes()
 
     const codigoLimpio = String(codigo ?? '').trim().toUpperCase()
     const horaLimpia = String(hora ?? '').trim()
     const observacionLimpia = String(observacion ?? '').trim() || '.'
+    const comentariosLimpios = String(comentarios ?? '').trim()
 
     if (!codigoLimpio) {
       const msg = 'El codigo no puede quedar vacio'
@@ -657,6 +658,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         hora: horaLimpia,
         es_no_urbana: Boolean(es_no_urbana),
         observacion: observacionLimpia,
+        comentarios: comentariosLimpios,
       })
     } catch (error) {
       const msg = `No se pudo actualizar: ${error.message}`

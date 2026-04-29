@@ -84,9 +84,14 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
     })
 
     if (ok?.ok) {
+      // show temporary "guardado" indicator for the saved row
       cancelarEdicion()
+      setGuardadoId(id)
+      setTimeout(() => setGuardadoId(null), 2000)
     }
   }
+
+  const [guardadoId, setGuardadoId] = useState(null)
 
   const codigoLimpioView = (codigo) => String(codigo || '').trim().toUpperCase()
 
@@ -323,14 +328,18 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
                           </button>
                         </div>
                       ) : (
-                        <button
-                          type="button"
-                          className="boton-tabla editar"
-                          onClick={() => iniciarEdicion(r)}
-                          title="Editar registro"
-                        >
-                          ✎
-                        </button>
+                        guardadoId === r.id ? (
+                          <span className="guardado-badge">Guardado</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="boton-tabla editar"
+                            onClick={() => iniciarEdicion(r)}
+                            title="Editar registro"
+                          >
+                            ✎
+                          </button>
+                        )
                       )}
                     </td>
                   </tr>

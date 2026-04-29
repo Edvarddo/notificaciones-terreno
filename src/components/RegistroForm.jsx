@@ -24,13 +24,6 @@ function RegistroForm({
   onEsNoUrbanaChange,
   mostraTribunal,
   onMostraTribunal,
-  ocrTribunalActivo,
-  ocrTribunalProcesando,
-  ocrTribunalTexto,
-  ocrTribunalVideoRef,
-  onIniciarOcrTribunal,
-  onDetenerOcrTribunal,
-  onCapturarOcrTribunal,
   rit,
   onRitChange,
   año,
@@ -186,38 +179,6 @@ function RegistroForm({
               onChange={(e) => onAñoChange(parseInt(e.target.value) || '')}
             />
           </label>
-
-          <div className="tribunal-ocr-panel">
-            <div className="tribunal-ocr-acciones">
-              <button
-                type="button"
-                className={`boton-tribunal ocr ${ocrTribunalActivo ? 'tribunal-activo' : ''}`}
-                onClick={ocrTribunalActivo ? onDetenerOcrTribunal : onIniciarOcrTribunal}
-                disabled={cargando}
-              >
-                {ocrTribunalActivo ? 'Cerrar cámara OCR' : 'Abrir cámara OCR'}
-              </button>
-
-              <button
-                type="button"
-                className="boton-tribunal ocr-capturar"
-                onClick={onCapturarOcrTribunal}
-                disabled={cargando || ocrTribunalProcesando || !ocrTribunalActivo}
-              >
-                {ocrTribunalProcesando ? 'Leyendo...' : 'Capturar texto'}
-              </button>
-            </div>
-
-            <div className={`ocr-video-wrap ${ocrTribunalActivo ? '' : 'ocr-video-oculto'}`}>
-              <video ref={ocrTribunalVideoRef} className="ocr-video" autoPlay muted playsInline />
-            </div>
-
-            {ocrTribunalTexto ? (
-              <div className="ocr-texto-resultante">
-                <strong>Texto detectado:</strong> {ocrTribunalTexto}
-              </div>
-            ) : null}
-          </div>
         </div>
       )}
 

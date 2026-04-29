@@ -12,7 +12,6 @@ import useQrScanner from './hooks/useQrScanner'
 import useNotificaciones from './hooks/useNotificaciones'
 import useLoteForm from './hooks/useLoteForm'
 import useRegistroForm from './hooks/useRegistroForm'
-import useTribunalOcr from './hooks/useTribunalOcr'
 import { extraerIdDesdeQr } from './utils/qr'
 import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
@@ -65,16 +64,6 @@ function App() {
   const notificaciones = useNotificaciones({
     fechaCertificacion,
     enfocarId,
-  })
-
-  const tribunalOcr = useTribunalOcr({
-    onDetected: ({ rit, año }) => {
-      if (rit) registro.setRit(rit)
-      if (año) registro.setAño(año)
-      registro.setMostraTribunal(true)
-      notificaciones.setMensaje('RIT y año detectados con OCR')
-    },
-    onError: notificaciones.setErrorMsg,
   })
 
   const [ultimoIdAgregadoLote, setUltimoIdAgregadoLote] = useState('')
@@ -191,10 +180,6 @@ function App() {
   }
 
   const toggleQrIndividual = async () => {
-    if (tribunalOcr.activo) {
-      await tribunalOcr.detenerCamara()
-    }
-
     if (qrIndividual.escaneando) {
       await qrIndividual.detenerEscaneo()
     } else {
@@ -203,22 +188,7 @@ function App() {
   }
 
   const toggleTribunal = async () => {
-    if (registro.mostraTribunal) {
-      await tribunalOcr.detenerCamara()
-      registro.setMostraTribunal(false)
-      return
-    }
-
-    registro.setMostraTribunal(true)
-  }
-
-  const iniciarOcrTribunal = async () => {
-    if (qrIndividual.escaneando) {
-      await qrIndividual.detenerEscaneo()
-    }
-
-    await tribunalOcr.iniciarCamara()
-    registro.setMostraTribunal(true)
+    registro.setMostraTribunal(!registro.mostraTribunal)
   }
 
   const guardar = async () => {
@@ -233,7 +203,6 @@ function App() {
     })
 
     if (ok?.ok) {
-      await tribunalOcr.detenerCamara()
       registro.limpiarFormulario()
     }
   }
@@ -464,13 +433,6 @@ function App() {
           onEsNoUrbanaChange={registro.setEsNoUrbana}
           mostraTribunal={registro.mostraTribunal}
           onMostraTribunal={toggleTribunal}
-          ocrTribunalActivo={tribunalOcr.activo}
-          ocrTribunalProcesando={tribunalOcr.procesando}
-          ocrTribunalTexto={tribunalOcr.textoReconocido}
-          ocrTribunalVideoRef={tribunalOcr.videoRef}
-          onIniciarOcrTribunal={iniciarOcrTribunal}
-          onDetenerOcrTribunal={tribunalOcr.detenerCamara}
-          onCapturarOcrTribunal={tribunalOcr.capturarTexto}
           rit={registro.rit}
           onRitChange={registro.setRit}
           año={registro.año}

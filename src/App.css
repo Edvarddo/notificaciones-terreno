@@ -798,6 +798,16 @@ body {
   font-weight: bold;
 }
 
+.guardado-badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--color-exito);
+  color: var(--color-blanco);
+  font-weight: 700;
+  font-size: 13px;
+}
+
 .boton-principal:disabled,
 .boton-secundario:disabled,
 .boton-mini:disabled {
@@ -841,60 +851,6 @@ body {
   background: #f5f7fa;
   border-radius: 10px;
   border: 1px solid #e0e3e8;
-}
-
-.tribunal-ocr-panel {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #d8e2ea;
-  background: linear-gradient(180deg, #f8fbfe, #eef5fb);
-}
-
-.tribunal-ocr-acciones {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.boton-tribunal.ocr,
-.boton-tribunal.ocr-capturar {
-  min-height: 40px;
-  font-size: 13px;
-}
-
-.ocr-video-wrap {
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid #c8d7e5;
-  background: #08111a;
-}
-
-.ocr-video-oculto {
-  display: none;
-}
-
-.ocr-video {
-  display: block;
-  width: 100%;
-  max-height: 280px;
-  object-fit: cover;
-  background: #08111a;
-}
-
-.ocr-texto-resultante {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px dashed #9db4c8;
-  background: rgba(255, 255, 255, 0.86);
-  color: #29465f;
-  font-size: 13px;
-  line-height: 1.4;
-  word-break: break-word;
 }
 
 .boton-quitar-fila {
