@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import IdHighlight from './IdHighlight'
 import CodigoDialog from '../features/CodigoDialog'
+import Modal from './Modal'
 
 const CODIGOS_EXITOSOS = new Set(['D2', 'D4', 'E1'])
 const CODIGOS_BUSQUEDA = new Set(['B3', 'B7', 'B10'])
@@ -12,7 +13,12 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
   const [horaEdit, setHoraEdit] = useState('')
   const [esNoUrbanaEdit, setEsNoUrbanaEdit] = useState(false)
   const [observacionEdit, setObservacionEdit] = useState('')
+  const [comentariosEdit, setComentariosEdit] = useState('')
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
+  const [modalObservacionAbierta, setModalObservacionAbierta] = useState(false)
+  const [observacionModalEdit, setObservacionModalEdit] = useState('')
+  const [modalComentariosAbierta, setModalComentariosAbierta] = useState(false)
+  const [comentariosModalEdit, setComentariosModalEdit] = useState('')
 
   const iniciarEdicion = (registro) => {
     setEditandoId(registro.id)
@@ -20,6 +26,7 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
     setHoraEdit(registro.hora || '')
     setEsNoUrbanaEdit(registro.es_no_urbana || false)
     setObservacionEdit(registro.observacion || '')
+    setComentariosEdit(registro.comentarios || '')
   }
 
   const cancelarEdicion = () => {
@@ -28,7 +35,42 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
     setHoraEdit('')
     setEsNoUrbanaEdit(false)
     setObservacionEdit('')
+    setComentariosEdit('')
     setDialogoCodigoAbierto(false)
+    setModalObservacionAbierta(false)
+    setObservacionModalEdit('')
+    setModalComentariosAbierta(false)
+    setComentariosModalEdit('')
+  }
+
+  const abrirModalObservacion = () => {
+    setObservacionModalEdit(observacionEdit)
+    setModalObservacionAbierta(true)
+  }
+
+  const guardarObservacionModal = () => {
+    setObservacionEdit(observacionModalEdit)
+    setModalObservacionAbierta(false)
+  }
+
+  const cancelarModalObservacion = () => {
+    setModalObservacionAbierta(false)
+    setObservacionModalEdit('')
+  }
+
+  const abrirModalComentarios = () => {
+    setComentariosModalEdit(comentariosEdit)
+    setModalComentariosAbierta(true)
+  }
+
+  const guardarComentariosModal = () => {
+    setComentariosEdit(comentariosModalEdit)
+    setModalComentariosAbierta(false)
+  }
+
+  const cancelarModalComentarios = () => {
+    setModalComentariosAbierta(false)
+    setComentariosModalEdit('')
   }
 
   const guardarEdicion = async (id) => {
@@ -38,6 +80,7 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
       hora: horaEdit,
       es_no_urbana: esNoUrbanaEdit,
       observacion: observacionEdit,
+      comentarios: comentariosEdit,
     })
 
     if (ok?.ok) {
@@ -156,6 +199,7 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
                 <th>HORA</th>
                 <th>TIPO</th>
                 <th>OBSERVACIÓN</th>
+                <th>COMENTARIOS</th>
                 <th>ACCIÓN</th>
               </tr>
             </thead>
@@ -164,7 +208,7 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
                 const enEdicion = editandoId === r.id
 
                 return (
-                  <tr key={r.id} className={enEdicion ? 'fila-editando' : ''}>
+                  <tr key={r.id} className={`${enEdicion ? 'fila-editando' : ''} ${r.es_rebajada ? 'fila-rebajada' : ''}`.trim()}>
                     <td className="td-id td-id-fija">
                       <IdHighlight value={r.id_notificacion} />
                     </td>
@@ -222,14 +266,33 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
 
                     <td className="td-observacion td-observacion-ancha">
                       {enEdicion ? (
-                        <input
-                          className="input-tabla input-observacion"
-                          type="text"
-                          value={observacionEdit}
-                          onChange={(e) => setObservacionEdit(e.target.value)}
-                        />
+                        <button
+                          type="button"
+                          className="boton-editar-observacion"
+                          onClick={abrirModalObservacion}
+                          title="Editar observación"
+                        >
+                          <span className="observacion-preview">{observacionEdit || '(vacío)'}</span>
+                          <span className="observacion-editar-texto">Editar</span>
+                        </button>
                       ) : (
                         <span title={r.observacion}>{r.observacion}</span>
+                      )}
+                    </td>
+
+                    <td className="td-comentarios td-comentarios-ancha">
+                      {enEdicion ? (
+                        <button
+                          type="button"
+                          className="boton-editar-observacion"
+                          onClick={abrirModalComentarios}
+                          title="Editar comentarios"
+                        >
+                          <span className="observacion-preview">{comentariosEdit || '(vacío)'}</span>
+                          <span className="observacion-editar-texto">Editar</span>
+                        </button>
+                      ) : (
+                        <span title={r.comentarios}>{r.comentarios}</span>
                       )}
                     </td>
 
@@ -279,6 +342,66 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
         onClose={() => setDialogoCodigoAbierto(false)}
         onSelect={seleccionarCodigoEdit}
       />
+
+      {modalObservacionAbierta && (
+        <Modal onClose={cancelarModalObservacion}>
+          <div className="modal-observacion-contenido">
+            <h3 className="modal-observacion-titulo">Editar Observación</h3>
+            <textarea
+              className="textarea-observacion-modal"
+              value={observacionModalEdit}
+              onChange={(e) => setObservacionModalEdit(e.target.value)}
+              placeholder="Ingrese la observación (opcional)"
+            />
+            <div className="modal-observacion-acciones">
+              <button
+                type="button"
+                className="boton-modal guardar-modal"
+                onClick={guardarObservacionModal}
+              >
+                Guardar
+              </button>
+              <button
+                type="button"
+                className="boton-modal cancelar-modal"
+                onClick={cancelarModalObservacion}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {modalComentariosAbierta && (
+        <Modal onClose={cancelarModalComentarios}>
+          <div className="modal-observacion-contenido">
+            <h3 className="modal-observacion-titulo">Editar Comentarios</h3>
+            <textarea
+              className="textarea-observacion-modal"
+              value={comentariosModalEdit}
+              onChange={(e) => setComentariosModalEdit(e.target.value)}
+              placeholder="Ingrese comentarios (opcional)"
+            />
+            <div className="modal-observacion-acciones">
+              <button
+                type="button"
+                className="boton-modal guardar-modal"
+                onClick={guardarComentariosModal}
+              >
+                Guardar
+              </button>
+              <button
+                type="button"
+                className="boton-modal cancelar-modal"
+                onClick={cancelarModalComentarios}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

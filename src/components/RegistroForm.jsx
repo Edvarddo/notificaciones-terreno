@@ -18,6 +18,8 @@ function RegistroForm({
   codigoLimpioVista,
   observacion,
   onObservacionChange,
+  comentarios,
+  onComentariosChange,
   esNoUrbana,
   onEsNoUrbanaChange,
   cargando,
@@ -124,6 +126,16 @@ function RegistroForm({
           placeholder="Ej: se deja aviso"
           value={observacion}
           onChange={(e) => onObservacionChange(e.target.value)}
+        />
+      </label>
+
+      <label className="campo-label">
+        Comentarios (opcional)
+        <textarea
+          className="textarea-base"
+          placeholder="Notas adicionales o detalles importantes"
+          value={comentarios}
+          onChange={(e) => onComentariosChange(e.target.value)}
         />
       </label>
 

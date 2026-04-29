@@ -14,6 +14,7 @@ import useLoteForm from './hooks/useLoteForm'
 import useRegistroForm from './hooks/useRegistroForm'
 import { extraerIdDesdeQr } from './utils/qr'
 import ConsultaHistorico from './pages/ConsultaHistorico'
+import MonitoreoLive from './pages/MonitoreoLive'
 
 function App() {
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
@@ -23,6 +24,7 @@ function App() {
 
   const inputIdRef = useRef(null)
   const [mostrarConsulta, setMostrarConsulta] = useState(false)
+  const [mostrarMonitoreo, setMostrarMonitoreo] = useState(false)
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   const hayModalAbierto =
@@ -69,10 +71,18 @@ function App() {
 
   const irAConsulta = () => {
     setMostrarConsulta(true)
+    setMostrarMonitoreo(false)
     setMenuAbierto(false)
   }
 
   const irAFormulario = () => {
+    setMostrarConsulta(false)
+    setMostrarMonitoreo(false)
+    setMenuAbierto(false)
+  }
+
+  const irAMonitoreo = () => {
+    setMostrarMonitoreo(true)
     setMostrarConsulta(false)
     setMenuAbierto(false)
   }
@@ -174,6 +184,7 @@ function App() {
       idNotificacion: registro.idNotificacion,
       codigo: registro.codigo,
       observacion: registro.observacion,
+      comentarios: registro.comentarios,
       esNoUrbana: registro.esNoUrbana,
     })
 
@@ -210,7 +221,10 @@ function App() {
   }
 
   const descargarCsv = () => {
-    const filas = notificaciones.registros.map((r) => ({
+    // Filtrar solo registros que NO están rebajados
+    const registrosFiltrados = notificaciones.registros.filter((r) => !r.es_rebajada)
+
+    const filas = registrosFiltrados.map((r) => ({
       id_notificacion: r.id_notificacion ?? '',
       codigo: r.codigo ?? '',
       hora: r.hora ?? '',
@@ -269,9 +283,11 @@ function App() {
         onCerrar={() => setMenuAbierto(false)}
         onIrConsulta={irAConsulta}
         onIrFormulario={irAFormulario}
+        onIrMonitoreo={irAMonitoreo}
+        vistaMonitoreo={mostrarMonitoreo}
       />
 
-      <div className="contenedor">
+      <div className={`contenedor ${mostrarMonitoreo ? 'contenedor-monitoreo' : ''}`}>
         <div className="header-box">
           <div className="header-top">
             <div>
@@ -374,7 +390,9 @@ function App() {
           </div>
         ) : null}
 
-        {mostrarConsulta ? (
+        {mostrarMonitoreo ? (
+          <MonitoreoLive fechaCertificacion={fechaCertificacion} />
+        ) : mostrarConsulta ? (
           <ConsultaHistorico onVolver={irAFormulario} />
         ) : (
           <>
@@ -399,6 +417,8 @@ function App() {
           codigoLimpioVista={codigoLimpioVista}
           observacion={registro.observacion}
           onObservacionChange={registro.setObservacion}
+          comentarios={registro.comentarios}
+          onComentariosChange={registro.setComentarios}
           esNoUrbana={registro.esNoUrbana}
           onEsNoUrbanaChange={registro.setEsNoUrbana}
           cargando={notificaciones.cargando}

@@ -283,6 +283,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     idNotificacion,
     codigo,
     observacion,
+    comentarios,
     esNoUrbana,
   }) => {
     limpiarMensajes()
@@ -290,6 +291,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     const idLimpio = idNotificacion.trim()
     const codigoLimpio = codigo.trim().toUpperCase()
     const observacionLimpia = observacion.trim() || '.'
+    const comentariosLimpios = comentarios.trim() || ''
 
     if (!/^\d{1,8}$/.test(idLimpio)) {
       const msg = 'El ID debe ser numerico y maximo 8 digitos'
@@ -331,6 +333,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
                 .replace(':', ''),
               codigo: codigoLimpio,
               observacion: observacionLimpia,
+              comentarios: comentariosLimpios,
               es_no_urbana: Boolean(esNoUrbana),
               codigo_lote: codigoLote,
             },
@@ -372,6 +375,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         hora,
         codigo: codigoLimpio,
         observacion: observacionLimpia,
+        comentarios: comentariosLimpios,
         es_no_urbana: Boolean(esNoUrbana),
         codigo_lote: codigoLote,
       })
@@ -388,6 +392,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
               hora,
               codigo: codigoLimpio,
               observacion: observacionLimpia,
+              comentarios: comentariosLimpios,
               es_no_urbana: Boolean(esNoUrbana),
               codigo_lote: codigoLote,
             },

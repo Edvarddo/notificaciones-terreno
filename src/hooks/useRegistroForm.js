@@ -4,6 +4,7 @@ function useRegistroForm() {
   const [idNotificacion, setIdNotificacion] = useState('')
   const [codigo, setCodigoState] = useState('')
   const [observacion, setObservacion] = useState('')
+  const [comentarios, setComentarios] = useState('')
   const [esNoUrbana, setEsNoUrbana] = useState(false)
 
   const OBSERVACIONES_SUGERIDAS = {
@@ -36,6 +37,7 @@ function useRegistroForm() {
     setIdNotificacion('')
     setCodigoState('')
     setObservacion('')
+    setComentarios('')
     setEsNoUrbana(false)
   }
 
@@ -48,10 +50,12 @@ function useRegistroForm() {
     idNotificacion,
     codigo,
     observacion,
+    comentarios,
     esNoUrbana,
     setIdNotificacion,
     setCodigo,
     setObservacion,
+    setComentarios,
     setEsNoUrbana,
     limpiarFormulario,
     handleCodigoManualChange,

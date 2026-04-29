@@ -1,4 +1,4 @@
-function MenuLateral({ abierto, vistaConsulta, onCerrar, onIrConsulta, onIrFormulario }) {
+function MenuLateral({ abierto, vistaConsulta, onCerrar, onIrConsulta, onIrFormulario, onIrMonitoreo, vistaMonitoreo }) {
   if (!abierto) return null
 
   return (
@@ -26,6 +26,14 @@ function MenuLateral({ abierto, vistaConsulta, onCerrar, onIrConsulta, onIrFormu
           onClick={onIrConsulta}
         >
           Consulta de notificaciones
+        </button>
+
+        <button
+          type="button"
+          className={`menu-item ${vistaMonitoreo ? 'menu-item-activo' : ''}`}
+          onClick={onIrMonitoreo}
+        >
+          Monitoreo en vivo (solo web)
         </button>
 
         <div className="menu-sidebar-footer">
