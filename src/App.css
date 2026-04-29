@@ -938,7 +938,7 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  min-width: 900px;
+  min-width: 770px;
   table-layout: fixed;
 }
 
@@ -986,16 +986,9 @@ body {
   padding: 10px 8px;
 }
 
-/* REBAJADA: 70px */
+/* ACCIÓN: 80px */
 .tabla-registros-ancha th:nth-child(7),
 .tabla-registros-ancha td:nth-child(7) {
-  width: 70px;
-  padding: 10px 8px;
-}
-
-/* ACCIÓN: 80px */
-.tabla-registros-ancha th:nth-child(8),
-.tabla-registros-ancha td:nth-child(8) {
   width: 80px;
   padding: 10px 8px;
 }
@@ -1751,5 +1744,4 @@ body.modal-abierto {
     text-align: center;
     white-space: nowrap;
   }
-  background: #ffebee;
-}
+
