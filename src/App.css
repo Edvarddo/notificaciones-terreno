@@ -883,6 +883,25 @@ body {
   border-radius: 8px;
 }
 
+.qr-zoom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.qr-zoom-valor {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-blanco);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
 .codigo-descripcion-box {
   background: var(--color-fondo-suave);
   border: 1px solid var(--color-borde);

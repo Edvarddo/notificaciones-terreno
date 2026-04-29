@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 function useLoteForm() {
   const [idsTemporales, setIdsTemporales] = useState([])
+  const idsTemporalesRef = useRef([])
   const [horaLote, setHoraLote] = useState('')
   const [codigoLote, setCodigoLoteState] = useState('')
   const [observacionLote, setObservacionLote] = useState('')
@@ -37,20 +38,23 @@ function useLoteForm() {
     const limpio = String(nuevoId ?? '').trim()
     if (!limpio) return { agregado: false, id: '' }
 
-    if (idsTemporales.includes(limpio)) {
+    if (idsTemporalesRef.current.includes(limpio)) {
       onDuplicado?.(limpio)
       return { agregado: false, id: limpio }
     }
 
-    setIdsTemporales((prev) => [...prev, limpio])
+    idsTemporalesRef.current = [...idsTemporalesRef.current, limpio]
+    setIdsTemporales(idsTemporalesRef.current)
     return { agregado: true, id: limpio }
   }
 
   const quitarIdTemporal = (idQuitar) => {
-    setIdsTemporales((prev) => prev.filter((id) => id !== idQuitar))
+    idsTemporalesRef.current = idsTemporalesRef.current.filter((id) => id !== idQuitar)
+    setIdsTemporales(idsTemporalesRef.current)
   }
 
   const limpiarLote = () => {
+    idsTemporalesRef.current = []
     setIdsTemporales([])
     setHoraLote('')
     setCodigoLoteState('')

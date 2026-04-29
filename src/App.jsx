@@ -388,6 +388,10 @@ function App() {
               ? qrIndividual.detenerEscaneo
               : qrIndividual.iniciarEscaneo
           }
+          onZoomOut={qrIndividual.zoomOut}
+          onZoomIn={qrIndividual.zoomIn}
+          onResetZoom={qrIndividual.resetZoom}
+          zoom={qrIndividual.zoom}
           codigo={registro.codigo}
           onCodigoChange={registro.handleCodigoManualChange}
           onAbrirCodigos={() => setDialogoCodigoAbierto(true)}
@@ -459,6 +463,10 @@ function App() {
               ? qrLote.detenerEscaneo
               : qrLote.iniciarEscaneo
           }
+          onZoomOut={qrLote.zoomOut}
+          onZoomIn={qrLote.zoomIn}
+          onResetZoom={qrLote.resetZoom}
+          zoom={qrLote.zoom}
           guardandoLote={notificaciones.guardandoLote}
           onLimpiarLote={lote.limpiarLote}
           idsTemporales={lote.idsTemporales}

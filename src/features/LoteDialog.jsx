@@ -6,6 +6,10 @@ function LoteDialog({
   onClose,
   escaneandoLote,
   onToggleEscaneo,
+  onZoomOut,
+  onZoomIn,
+  onResetZoom,
+  zoom,
   guardandoLote,
   onLimpiarLote,
   idsTemporales,
@@ -69,6 +73,20 @@ function LoteDialog({
 
           <div className={`qr-inline qr-inline-lote ${escaneandoLote ? '' : 'qr-inline-oculto'}`}>
             <div id="qr-reader-lote"></div>
+            {escaneandoLote ? (
+              <div className="qr-zoom-bar">
+                <button type="button" className="boton-mini" onClick={onZoomOut} aria-label="Alejar cámara">
+                  -
+                </button>
+                <span className="qr-zoom-valor">Zoom {Math.round((zoom || 1) * 100)}%</span>
+                <button type="button" className="boton-mini" onClick={onZoomIn} aria-label="Acercar cámara">
+                  +
+                </button>
+                <button type="button" className="boton-mini" onClick={onResetZoom} aria-label="Restablecer zoom">
+                  Reset
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="lote-formulario">

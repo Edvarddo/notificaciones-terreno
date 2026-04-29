@@ -61,13 +61,24 @@ export async function actualizarRegistroPorId(id, cambios) {
 export async function obtenerEstadisticas(fechaCertificacion) {
   const { data, error } = await supabase
     .from('notificaciones_terreno')
-    .select('codigo_lote')
+    .select('id,codigo_lote')
     .eq('fecha_certificacion', fechaCertificacion)
 
   if (error) throw error
 
-  const cargaTotal = data?.length || 0
-  const puntos = new Set(data?.filter(r => r.codigo_lote).map(r => r.codigo_lote) || []).size
+  const registros = data || []
+  const cargaTotal = registros.length
+  const lotesVistos = new Set()
+
+  const puntos = registros.reduce((total, registro) => {
+    const codigoLote = String(registro?.codigo_lote ?? '').trim().toUpperCase()
+
+    if (!codigoLote) return total + 1
+    if (lotesVistos.has(codigoLote)) return total
+
+    lotesVistos.add(codigoLote)
+    return total + 1
+  }, 0)
 
   return {
     cargaTotal,

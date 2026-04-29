@@ -17,11 +17,13 @@ import {
 
 function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const timersMensajesRef = useRef(new Map())
+  const mensajeTimerRef = useRef(null)
+  const errorMsgTimerRef = useRef(null)
   const [registros, setRegistros] = useState([])
   const [cargando, setCargando] = useState(false)
   const [guardandoLote, setGuardandoLote] = useState(false)
-  const [mensaje, setMensaje] = useState('')
-  const [errorMsg, setErrorMsg] = useState('')
+  const [mensaje, setMensajeState] = useState('')
+  const [errorMsg, setErrorMsgState] = useState('')
   const [mensajes, setMensajes] = useState([])
   const [estadisticas, setEstadisticas] = useState({ puntos: 0 })
   const [pendientesSync, setPendientesSync] = useState(0)
@@ -31,7 +33,6 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     guardarRegistro: 0,
     guardarLote: 0,
   })
-
   const quitarMensajeVisual = (id) => {
     const timer = timersMensajesRef.current.get(id)
     if (timer) {
@@ -40,6 +41,38 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
 
     setMensajes((prev) => prev.filter((mensaje) => mensaje.id !== id))
+  }
+
+  const setMensaje = (texto, duracion = 2800) => {
+    if (mensajeTimerRef.current) {
+      clearTimeout(mensajeTimerRef.current)
+      mensajeTimerRef.current = null
+    }
+
+    setMensajeState(texto)
+
+    if (texto) {
+      mensajeTimerRef.current = setTimeout(() => {
+        setMensajeState('')
+        mensajeTimerRef.current = null
+      }, duracion)
+    }
+  }
+
+  const setErrorMsg = (texto, duracion = 3800) => {
+    if (errorMsgTimerRef.current) {
+      clearTimeout(errorMsgTimerRef.current)
+      errorMsgTimerRef.current = null
+    }
+
+    setErrorMsgState(texto)
+
+    if (texto) {
+      errorMsgTimerRef.current = setTimeout(() => {
+        setErrorMsgState('')
+        errorMsgTimerRef.current = null
+      }, duracion)
+    }
   }
 
   const agregarMensajeVisual = (texto, tipo = 'success', duracion = 4500) => {
@@ -206,11 +239,23 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     return () => window.removeEventListener('online', manejarOnline)
   }, [])
 
+  const generarCodigoLote = () => {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  }
+
   const limpiarMensajes = () => {
     timersMensajesRef.current.forEach((timer) => clearTimeout(timer))
     timersMensajesRef.current.clear()
-    setMensaje('')
-    setErrorMsg('')
+    if (mensajeTimerRef.current) {
+      clearTimeout(mensajeTimerRef.current)
+      mensajeTimerRef.current = null
+    }
+    if (errorMsgTimerRef.current) {
+      clearTimeout(errorMsgTimerRef.current)
+      errorMsgTimerRef.current = null
+    }
+    setMensajeState('')
+    setErrorMsgState('')
     setMensajes([])
   }
 
@@ -218,17 +263,19 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     return () => {
       timersMensajesRef.current.forEach((timer) => clearTimeout(timer))
       timersMensajesRef.current.clear()
+      if (mensajeTimerRef.current) clearTimeout(mensajeTimerRef.current)
+      if (errorMsgTimerRef.current) clearTimeout(errorMsgTimerRef.current)
     }
   }, [])
 
     const cargar = async () => {
     try {
-        const data = await obtenerRegistros(fechaCertificacion)
-        setRegistros(data)
-        const stats = await obtenerEstadisticas(fechaCertificacion)
-        setEstadisticas(stats)
+      const data = await obtenerRegistros(fechaCertificacion)
+      setRegistros(data)
+      const stats = await obtenerEstadisticas(fechaCertificacion)
+      setEstadisticas(stats)
     } catch (error) {
-        setErrorMsg(`No se pudieron cargar los registros: ${error.message}`)
+      setErrorMsg(`No se pudieron cargar los registros: ${error.message}`)
     }
     }
 
@@ -257,6 +304,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       return { ok: false, error: msg }
     }
 
+    const codigoLote = generarCodigoLote()
+
     try {
       const yaExiste = await existeIdNotificacionEnFecha(idLimpio, fechaCertificacion)
       if (yaExiste) {
@@ -283,6 +332,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
               codigo: codigoLimpio,
               observacion: observacionLimpia,
               es_no_urbana: Boolean(esNoUrbana),
+              codigo_lote: codigoLote,
             },
           })
         } catch (queueError) {
@@ -314,6 +364,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       })
       .replace(':', '')
 
+
     try {
       await insertarRegistro({
         id_notificacion: idLimpio,
@@ -322,6 +373,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         codigo: codigoLimpio,
         observacion: observacionLimpia,
         es_no_urbana: Boolean(esNoUrbana),
+        codigo_lote: codigoLote,
       })
     } catch (error) {
       setCargando(false)
@@ -337,6 +389,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
               codigo: codigoLimpio,
               observacion: observacionLimpia,
               es_no_urbana: Boolean(esNoUrbana),
+              codigo_lote: codigoLote,
             },
           })
         } catch (queueError) {

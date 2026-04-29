@@ -4,53 +4,98 @@ import { playBeep } from '../lib/sounds'
 
 export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onError } = {}) {
   const [escaneando, setEscaneando] = useState(false)
+  const [zoom, setZoom] = useState(1)
   const instanceRef = useRef(null)
   const startingRef = useRef(false)
   const lastCodeRef = useRef(null)
   const lastTimeRef = useRef(0)
   const DEBOUNCE_MS = 500
+  const ZOOM_MIN = 1
+  const ZOOM_MAX = 3
+  const ZOOM_STEP = 0.25
+
+  const handleDecoded = async (decodedText) => {
+    const now = Date.now()
+    if (decodedText === lastCodeRef.current && now - lastTimeRef.current < DEBOUNCE_MS) return
+
+    lastCodeRef.current = decodedText
+    lastTimeRef.current = now
+    try { playBeep() } catch {}
+    await onDetected?.(decodedText)
+  }
+
+  const startWithSource = async (html5Qr, config, source) => {
+    await html5Qr.start(
+      source,
+      config,
+      handleDecoded,
+      () => {}
+    )
+  }
+
+  const aplicarZoom = async (nuevoZoom) => {
+    const html5Qr = instanceRef.current
+    if (!html5Qr) return
+
+    const zoomNormalizado = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(nuevoZoom) || ZOOM_MIN))
+    try {
+      await html5Qr.applyVideoConstraints({ advanced: [{ zoom: zoomNormalizado }] })
+      setZoom(zoomNormalizado)
+    } catch {
+      onError?.('Tu dispositivo no permite ajustar el zoom de la camara')
+    }
+  }
+
+  const zoomIn = () => {
+    if (!escaneando) return
+    void aplicarZoom(zoom + ZOOM_STEP)
+  }
+
+  const zoomOut = () => {
+    if (!escaneando) return
+    void aplicarZoom(zoom - ZOOM_STEP)
+  }
+
+  const resetZoom = () => {
+    if (!escaneando) return
+    void aplicarZoom(1)
+  }
 
   const iniciarConCamara = async (html5Qr, config) => {
+    try {
+      await startWithSource(html5Qr, config, { facingMode: { exact: 'environment' } })
+      return
+    } catch {
+      // fallback below
+    }
+
+    try {
+      await startWithSource(html5Qr, config, { facingMode: 'environment' })
+      return
+    } catch {
+      // fallback below
+    }
+
     try {
       const cams = await Html5Qrcode.getCameras()
       const preferred = cams?.find((c) => /back|rear|environment/i.test(c.label)) || cams?.[0]
       const target = preferred?.id || preferred?.deviceId
       if (target) {
-        await html5Qr.start(target, config, async (decodedText) => {
-          const now = Date.now()
-          if (decodedText === lastCodeRef.current && now - lastTimeRef.current < DEBOUNCE_MS) return
-
-          lastCodeRef.current = decodedText
-          lastTimeRef.current = now
-          try { playBeep() } catch {}
-          await onDetected?.(decodedText)
-        }, () => {})
+        await startWithSource(html5Qr, config, target)
         return
       }
     } catch {
       // fallback below
     }
 
-    await html5Qr.start(
-      { facingMode: 'environment' },
-      config,
-      async (decodedText) => {
-        const now = Date.now()
-        if (decodedText === lastCodeRef.current && now - lastTimeRef.current < DEBOUNCE_MS) return
-
-        lastCodeRef.current = decodedText
-        lastTimeRef.current = now
-        try { playBeep() } catch {}
-        await onDetected?.(decodedText)
-      },
-      () => {}
-    )
+    await startWithSource(html5Qr, config, { facingMode: 'environment' })
   }
 
   const detenerEscaneo = async () => {
     startingRef.current = false
     lastCodeRef.current = null
     lastTimeRef.current = 0
+    setZoom(1)
 
     try {
       if (instanceRef.current) {
@@ -109,8 +154,12 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
 
   return {
     escaneando,
+    zoom,
     iniciarEscaneo,
     detenerEscaneo,
+    zoomIn,
+    zoomOut,
+    resetZoom,
     start: iniciarEscaneo,
     stop: detenerEscaneo,
   }

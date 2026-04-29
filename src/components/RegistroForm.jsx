@@ -7,6 +7,10 @@ function RegistroForm({
   onIdChange,
   escaneando,
   onToggleEscaneo,
+  onZoomOut,
+  onZoomIn,
+  onResetZoom,
+  zoom,
   codigo,
   onCodigoChange,
   onAbrirCodigos,
@@ -61,6 +65,20 @@ function RegistroForm({
 
       <div className={`qr-inline ${escaneando ? '' : 'qr-inline-oculto'}`}>
         <div id="qr-reader"></div>
+        {escaneando ? (
+          <div className="qr-zoom-bar">
+            <button type="button" className="boton-mini" onClick={onZoomOut} aria-label="Alejar cámara">
+              -
+            </button>
+            <span className="qr-zoom-valor">Zoom {Math.round((zoom || 1) * 100)}%</span>
+            <button type="button" className="boton-mini" onClick={onZoomIn} aria-label="Acercar cámara">
+              +
+            </button>
+            <button type="button" className="boton-mini" onClick={onResetZoom} aria-label="Restablecer zoom">
+              Reset
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <label className="campo-label">
