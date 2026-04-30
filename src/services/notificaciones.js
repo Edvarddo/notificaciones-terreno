@@ -61,27 +61,41 @@ export async function actualizarRegistroPorId(id, cambios) {
 export async function obtenerEstadisticas(fechaCertificacion) {
   const { data, error } = await supabase
     .from('notificaciones_terreno')
-    .select('id,codigo_lote')
+    .select('codigo_lote, es_no_urbana')
     .eq('fecha_certificacion', fechaCertificacion)
 
   if (error) throw error
 
   const registros = data || []
   const cargaTotal = registros.length
-  const lotesVistos = new Set()
+  const lotesAgrupados = new Map()
 
-  const puntos = registros.reduce((total, registro) => {
+  for (const registro of registros) {
     const codigoLote = String(registro?.codigo_lote ?? '').trim().toUpperCase()
 
-    if (!codigoLote) return total + 1
-    if (lotesVistos.has(codigoLote)) return total
+    if (!codigoLote) {
+      continue
+    }
 
-    lotesVistos.add(codigoLote)
-    return total + 1
-  }, 0)
+    if (!lotesAgrupados.has(codigoLote)) {
+      lotesAgrupados.set(codigoLote, {
+        esNoUrbana: Boolean(registro?.es_no_urbana),
+      })
+      continue
+    }
+
+    const loteExistente = lotesAgrupados.get(codigoLote)
+    loteExistente.esNoUrbana = loteExistente.esNoUrbana || Boolean(registro?.es_no_urbana)
+  }
+
+  const puntos = lotesAgrupados.size
+  const rurales = [...lotesAgrupados.values()].filter((lote) => lote.esNoUrbana).length
+  const urbanas = Math.max(puntos - rurales, 0)
 
   return {
     cargaTotal,
     puntos,
+    rurales,
+    urbanas,
   }
 }

@@ -214,6 +214,9 @@ function App() {
       codigoLote: lote.codigoLote,
       observacionLote: lote.observacionLote,
       esNoUrbanaLote: lote.esNoUrbanaLote,
+      ritLote: lote.ritLote,
+      añoLote: lote.añoLote,
+      mostraTribunalLote: lote.mostraTribunalLote,
       onSuccess: async () => {
         lote.limpiarLote()
         await cerrarDialogoLote()
@@ -471,6 +474,8 @@ function App() {
           onDescargarCsv={descargarCsv}
           cargaTotal={notificaciones.estadisticas.cargaTotal}
           puntos={notificaciones.estadisticas.puntos}
+          urbanas={notificaciones.estadisticas.urbanas}
+          rurales={notificaciones.estadisticas.rurales}
         />
 
         <CodigoDialog
@@ -518,6 +523,12 @@ function App() {
           onObservacionChange={lote.setObservacionLote}
           esNoUrbanaLote={lote.esNoUrbanaLote}
           onEsNoUrbanaLoteChange={lote.setEsNoUrbanaLote}
+          mostraTribunalLote={lote.mostraTribunalLote}
+          onMostraTribunalLote={() => lote.setMostraTribunalLote((prev) => !prev)}
+          ritLote={lote.ritLote}
+          onRitLoteChange={lote.setRitLote}
+          añoLote={lote.añoLote}
+          onAñoLoteChange={lote.setAñoLote}
           ultimoIdAgregadoLote={ultimoIdAgregadoLote}
           onGuardarLote={guardarLote}
         />

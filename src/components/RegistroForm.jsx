@@ -1,5 +1,6 @@
 import IconQr from './IconQr'
 import IconList from './IconList'
+import IconTribunal from './IconTribunal'
 
 function RegistroForm({
   inputIdRef,
@@ -42,34 +43,78 @@ function RegistroForm({
       }}
       className="formulario"
     >
-      <label className="campo-label">
-        ID notificacion
-        <div className="input-icon-row">
-        <input
-        ref={inputIdRef}
-        className="input-base input-con-icono"
-        type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        maxLength={8}
-        placeholder="Ej: 18099912"
-        value={idNotificacion}
-        onChange={(e) =>
-            onIdChange(e.target.value.replace(/\D/g, '').slice(0, 8))
-        }
-        />
+      {!mostraTribunal ? (
+        <label className="campo-label">
+          ID notificacion
+          <div className="input-icon-row">
+            <input
+              ref={inputIdRef}
+              className="input-base input-con-icono"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={8}
+              placeholder="Ej: 18099912"
+              value={idNotificacion}
+              onChange={(e) =>
+                onIdChange(e.target.value.replace(/\D/g, '').slice(0, 8))
+              }
+            />
+            <button
+              type="button"
+              className="boton-icono"
+              onClick={onToggleEscaneo}
+              disabled={cargando || dialogoLoteAbierto}
+              title={escaneando ? 'Cerrar escáner' : 'Escanear QR'}
+              aria-label={escaneando ? 'Cerrar escáner' : 'Escanear QR'}
+            >
+              <IconQr />
+            </button>
+            <button
+              type="button"
+              className="boton-icono boton-tribunal-toggle"
+              onClick={onMostraTribunal}
+              disabled={cargando}
+              title="Modo tribunal (sin ID)"
+            >
+              <IconTribunal />
+            </button>
+          </div>
+        </label>
+      ) : (
+        <div className="tribunal-inline">
+          <label className="campo-label">
+            RIT
+            <input
+              className="input-base"
+              type="text"
+              placeholder="Ej: 12-2024-00123"
+              value={rit}
+              onChange={(e) => onRitChange(e.target.value)}
+            />
+          </label>
+          <label className="campo-label">
+            Año
+            <input
+              className="input-base"
+              type="number"
+              inputMode="numeric"
+              placeholder="Ej: 2024"
+              value={año}
+              onChange={(e) => onAñoChange(parseInt(e.target.value) || '')}
+            />
+          </label>
           <button
             type="button"
-            className="boton-icono"
-            onClick={onToggleEscaneo}
-            disabled={cargando || dialogoLoteAbierto}
-            title={escaneando ? 'Cerrar escáner' : 'Escanear QR'}
-            aria-label={escaneando ? 'Cerrar escáner' : 'Escanear QR'}
+            className="boton-icono boton-tribunal-toggle tribunal-activo"
+            onClick={onMostraTribunal}
+            disabled={cargando}
+            title="Volver a ID notificación"
           >
-            <IconQr />
+            ✕
           </button>
         </div>
-      </label>
+      )}
 
       <div className={`qr-inline ${escaneando ? '' : 'qr-inline-oculto'}`}>
         <div id="qr-reader"></div>
@@ -145,42 +190,7 @@ function RegistroForm({
         />
       </label>
 
-      <button
-        type="button"
-        className={`boton-tribunal ${mostraTribunal ? 'tribunal-activo' : ''}`}
-        onClick={onMostraTribunal}
-        disabled={cargando}
-        title="Notificación de tribunal (sin ID)"
-      >
-        {mostraTribunal ? 'Tribunal (activo)' : 'Tribunal'}
-      </button>
 
-      {mostraTribunal && (
-        <div className="tribunal-campos">
-          <label className="campo-label">
-            RIT
-            <input
-              className="input-base"
-              type="text"
-              placeholder="Ej: 12-2024-00123"
-              value={rit}
-              onChange={(e) => onRitChange(e.target.value)}
-            />
-          </label>
-
-          <label className="campo-label">
-            Año
-            <input
-              className="input-base"
-              type="number"
-              inputMode="numeric"
-              placeholder="Ej: 2024"
-              value={año}
-              onChange={(e) => onAñoChange(parseInt(e.target.value) || '')}
-            />
-          </label>
-        </div>
-      )}
 
       <label className="check-row">
         <input

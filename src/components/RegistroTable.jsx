@@ -7,7 +7,16 @@ const CODIGOS_EXITOSOS = new Set(['D2', 'D4', 'E1'])
 const CODIGOS_BUSQUEDA = new Set(['B3', 'B7', 'B10'])
 const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B5'])
 
-function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescargarCsv, cargaTotal = 0, puntos = 0 }) {
+function RegistroTable({
+  registros,
+  onRecargar,
+  onActualizarRegistro,
+  onDescargarCsv,
+  cargaTotal = 0,
+  puntos = 0,
+  urbanas = 0,
+  rurales = 0,
+}) {
   const [editandoId, setEditandoId] = useState(null)
   const [codigoEdit, setCodigoEdit] = useState('')
   const [horaEdit, setHoraEdit] = useState('')
@@ -111,9 +120,6 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
       else if (CODIGOS_NEGATIVOS.has(codigo)) acc.negativas += 1
       else acc.otros += 1
 
-      if (r.es_no_urbana) acc.noUrbanas += 1
-      else acc.urbanas += 1
-
       return acc
     },
     {
@@ -121,8 +127,6 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
       exitosas: 0,
       busqueda: 0,
       negativas: 0,
-      urbanas: 0,
-      noUrbanas: 0,
       otros: 0,
     }
   )
@@ -176,12 +180,12 @@ function RegistroTable({ registros, onRecargar, onActualizarRegistro, onDescarga
       <div className="resumen-secundario">
         <div className="resumen-mini">
           <span className="mini-label">Urbanas</span>
-          <span className="mini-valor">{resumen.urbanas}</span>
+          <span className="mini-valor">{urbanas}</span>
         </div>
 
         <div className="resumen-mini">
           <span className="mini-label">Rurales</span>
-          <span className="mini-valor">{resumen.noUrbanas}</span>
+          <span className="mini-valor">{rurales}</span>
         </div>
 
         {resumen.otros > 0 && (

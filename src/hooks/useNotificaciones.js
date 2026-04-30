@@ -25,7 +25,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const [mensaje, setMensajeState] = useState('')
   const [errorMsg, setErrorMsgState] = useState('')
   const [mensajes, setMensajes] = useState([])
-  const [estadisticas, setEstadisticas] = useState({ puntos: 0 })
+  const [estadisticas, setEstadisticas] = useState({ puntos: 0, rurales: 0, urbanas: 0 })
   const [pendientesSync, setPendientesSync] = useState(0)
   const [sincronizandoPendientes, setSincronizandoPendientes] = useState(false)
   const [pendientesDetalle, setPendientesDetalle] = useState([])
@@ -477,6 +477,9 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     codigoLote,
     observacionLote,
     esNoUrbanaLote,
+    mostraTribunalLote,
+    ritLote,
+    añoLote,
     onSuccess,
     onBeforeError,
   }) => {
@@ -526,7 +529,20 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       return { ok: false, error: msg }
     }
 
+    const ritNormalizado = String(ritLote ?? '').trim()
+    const anioNormalizado = String(añoLote ?? '').trim()
+
+    if (mostraTribunalLote && (!ritNormalizado || !anioNormalizado)) {
+      const msg = 'Completa RIT y Año para el lote de tribunal'
+      setErrorMsg(msg)
+      await onBeforeError?.()
+      return { ok: false, error: msg }
+    }
+
     const observacionNormalizada = observacionLote.trim() || '.'
+
+    // Generar UUID único para este lote (cada lote escaneado tiene un codigo_lote diferente)
+    const idLoteUnico = crypto.randomUUID()
 
     const filas = idsNormalizados.map((id) => ({
       id_notificacion: id,
@@ -535,7 +551,10 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       codigo: codigoNormalizado,
       observacion: observacionNormalizada,
       es_no_urbana: Boolean(esNoUrbanaLote),
-      codigo_lote: codigoNormalizado,
+      codigo_lote: idLoteUnico,
+      id_lote: idLoteUnico,
+      rit: mostraTribunalLote ? ritNormalizado : null,
+      año: mostraTribunalLote ? Number(anioNormalizado) : null,
     }))
 
     if (!navigator.onLine) {

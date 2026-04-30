@@ -25,6 +25,12 @@ function LoteDialog({
   onObservacionChange,
   esNoUrbanaLote,
   onEsNoUrbanaLoteChange,
+  mostraTribunalLote,
+  onMostraTribunalLote,
+  ritLote,
+  onRitLoteChange,
+  añoLote,
+  onAñoLoteChange,
   onGuardarLote,
   ultimoIdAgregadoLote,
 }) {
@@ -69,6 +75,17 @@ function LoteDialog({
             >
               Limpiar lote
             </button>
+
+            <button
+              type="button"
+              className={`boton-icono boton-tribunal-toggle ${mostraTribunalLote ? 'tribunal-activo' : ''}`}
+              onClick={onMostraTribunalLote}
+              disabled={guardandoLote}
+              title="Tribunal en lote"
+              aria-label="Tribunal en lote"
+            >
+              ⚖
+            </button>
           </div>
 
           <div className={`qr-inline qr-inline-lote ${escaneandoLote ? '' : 'qr-inline-oculto'}`}>
@@ -101,6 +118,33 @@ function LoteDialog({
                 onChange={onHoraChange}
               />
             </label>
+
+            {mostraTribunalLote && (
+              <div className="tribunal-inline">
+                <label className="campo-label">
+                  RIT
+                  <input
+                    className="input-base"
+                    type="text"
+                    placeholder="Ej: 12-2024-00123"
+                    value={ritLote}
+                    onChange={(e) => onRitLoteChange(e.target.value)}
+                  />
+                </label>
+
+                <label className="campo-label">
+                  Año
+                  <input
+                    className="input-base"
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Ej: 2024"
+                    value={añoLote}
+                    onChange={(e) => onAñoLoteChange(parseInt(e.target.value) || '')}
+                  />
+                </label>
+              </div>
+            )}
 
             <label className="campo-label">
               Codigo del lote

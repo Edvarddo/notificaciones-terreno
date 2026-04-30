@@ -815,42 +815,41 @@ body {
   cursor: not-allowed;
 }
 
-.boton-tribunal {
-  min-height: 40px;
-  padding: 0 14px;
-  border: 2px solid var(--color-primario);
-  border-radius: 10px;
+.boton-tribunal-toggle {
   background: var(--color-blanco);
+  border: 2px solid var(--color-primario);
   color: var(--color-primario);
   font-weight: bold;
-  font-size: 14px;
-  cursor: pointer;
+  font-size: 13px;
+  padding: 0 10px;
   transition: all 0.2s ease;
 }
 
-.boton-tribunal:hover:not(:disabled) {
+.boton-tribunal-toggle:hover:not(:disabled) {
   background: var(--color-primario);
   color: var(--color-blanco);
 }
 
-.boton-tribunal.tribunal-activo {
+.boton-tribunal-toggle.tribunal-activo {
   background: var(--color-primario);
   color: var(--color-blanco);
 }
 
-.boton-tribunal:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.tribunal-campos {
+.tribunal-inline {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 10px;
-  border: 1px solid #e0e3e8;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.tribunal-inline .campo-label {
+  margin: 0;
+}
+
+.tribunal-inline .boton-icono {
+  margin-top: 0;
+  height: 48px;
+  align-self: flex-end;
 }
 
 .boton-quitar-fila {

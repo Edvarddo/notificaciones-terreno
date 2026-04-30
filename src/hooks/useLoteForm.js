@@ -7,6 +7,9 @@ function useLoteForm() {
   const [codigoLote, setCodigoLoteState] = useState('')
   const [observacionLote, setObservacionLote] = useState('')
   const [esNoUrbanaLote, setEsNoUrbanaLote] = useState(false)
+  const [mostraTribunalLote, setMostraTribunalLote] = useState(false)
+  const [ritLote, setRitLote] = useState('')
+  const [añoLote, setAñoLote] = useState('')
 
   const OBSERVACIONES_SUGERIDAS = {
     D2: '.',
@@ -60,6 +63,9 @@ function useLoteForm() {
     setCodigoLoteState('')
     setObservacionLote('')
     setEsNoUrbanaLote(false)
+    setMostraTribunalLote(false)
+    setRitLote('')
+    setAñoLote('')
   }
 
   const handleHoraLoteChange = (e) => {
@@ -78,10 +84,16 @@ function useLoteForm() {
     codigoLote,
     observacionLote,
     esNoUrbanaLote,
+    mostraTribunalLote,
+    ritLote,
+    añoLote,
     setHoraLote,
     setCodigoLote: handleCodigoLoteChange,
     setObservacionLote,
     setEsNoUrbanaLote,
+    setMostraTribunalLote,
+    setRitLote,
+    setAñoLote,
     agregarIdTemporal,
     quitarIdTemporal,
     limpiarLote,

@@ -11,6 +11,7 @@ function MonitoreoLive({ fechaCertificacion }) {
   const [registros, setRegistros] = useState([])
   const [editandoId, setEditandoId] = useState(null)
   const [esRebajadaEdit, setEsRebajadaEdit] = useState(false)
+  const [codigoLoteEdit, setCodigoLoteEdit] = useState('')
   const mounted = useRef(true)
   const channelRef = useRef(null)
 
@@ -76,19 +77,21 @@ function MonitoreoLive({ fechaCertificacion }) {
   const abrirEdicion = (registro) => {
     setEditandoId(registro.id)
     setEsRebajadaEdit(registro.es_rebajada || false)
+    setCodigoLoteEdit(registro.codigo_lote || '')
   }
 
   const cancelarEdicion = () => {
     setEditandoId(null)
     setEsRebajadaEdit(false)
+    setCodigoLoteEdit('')
   }
 
   const guardarEdicion = async (id) => {
     try {
-      await actualizarRegistroPorId(id, { es_rebajada: esRebajadaEdit })
+      await actualizarRegistroPorId(id, { es_rebajada: esRebajadaEdit, codigo_lote: codigoLoteEdit })
       // Actualizar estado local
       setRegistros((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, es_rebajada: esRebajadaEdit } : r))
+        prev.map((r) => (r.id === id ? { ...r, es_rebajada: esRebajadaEdit, codigo_lote: codigoLoteEdit } : r))
       )
       cancelarEdicion()
     } catch (err) {
@@ -184,7 +187,19 @@ function MonitoreoLive({ fechaCertificacion }) {
                       </span>
                     )}
                   </td>
-                  <td>{r.codigo_lote}</td>
+                    <td>
+                      {enEdicion ? (
+                        <input
+                          className="input-tabla"
+                          type="text"
+                          placeholder="Código lote"
+                          value={codigoLoteEdit}
+                          onChange={(e) => setCodigoLoteEdit(e.target.value)}
+                        />
+                      ) : (
+                        r.codigo_lote
+                      )}
+                    </td>
                   <td>{r.es_no_urbana ? 'Sí' : 'No'}</td>
                   <td>{r.comentarios}</td>
                   <td>
