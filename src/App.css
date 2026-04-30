@@ -47,6 +47,12 @@
   cursor: pointer;
 }
 
+@media (max-width: 768px) {
+  .menu-flotante {
+    display: none;
+  }
+}
+
 .menu-backdrop {
   position: fixed;
   inset: 0;
