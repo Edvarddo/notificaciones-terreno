@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",
+    "@turf/boolean-point-in-polygon": "^7.3.5",
+    "@turf/buffer": "^7.3.5",
+    "@turf/helpers": "^7.3.5",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "html5-qrcode": "^2.3.8",
     "react": "^19.2.5",

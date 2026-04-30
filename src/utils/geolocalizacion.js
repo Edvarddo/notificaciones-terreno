@@ -1,3 +1,7 @@
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
+import buffer from '@turf/buffer'
+import { point, polygon } from '@turf/helpers'
+
 const POLIGONO_URBANO = [
   [-68.94832338474046, -22.462238753570077],
   [-68.9461885173666, -22.466489832045426],
@@ -30,21 +34,55 @@ const POLIGONO_URBANO = [
   [-68.94832338474046, -22.462238753570077],
 ]
 
-const epsilon = 1e-12
+const MARGEN_POLIGONO_METROS = 25
+const MARGEN_PRECISO_METROS = 10
+const MARGEN_INTERMEDIO_METROS = 15
+const MARGEN_BAJA_PRECISION_METROS = 20
+const UMBRAL_PRECISION_ALTA_METROS = 10
+const UMBRAL_PRECISION_MEDIA_METROS = 20
+const UMBRAL_PRECISION_BAJA_METROS = 30
 
-function puntoEnPoligono([lng, lat], poligono = POLIGONO_URBANO) {
-  let dentro = false
-
-  for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i += 1) {
-    const [lngI, latI] = poligono[i]
-    const [lngJ, latJ] = poligono[j]
-
-    const intersecta =
-      latI > lat !== latJ > lat &&
-      lng < ((lngJ - lngI) * (lat - latI)) / ((latJ - latI) || epsilon) + lngI
-
-    if (intersecta) dentro = !dentro
+const obtenerPoligonoConMargen = (margenMetros) => {
+  try {
+    return buffer(polygon([POLIGONO_URBANO]), margenMetros / 1000, {
+      units: 'kilometers',
+    })
+  } catch (error) {
+    console.warn('[geo] no se pudo crear el buffer del poligono, usando original', error)
+    return polygon([POLIGONO_URBANO])
   }
+}
+
+function calcularMargenSegunPrecision(precisionGpsMetros) {
+  if (!Number.isFinite(precisionGpsMetros)) {
+    return MARGEN_POLIGONO_METROS
+  }
+
+  if (precisionGpsMetros <= UMBRAL_PRECISION_ALTA_METROS) {
+    return MARGEN_PRECISO_METROS
+  }
+
+  if (precisionGpsMetros <= UMBRAL_PRECISION_MEDIA_METROS) {
+    return MARGEN_INTERMEDIO_METROS
+  }
+
+  if (precisionGpsMetros <= UMBRAL_PRECISION_BAJA_METROS) {
+    return MARGEN_BAJA_PRECISION_METROS
+  }
+
+  return MARGEN_POLIGONO_METROS
+}
+
+function puntoEnPoligono([lng, lat], poligono) {
+  const turfPoint = point([lng, lat])
+  const dentro = booleanPointInPolygon(turfPoint, poligono, { ignoreBoundary: false })
+
+  console.log('[geo] comparacion Turf', {
+    punto: [lng, lat],
+    dentro,
+    modo: dentro ? 'urbano' : 'rural',
+    margenMetros: MARGEN_POLIGONO_METROS,
+  })
 
   return dentro
 }
@@ -64,19 +102,38 @@ export async function determinarSiEsNoUrbanaDesdeGPS() {
   const posicion = await obtenerPosicionActual()
   const lng = posicion.coords.longitude
   const lat = posicion.coords.latitude
-  const esUrbana = puntoEnPoligono([lng, lat])
+  const precisionGps = posicion.coords.accuracy
+  const margenAplicado = calcularMargenSegunPrecision(precisionGps)
+  const poligonoUrbano = obtenerPoligonoConMargen(margenAplicado)
+  const esUrbana = puntoEnPoligono([lng, lat], poligonoUrbano)
+
+  console.log('[geo] ubicacion GPS', {
+    latitud: lat,
+    longitud: lng,
+    precision: precisionGps,
+    esUrbana,
+    esNoUrbana: !esUrbana,
+    poligono: 'POLIGONO_URBANO',
+    margenMetros: margenAplicado,
+  })
 
   return {
     latitud: lat,
     longitud: lng,
     es_no_urbana: !esUrbana,
+    fuente: 'gps',
   }
 }
 
 export function clasificarPorFallbackManual(esNoUrbanaManual) {
+  console.log('[geo] fallback manual', {
+    esNoUrbanaManual: Boolean(esNoUrbanaManual),
+  })
+
   return {
     latitud: null,
     longitud: null,
     es_no_urbana: Boolean(esNoUrbanaManual),
+    fuente: 'manual',
   }
 }

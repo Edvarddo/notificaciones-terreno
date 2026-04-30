@@ -44,7 +44,10 @@ ALTER TABLE public.notificaciones_terreno
 ADD COLUMN IF NOT EXISTS comentarios TEXT DEFAULT '',
 ADD COLUMN IF NOT EXISTS es_rebajada BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS rit VARCHAR(20),
-ADD COLUMN IF NOT EXISTS año INTEGER;
+ADD COLUMN IF NOT EXISTS año INTEGER,
+ADD COLUMN IF NOT EXISTS geolocalizacion_fuente TEXT,
+ADD COLUMN IF NOT EXISTS latitud DOUBLE PRECISION,
+ADD COLUMN IF NOT EXISTS longitud DOUBLE PRECISION;
 
 -- 8. PRUEBA: Inserta un registro desde SQL y observa que aparece en MonitoreoLive
 INSERT INTO public.notificaciones_terreno 
