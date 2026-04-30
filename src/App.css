@@ -842,6 +842,46 @@ body {
   align-items: flex-end;
 }
 
+.tribunal-ayuda-lote {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f5f7fa;
+  border: 1px solid #d8dde6;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.tribunal-lista-lote {
+.cantidad-tribunal-input {
+  display: none; /* Removed unused quantity styles */
+}
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.tribunal-item-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tribunal-item-titulo {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-primario);
+}
+
+.tribunal-item-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .tribunal-inline .campo-label {
   margin: 0;
 }
@@ -850,6 +890,17 @@ body {
   margin-top: 0;
   height: 48px;
   align-self: flex-end;
+}
+
+.cantidad-tribunal-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  gap: 8px;
+  align-items: center;
+}
+
+.cantidad-tribunal-input {
+  text-align: center;
 }
 
 .boton-quitar-fila {

@@ -14,6 +14,10 @@ import {
   eliminarOperacionPendiente,
   actualizarOperacionPendiente,
 } from '../lib/offlineQueue'
+import {
+  clasificarPorFallbackManual,
+  determinarSiEsNoUrbanaDesdeGPS,
+} from '../utils/geolocalizacion'
 
 function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const timersMensajesRef = useRef(new Map())
@@ -243,6 +247,14 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   }
 
+  const resolverClasificacionTerreno = async (esNoUrbanaManual) => {
+    try {
+      return await determinarSiEsNoUrbanaDesdeGPS()
+    } catch (error) {
+      return clasificarPorFallbackManual(esNoUrbanaManual)
+    }
+  }
+
   const limpiarMensajes = () => {
     timersMensajesRef.current.forEach((timer) => clearTimeout(timer))
     timersMensajesRef.current.clear()
@@ -296,6 +308,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     const comentariosLimpios = comentarios.trim() || ''
     const ritLimpio = rit?.trim() || ''
     const conTribunal = ritLimpio && año
+    const clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbana)
 
     // Validar que tenga ID DE NOTIFICACIÓN o RIT + AÑO (pero no ambos nulos)
     if (!idLimpio && !conTribunal) {
@@ -350,7 +363,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
               codigo: codigoLimpio,
               observacion: observacionLimpia,
               comentarios: comentariosLimpios,
-              es_no_urbana: Boolean(esNoUrbana),
+              es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
               codigo_lote: codigoLote,
               rit: ritLimpio || null,
               año: año || null,
@@ -394,7 +407,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         codigo: codigoLimpio,
         observacion: observacionLimpia,
         comentarios: comentariosLimpios,
-        es_no_urbana: Boolean(esNoUrbana),
+        es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
         codigo_lote: codigoLote,
         rit: ritLimpio || null,
         año: año || null,
@@ -413,7 +426,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
               codigo: codigoLimpio,
               observacion: observacionLimpia,
               comentarios: comentariosLimpios,
-              es_no_urbana: Boolean(esNoUrbana),
+              es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
               codigo_lote: codigoLote,
               rit: ritLimpio || null,
               año: año || null,
@@ -478,8 +491,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     observacionLote,
     esNoUrbanaLote,
     mostraTribunalLote,
-    ritLote,
-    añoLote,
+    tribunalesLote,
     onSuccess,
     onBeforeError,
   }) => {
@@ -533,14 +545,27 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       return { ok: false, error: msg }
     }
 
-    const ritNormalizado = String(ritLote ?? '').trim()
-    const anioNormalizado = String(añoLote ?? '').trim()
+    const clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbanaLote)
+    const tribunalesNormalizados = (Array.isArray(tribunalesLote) ? tribunalesLote : []).map((item) => ({
+      rit: String(item?.rit ?? '').trim(),
+      año: String(item?.año ?? '').trim(),
+    }))
 
-    if (modoTribunal && (!ritNormalizado || !anioNormalizado)) {
-      const msg = 'Completa RIT y Año para el lote de tribunal'
-      setErrorMsg(msg)
-      await onBeforeError?.()
-      return { ok: false, error: msg }
+    if (modoTribunal) {
+      if (tribunalesNormalizados.length === 0) {
+        const msg = 'Agrega al menos un bloque de tribunal'
+        setErrorMsg(msg)
+        await onBeforeError?.()
+        return { ok: false, error: msg }
+      }
+
+      const bloquesInvalidos = tribunalesNormalizados.filter((item) => !item.rit || !item.año)
+      if (bloquesInvalidos.length > 0) {
+        const msg = 'Completa RIT y Año en cada bloque de tribunal'
+        setErrorMsg(msg)
+        await onBeforeError?.()
+        return { ok: false, error: msg }
+      }
     }
 
     const observacionNormalizada = observacionLote.trim() || '.'
@@ -548,17 +573,31 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     // Generar UUID único para este lote (cada lote escaneado tiene un codigo_lote diferente)
     const idLoteUnico = crypto.randomUUID()
 
-    const filas = (idsNormalizados.length > 0 ? idsNormalizados : [null]).map((id) => ({
-      id_notificacion: modoTribunal ? null : id,
-      fecha_certificacion: fechaCertificacion,
-      hora: horaLote,
-      codigo: codigoNormalizado,
-      observacion: observacionNormalizada,
-      es_no_urbana: Boolean(esNoUrbanaLote),
-      codigo_lote: idLoteUnico,
-      rit: modoTribunal ? ritNormalizado : null,
-      año: modoTribunal ? Number(anioNormalizado) : null,
-    }))
+    const filas = modoTribunal
+      ? tribunalesNormalizados.flatMap((item) =>
+          [{
+            id_notificacion: null,
+            fecha_certificacion: fechaCertificacion,
+            hora: horaLote,
+            codigo: codigoNormalizado,
+            observacion: observacionNormalizada,
+            es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
+            codigo_lote: idLoteUnico,
+            rit: item.rit,
+            año: Number(item.año),
+          }]
+        )
+      : (idsNormalizados.length > 0 ? idsNormalizados : [null]).map((id) => ({
+          id_notificacion: id,
+          fecha_certificacion: fechaCertificacion,
+          hora: horaLote,
+          codigo: codigoNormalizado,
+          observacion: observacionNormalizada,
+          es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
+          codigo_lote: idLoteUnico,
+          rit: null,
+          año: null,
+        }))
     const cantidadFilas = filas.length
 
     if (!navigator.onLine) {

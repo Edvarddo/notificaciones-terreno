@@ -217,6 +217,8 @@ function App() {
       ritLote: lote.ritLote,
       añoLote: lote.añoLote,
       mostraTribunalLote: lote.mostraTribunalLote,
+      cantidadTribunalLote: lote.cantidadTribunalLote,
+      tribunalesLote: lote.tribunalesLote,
       onSuccess: async () => {
         lote.limpiarLote()
         await cerrarDialogoLote()
@@ -525,10 +527,11 @@ function App() {
           onEsNoUrbanaLoteChange={lote.setEsNoUrbanaLote}
           mostraTribunalLote={lote.mostraTribunalLote}
           onMostraTribunalLote={() => lote.setMostraTribunalLote((prev) => !prev)}
-          ritLote={lote.ritLote}
-          onRitLoteChange={lote.setRitLote}
-          añoLote={lote.añoLote}
-          onAñoLoteChange={lote.setAñoLote}
+          tribunalesLote={lote.tribunalesLote}
+          onAgregarTribunalLote={lote.agregarTribunalLote}
+          onCopiarUltimoTribunalLote={lote.copiarUltimoTribunalLote}
+          onQuitarTribunalLote={lote.quitarTribunalLote}
+          onActualizarTribunalLote={lote.actualizarTribunalLote}
           ultimoIdAgregadoLote={ultimoIdAgregadoLote}
           onGuardarLote={guardarLote}
         />

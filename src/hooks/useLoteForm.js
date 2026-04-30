@@ -8,8 +8,7 @@ function useLoteForm() {
   const [observacionLote, setObservacionLote] = useState('')
   const [esNoUrbanaLote, setEsNoUrbanaLote] = useState(false)
   const [mostraTribunalLote, setMostraTribunalLote] = useState(false)
-  const [ritLote, setRitLote] = useState('')
-  const [añoLote, setAñoLote] = useState('')
+  const [tribunalesLote, setTribunalesLote] = useState([{ rit: '', año: '' }])
 
   const OBSERVACIONES_SUGERIDAS = {
     D2: '.',
@@ -64,8 +63,7 @@ function useLoteForm() {
     setObservacionLote('')
     setEsNoUrbanaLote(false)
     setMostraTribunalLote(false)
-    setRitLote('')
-    setAñoLote('')
+    setTribunalesLote([{ rit: '', año: '' }])
   }
 
   const handleHoraLoteChange = (e) => {
@@ -78,6 +76,30 @@ function useLoteForm() {
     handleCodigoLoteChange(limpio.toUpperCase())
   }
 
+  const agregarTribunalLote = () => {
+    setTribunalesLote((prev) => [...prev, { rit: '', año: '' }])
+  }
+
+  const copiarUltimoTribunalLote = () => {
+    setTribunalesLote((prev) => {
+      const ultimo = prev[prev.length - 1] || { rit: '', año: '' }
+      return [...prev, { ...ultimo }]
+    })
+  }
+
+  const quitarTribunalLote = (indexQuitar) => {
+    setTribunalesLote((prev) => {
+      const siguiente = prev.filter((_, index) => index !== indexQuitar)
+      return siguiente.length > 0 ? siguiente : [{ rit: '', año: '' }]
+    })
+  }
+
+  const actualizarTribunalLote = (index, campo, valor) => {
+    setTribunalesLote((prev) =>
+      prev.map((item, itemIndex) => (itemIndex === index ? { ...item, [campo]: valor } : item))
+    )
+  }
+
   return {
     idsTemporales,
     horaLote,
@@ -85,20 +107,22 @@ function useLoteForm() {
     observacionLote,
     esNoUrbanaLote,
     mostraTribunalLote,
-    ritLote,
-    añoLote,
+    tribunalesLote,
     setHoraLote,
     setCodigoLote: handleCodigoLoteChange,
     setObservacionLote,
     setEsNoUrbanaLote,
     setMostraTribunalLote,
-    setRitLote,
-    setAñoLote,
+    setTribunalesLote,
     agregarIdTemporal,
     quitarIdTemporal,
     limpiarLote,
     handleHoraLoteChange,
     handleCodigoLoteManualChange,
+    agregarTribunalLote,
+    copiarUltimoTribunalLote,
+    quitarTribunalLote,
+    actualizarTribunalLote,
   }
 }
 

@@ -27,12 +27,13 @@ function LoteDialog({
   onEsNoUrbanaLoteChange,
   mostraTribunalLote,
   onMostraTribunalLote,
-  ritLote,
-  onRitLoteChange,
-  añoLote,
-  onAñoLoteChange,
+  tribunalesLote,
+  onAgregarTribunalLote,
+  onQuitarTribunalLote,
+  onActualizarTribunalLote,
   onGuardarLote,
   ultimoIdAgregadoLote,
+  onCopiarUltimoTribunalLote,
 }) {
   if (!abierto) return null
 
@@ -120,30 +121,72 @@ function LoteDialog({
             </label>
 
             {mostraTribunalLote && (
-              <div className="tribunal-inline">
-                <label className="campo-label">
-                  RIT
-                  <input
-                    className="input-base"
-                    type="text"
-                    placeholder="Ej: 12-2024-00123"
-                    value={ritLote}
-                    onChange={(e) => onRitLoteChange(e.target.value)}
-                  />
-                </label>
+              <>
+                <div className="tribunal-ayuda-lote">
+                  Cada tarjeta es un caso de tribunal. Usa <strong>+ caso</strong> para agregar otro o <strong>Copiar último</strong> si solo cambia el RIT/Año.
+                </div>
 
-                <label className="campo-label">
-                  Año
-                  <input
-                    className="input-base"
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="Ej: 2024"
-                    value={añoLote}
-                    onChange={(e) => onAñoLoteChange(parseInt(e.target.value) || '')}
-                  />
-                </label>
-              </div>
+                <div className="tribunal-lista-lote">
+                  {tribunalesLote.map((tribunal, index) => (
+                    <div className="tribunal-item-lote" key={`${index}-${tribunal.rit}-${tribunal.año}`}>
+                      <div className="tribunal-item-cabecera">
+                        <span className="tribunal-item-titulo">Caso {index + 1}</span>
+                        <div className="tribunal-item-acciones">
+                          <button
+                            type="button"
+                            className="boton-mini"
+                            onClick={onAgregarTribunalLote}
+                            disabled={guardandoLote}
+                          >
+                            + caso
+                          </button>
+                          <button
+                            type="button"
+                            className="boton-mini"
+                            onClick={onCopiarUltimoTribunalLote}
+                            disabled={guardandoLote}
+                          >
+                            Copiar último
+                          </button>
+                          <button
+                            type="button"
+                            className="boton-mini"
+                            onClick={() => onQuitarTribunalLote(index)}
+                            disabled={guardandoLote || tribunalesLote.length === 1}
+                          >
+                            -
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="tribunal-inline">
+                        <label className="campo-label">
+                          RIT
+                          <input
+                            className="input-base"
+                            type="text"
+                            placeholder="Ej: 12-2024-00123"
+                            value={tribunal.rit}
+                            onChange={(e) => onActualizarTribunalLote(index, 'rit', e.target.value)}
+                          />
+                        </label>
+
+                        <label className="campo-label">
+                          Año
+                          <input
+                            className="input-base"
+                            type="number"
+                            inputMode="numeric"
+                            placeholder="Ej: 2024"
+                            value={tribunal.año}
+                            onChange={(e) => onActualizarTribunalLote(index, 'año', parseInt(e.target.value) || '')}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
 
             <label className="campo-label">
