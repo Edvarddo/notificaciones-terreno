@@ -552,7 +552,6 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       observacion: observacionNormalizada,
       es_no_urbana: Boolean(esNoUrbanaLote),
       codigo_lote: idLoteUnico,
-      id_lote: idLoteUnico,
       rit: mostraTribunalLote ? ritNormalizado : null,
       año: mostraTribunalLote ? Number(anioNormalizado) : null,
     }))

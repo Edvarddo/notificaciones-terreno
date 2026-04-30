@@ -36,13 +36,6 @@ CREATE POLICY allow_delete_public
 -- 6. Verificar que Realtime está habilitado en la tabla
 -- (Normalmente Supabase lo hace por defecto, pero confirma en Table Editor)
 
--- 7. AGREGAR NUEVAS COLUMNAS (si aún no existen)
--- Comentarios: campo de texto para observaciones adicionales (no aparece en CSV)
--- es_rebajada: boolean para controlar si aparece en CSV (true = no aparece en CSV)
--- rit: RIT del tribunal para notificaciones sin ID de notificación
--- año: Año del caso para notificaciones de tribunal
-
--- Hacer id_notificacion nullable para permitir registros de tribunal
 -- Primero: eliminar la restricción NOT NULL si existe
 ALTER TABLE public.notificaciones_terreno ALTER COLUMN id_notificacion DROP NOT NULL;
 
