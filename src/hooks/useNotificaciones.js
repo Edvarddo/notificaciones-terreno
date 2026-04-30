@@ -485,7 +485,9 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   }) => {
     limpiarMensajes()
 
-    if (idsTemporales.length === 0) {
+    const modoTribunal = Boolean(mostraTribunalLote)
+
+    if (idsTemporales.length === 0 && !modoTribunal) {
       const msg = 'No hay IDs en el lote'
       setErrorMsg(msg)
       await onBeforeError?.()
@@ -494,24 +496,26 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     const idsNormalizados = idsTemporales.map((id) => String(id).trim())
 
-    const idsInvalidos = idsNormalizados.filter((id) => !/^\d{1,8}$/.test(id))
-    if (idsInvalidos.length > 0) {
-      const msg = `Hay IDs invalidas en el lote: ${idsInvalidos.join(', ')}`
-      setErrorMsg(msg)
-      await onBeforeError?.()
-      return { ok: false, error: msg }
-    }
+    if (!modoTribunal) {
+      const idsInvalidos = idsNormalizados.filter((id) => !/^\d{1,8}$/.test(id))
+      if (idsInvalidos.length > 0) {
+        const msg = `Hay IDs invalidas en el lote: ${idsInvalidos.join(', ')}`
+        setErrorMsg(msg)
+        await onBeforeError?.()
+        return { ok: false, error: msg }
+      }
 
-    const idsDuplicadasEnLote = idsNormalizados.filter(
-      (id, index) => idsNormalizados.indexOf(id) !== index
-    )
+      const idsDuplicadasEnLote = idsNormalizados.filter(
+        (id, index) => idsNormalizados.indexOf(id) !== index
+      )
 
-    if (idsDuplicadasEnLote.length > 0) {
-      const unicas = [...new Set(idsDuplicadasEnLote)]
-      const msg = `No se puede guardar el lote porque hay IDs repetidas en el lote: ${unicas.join(', ')}`
-      setErrorMsg(msg)
-      await onBeforeError?.()
-      return { ok: false, error: msg }
+      if (idsDuplicadasEnLote.length > 0) {
+        const unicas = [...new Set(idsDuplicadasEnLote)]
+        const msg = `No se puede guardar el lote porque hay IDs repetidas en el lote: ${unicas.join(', ')}`
+        setErrorMsg(msg)
+        await onBeforeError?.()
+        return { ok: false, error: msg }
+      }
     }
 
     if (horaLote.length !== 4) {
@@ -532,7 +536,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     const ritNormalizado = String(ritLote ?? '').trim()
     const anioNormalizado = String(añoLote ?? '').trim()
 
-    if (mostraTribunalLote && (!ritNormalizado || !anioNormalizado)) {
+    if (modoTribunal && (!ritNormalizado || !anioNormalizado)) {
       const msg = 'Completa RIT y Año para el lote de tribunal'
       setErrorMsg(msg)
       await onBeforeError?.()
@@ -544,17 +548,18 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     // Generar UUID único para este lote (cada lote escaneado tiene un codigo_lote diferente)
     const idLoteUnico = crypto.randomUUID()
 
-    const filas = idsNormalizados.map((id) => ({
-      id_notificacion: id,
+    const filas = (idsNormalizados.length > 0 ? idsNormalizados : [null]).map((id) => ({
+      id_notificacion: modoTribunal ? null : id,
       fecha_certificacion: fechaCertificacion,
       hora: horaLote,
       codigo: codigoNormalizado,
       observacion: observacionNormalizada,
       es_no_urbana: Boolean(esNoUrbanaLote),
       codigo_lote: idLoteUnico,
-      rit: mostraTribunalLote ? ritNormalizado : null,
-      año: mostraTribunalLote ? Number(anioNormalizado) : null,
+      rit: modoTribunal ? ritNormalizado : null,
+      año: modoTribunal ? Number(anioNormalizado) : null,
     }))
+    const cantidadFilas = filas.length
 
     if (!navigator.onLine) {
       try {
@@ -571,11 +576,11 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         return { ok: false, error: msg }
       }
 
-      setMensaje(`Lote pendiente de sincronizacion: ${idsTemporales.length} registro(s)`)
+      setMensaje(`Lote pendiente de sincronizacion: ${cantidadFilas} registro(s)`)
       agregarMensajeVisual(
-        idsTemporales.length === 1
+        cantidadFilas === 1
           ? '1 notificación del lote quedó pendiente sin internet.'
-          : `${idsTemporales.length} notificaciones del lote quedaron pendientes sin internet.`,
+          : `${cantidadFilas} notificaciones del lote quedaron pendientes sin internet.`,
         'pendiente'
       )
       await refrescarPendientesSync().catch(() => {})
@@ -583,20 +588,22 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       return { ok: true, offline: true }
     }
 
-    for (const id of idsNormalizados) {
-      try {
-        const yaExiste = await existeIdNotificacionEnFecha(id, fechaCertificacion)
-        if (yaExiste) {
-          const msg = `No se puede guardar el lote porque la ID ${id} ya existe en la base de datos`
+    if (!modoTribunal) {
+      for (const id of idsNormalizados) {
+        try {
+          const yaExiste = await existeIdNotificacionEnFecha(id, fechaCertificacion)
+          if (yaExiste) {
+            const msg = `No se puede guardar el lote porque la ID ${id} ya existe en la base de datos`
+            setErrorMsg(msg)
+            await onBeforeError?.()
+            return { ok: false, error: msg }
+          }
+        } catch (error) {
+          const msg = `No se pudo validar la ID ${id}: ${error.message}`
           setErrorMsg(msg)
           await onBeforeError?.()
           return { ok: false, error: msg }
         }
-      } catch (error) {
-        const msg = `No se pudo validar la ID ${id}: ${error.message}`
-        setErrorMsg(msg)
-        await onBeforeError?.()
-        return { ok: false, error: msg }
       }
     }
 
@@ -622,11 +629,11 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
           return { ok: false, error: msg }
         }
 
-        setMensaje(`Lote pendiente de sincronizacion: ${idsTemporales.length} registro(s)`)
+        setMensaje(`Lote pendiente de sincronizacion: ${cantidadFilas} registro(s)`)
         agregarMensajeVisual(
-          idsTemporales.length === 1
+          cantidadFilas === 1
             ? '1 notificación del lote quedó pendiente sin internet.'
-            : `${idsTemporales.length} notificaciones del lote quedaron pendientes sin internet.`,
+            : `${cantidadFilas} notificaciones del lote quedaron pendientes sin internet.`,
           'pendiente'
         )
         await refrescarPendientesSync().catch(() => {})
@@ -644,7 +651,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
 
     setGuardandoLote(false)
-    setMensaje(`Lote guardado: ${idsTemporales.length} registro(s)`)
+    setMensaje(`Lote guardado: ${cantidadFilas} registro(s)`)
     await onSuccess?.()
     await cargar()
     return { ok: true }
