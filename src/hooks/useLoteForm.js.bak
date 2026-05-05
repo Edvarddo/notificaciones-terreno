@@ -1,0 +1,5 @@
+  const OBSERVACIONES_SUGERIDAS = {
+    D2: '.',
+    E1: 'Se notifica personalmente en terreno',
+    B3: 'Se deja aviso',
+  }

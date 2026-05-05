@@ -23,11 +23,16 @@ function RegistroTable({
   const [esNoUrbanaEdit, setEsNoUrbanaEdit] = useState(false)
   const [observacionEdit, setObservacionEdit] = useState('')
   const [comentariosEdit, setComentariosEdit] = useState('')
+  const [codigoLoteEdit, setCodigoLoteEdit] = useState('')
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
   const [modalObservacionAbierta, setModalObservacionAbierta] = useState(false)
   const [observacionModalEdit, setObservacionModalEdit] = useState('')
   const [modalComentariosAbierta, setModalComentariosAbierta] = useState(false)
   const [comentariosModalEdit, setComentariosModalEdit] = useState('')
+  const [guardadoId, setGuardadoId] = useState(null)
+  const [seleccionados, setSeleccionados] = useState(new Set())
+  const [codigoLoteGlobal, setCodigoLoteGlobal] = useState('')
+  const [asignandoGlobal, setAsignandoGlobal] = useState(false)
 
   const iniciarEdicion = (registro) => {
     setEditandoId(registro.id)
@@ -36,6 +41,7 @@ function RegistroTable({
     setEsNoUrbanaEdit(registro.es_no_urbana || false)
     setObservacionEdit(registro.observacion || '')
     setComentariosEdit(registro.comentarios || '')
+    setCodigoLoteEdit(registro.codigo_lote || '')
   }
 
   const cancelarEdicion = () => {
@@ -45,6 +51,7 @@ function RegistroTable({
     setEsNoUrbanaEdit(false)
     setObservacionEdit('')
     setComentariosEdit('')
+    setCodigoLoteEdit('')
     setDialogoCodigoAbierto(false)
     setModalObservacionAbierta(false)
     setObservacionModalEdit('')
@@ -90,6 +97,7 @@ function RegistroTable({
       es_no_urbana: esNoUrbanaEdit,
       observacion: observacionEdit,
       comentarios: comentariosEdit,
+      codigo_lote: codigoLoteEdit,
     })
 
     if (ok?.ok) {
@@ -100,7 +108,56 @@ function RegistroTable({
     }
   }
 
-  const [guardadoId, setGuardadoId] = useState(null)
+  const toggleSeleccion = (id) => {
+    const nuevos = new Set(seleccionados)
+    if (nuevos.has(id)) {
+      nuevos.delete(id)
+    } else {
+      nuevos.add(id)
+    }
+    setSeleccionados(nuevos)
+  }
+
+  const toggleSeleccionarTodos = () => {
+    if (seleccionados.size === registros.length) {
+      setSeleccionados(new Set())
+    } else {
+      setSeleccionados(new Set(registros.map((r) => r.id)))
+    }
+  }
+
+  const asignarLoteGlobal = async () => {
+    if (!codigoLoteGlobal.trim()) {
+      alert('Por favor ingresa un código de lote')
+      return
+    }
+
+    if (seleccionados.size === 0) {
+      alert('Por favor selecciona al menos un registro')
+      return
+    }
+
+    setAsignandoGlobal(true)
+
+    for (const id of seleccionados) {
+      const registro = registros.find((r) => r.id === id)
+      if (registro) {
+        await onActualizarRegistro({
+          id,
+          codigo: registro.codigo,
+          hora: registro.hora,
+          es_no_urbana: registro.es_no_urbana,
+          observacion: registro.observacion,
+          comentarios: registro.comentarios,
+          codigo_lote: codigoLoteGlobal.trim(),
+        })
+      }
+    }
+
+    setSeleccionados(new Set())
+    setCodigoLoteGlobal('')
+    setAsignandoGlobal(false)
+  }
 
   const codigoLimpioView = (codigo) => String(codigo || '').trim().toUpperCase()
 
@@ -199,14 +256,60 @@ function RegistroTable({
       {registros.length === 0 ? (
         <div className="card-vacia">No hay registros cargados.</div>
       ) : (
-        <div className="tabla-wrapper tabla-wrapper-registros">
-          <table className="tabla-registros tabla-registros-ancha">
+        <>
+          {seleccionados.size > 0 && (
+            <div className="panel-asignar-lote">
+              <div className="panel-asignar-contenido">
+                <div className="panel-asignar-info">
+                  <span className="panel-asignar-titulo">Asignar lote en bulk</span>
+                  <span className="panel-asignar-count">{seleccionados.size} registros seleccionados</span>
+                </div>
+                <div className="panel-asignar-inputs">
+                  <input
+                    type="text"
+                    className="input-lote-global"
+                    placeholder="Ingresa el código de lote"
+                    value={codigoLoteGlobal}
+                    onChange={(e) => setCodigoLoteGlobal(e.target.value)}
+                    disabled={asignandoGlobal}
+                  />
+                  <button
+                    type="button"
+                    className="boton-asignar-lote"
+                    onClick={asignarLoteGlobal}
+                    disabled={asignandoGlobal}
+                  >
+                    {asignandoGlobal ? 'Asignando...' : 'Asignar'}
+                  </button>
+                  <button
+                    type="button"
+                    className="boton-cancelar-seleccion"
+                    onClick={() => setSeleccionados(new Set())}
+                    disabled={asignandoGlobal}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="tabla-wrapper tabla-wrapper-registros">
+            <table className="tabla-registros tabla-registros-ancha">
             <thead>
               <tr>
+                <th className="th-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={registros.length > 0 && seleccionados.size === registros.length}
+                    onChange={toggleSeleccionarTodos}
+                    title="Seleccionar todos"
+                  />
+                </th>
                 <th>ID / RIT</th>
                 <th>CÓDIGO</th>
                 <th>HORA</th>
                 <th>TIPO</th>
+                <th>LOTE</th>
                 <th>OBSERVACIÓN</th>
                 <th>COMENTARIOS</th>
                 <th>ACCIÓN</th>
@@ -217,7 +320,15 @@ function RegistroTable({
                 const enEdicion = editandoId === r.id
 
                 return (
-                  <tr key={r.id} className={`${enEdicion ? 'fila-editando' : ''} ${r.es_rebajada ? 'fila-rebajada' : ''}`.trim()}>
+                  <tr key={r.id} className={`${enEdicion ? 'fila-editando' : ''} ${r.es_rebajada ? 'fila-rebajada' : ''} ${seleccionados.has(r.id) ? 'fila-seleccionada' : ''}`.trim()}>
+                    <td className="td-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={seleccionados.has(r.id)}
+                        onChange={() => toggleSeleccion(r.id)}
+                        disabled={enEdicion}
+                      />
+                    </td>
                     <td className="td-id td-id-fija">
                       {r.id_notificacion ? (
                         <IdHighlight value={r.id_notificacion} />
@@ -230,15 +341,24 @@ function RegistroTable({
 
                     <td className="td-codigo td-codigo-editable">
                       {enEdicion ? (
-                        <button
-                          type="button"
-                          className="codigo-selector-boton"
-                          onClick={() => setDialogoCodigoAbierto(true)}
-                          title="Seleccionar código"
-                        >
-                          <span className="codigo-badge">{codigoLimpioView(codigoEdit) || 'SELECCIONAR'}</span>
-                          <span className="codigo-selector-texto">Cambiar código</span>
-                        </button>
+                        <div className="codigo-input-wrapper">
+                          <input
+                            className="input-tabla input-codigo-editable"
+                            type="text"
+                            value={codigoEdit}
+                            onChange={(e) => setCodigoEdit(e.target.value.toUpperCase())}
+                            placeholder="Código o escribir"
+                            title="Escribe el código o abre el diálogo para seleccionar"
+                          />
+                          <button
+                            type="button"
+                            className="boton-codigo-dialogo"
+                            onClick={() => setDialogoCodigoAbierto(true)}
+                            title="Seleccionar código del diálogo"
+                          >
+                            🔍
+                          </button>
+                        </div>
                       ) : (
                         <span className="codigo-badge">{codigoLimpioView(r.codigo)}</span>
                       )}
@@ -276,6 +396,20 @@ function RegistroTable({
                         <span className={`tipo-badge tipo-${r.es_no_urbana ? 'rural' : 'urbana'}`}>
                           {r.es_no_urbana ? 'RURAL' : 'URB'}
                         </span>
+                      )}
+                    </td>
+
+                    <td className="td-lote">
+                      {enEdicion ? (
+                        <input
+                          className="input-tabla input-lote"
+                          type="text"
+                          value={codigoLoteEdit}
+                          placeholder="Código lote"
+                          onChange={(e) => setCodigoLoteEdit(e.target.value)}
+                        />
+                      ) : (
+                        <span className="codigo-lote-badge">{r.codigo_lote || '--'}</span>
                       )}
                     </td>
 
@@ -351,7 +485,8 @@ function RegistroTable({
               })}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       <CodigoDialog

@@ -9,11 +9,20 @@ function useLoteForm() {
   const [esNoUrbanaLote, setEsNoUrbanaLote] = useState(false)
   const [mostraTribunalLote, setMostraTribunalLote] = useState(false)
   const [tribunalesLote, setTribunalesLote] = useState([{ rit: '', año: '' }])
+  const [a1Option, setA1Option] = useState('')
+  const [a1Desde, setA1Desde] = useState('')
+  const [a1Hasta, setA1Hasta] = useState('')
 
   const OBSERVACIONES_SUGERIDAS = {
     D2: '.',
     E1: 'Se notifica personalmente en terreno',
     B3: 'Se deja aviso',
+    B7: 'Se deja aviso',
+    A1: [
+      'RANGO DE DIRECCIONES',
+      'COMIENZA EL RANGO DE NUMERACIÓN DESDE',
+      'TERMINA EL RANGO DE NUMERACIÓN EN',
+    ],
   }
 
   const obtenerObservacionSugerida = (codigoValue) => {
@@ -25,14 +34,76 @@ function useLoteForm() {
     const sugerenciaActual = obtenerObservacionSugerida(codigoLote)
     const sugerenciaNueva = obtenerObservacionSugerida(codigoLimpio)
 
+    const sugerenciaActualNorm = Array.isArray(sugerenciaActual) ? (sugerenciaActual[0] || '') : sugerenciaActual
     setCodigoLoteState(codigoLimpio)
 
     if (sugerenciaNueva) {
-      if (!observacionLote.trim() || observacionLote === sugerenciaActual) {
-        setObservacionLote(sugerenciaNueva)
+      if (Array.isArray(sugerenciaNueva)) {
+        const primera = sugerenciaNueva[0] || ''
+        if (!observacionLote.trim() || observacionLote === sugerenciaActualNorm) {
+          setObservacionLote(primera)
+        }
+        // keep A1 option in sync
+        setA1Option(primera)
+        setA1Desde('')
+        setA1Hasta('')
+      } else {
+        if (!observacionLote.trim() || observacionLote === sugerenciaActualNorm) {
+          setObservacionLote(sugerenciaNueva)
+        }
+        // clear any previous A1 state when not A1
+        setA1Option('')
+        setA1Desde('')
+        setA1Hasta('')
       }
-    } else if (observacionLote.trim() && observacionLote === sugerenciaActual) {
+    } else if (observacionLote.trim() && observacionLote === sugerenciaActualNorm) {
       setObservacionLote('')
+    }
+  }
+
+  const construirObservacionA1 = (option, desde, hasta) => {
+    if (!option) return ''
+    if (option === 'RANGO DE DIRECCIONES') {
+      if (desde && hasta) return `RANGO DE DIRECCIONES: ${desde} - ${hasta}`
+      if (desde) return `RANGO DE DIRECCIONES desde ${desde}`
+      if (hasta) return `RANGO DE DIRECCIONES hasta ${hasta}`
+      return 'RANGO DE DIRECCIONES'
+    }
+    if (option === 'COMIENZA EL RANGO DE NUMERACIÓN DESDE') {
+      return desde ? `COMIENZA EL RANGO DE NUMERACIÓN DESDE ${desde}` : 'COMIENZA EL RANGO DE NUMERACIÓN DESDE'
+    }
+    if (option === 'TERMINA EL RANGO DE NUMERACIÓN EN') {
+      return hasta ? `TERMINA EL RANGO DE NUMERACIÓN EN ${hasta}` : 'TERMINA EL RANGO DE NUMERACIÓN EN'
+    }
+    return option
+  }
+
+  const handleA1OptionChange = (option) => {
+    const anterior = construirObservacionA1(a1Option, a1Desde, a1Hasta)
+    setA1Option(option)
+    const nueva = construirObservacionA1(option, a1Desde, a1Hasta)
+    if (!observacionLote.trim() || observacionLote === anterior) {
+      setObservacionLote(nueva)
+    }
+  }
+
+  const handleA1DesdeChange = (valor) => {
+    const limpio = String(valor ?? '').trim()
+    const anterior = construirObservacionA1(a1Option, a1Desde, a1Hasta)
+    setA1Desde(limpio)
+    const nueva = construirObservacionA1(a1Option, limpio, a1Hasta)
+    if (!observacionLote.trim() || observacionLote === anterior) {
+      setObservacionLote(nueva)
+    }
+  }
+
+  const handleA1HastaChange = (valor) => {
+    const limpio = String(valor ?? '').trim()
+    const anterior = construirObservacionA1(a1Option, a1Desde, a1Hasta)
+    setA1Hasta(limpio)
+    const nueva = construirObservacionA1(a1Option, a1Desde, limpio)
+    if (!observacionLote.trim() || observacionLote === anterior) {
+      setObservacionLote(nueva)
     }
   }
 
@@ -123,6 +194,12 @@ function useLoteForm() {
     copiarUltimoTribunalLote,
     quitarTribunalLote,
     actualizarTribunalLote,
+    a1Option,
+    a1Desde,
+    a1Hasta,
+    handleA1OptionChange,
+    handleA1DesdeChange,
+    handleA1HastaChange,
   }
 }
 

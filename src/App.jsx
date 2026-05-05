@@ -532,6 +532,12 @@ function App() {
           onCopiarUltimoTribunalLote={lote.copiarUltimoTribunalLote}
           onQuitarTribunalLote={lote.quitarTribunalLote}
           onActualizarTribunalLote={lote.actualizarTribunalLote}
+          a1Option={lote.a1Option}
+          a1Desde={lote.a1Desde}
+          a1Hasta={lote.a1Hasta}
+          onA1OptionChange={lote.handleA1OptionChange}
+          onA1DesdeChange={lote.handleA1DesdeChange}
+          onA1HastaChange={lote.handleA1HastaChange}
           ultimoIdAgregadoLote={ultimoIdAgregadoLote}
           onGuardarLote={guardarLote}
         />

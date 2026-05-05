@@ -34,6 +34,12 @@ function LoteDialog({
   onGuardarLote,
   ultimoIdAgregadoLote,
   onCopiarUltimoTribunalLote,
+  a1Option,
+  a1Desde,
+  a1Hasta,
+  onA1OptionChange,
+  onA1DesdeChange,
+  onA1HastaChange,
 }) {
   if (!abierto) return null
 
@@ -105,6 +111,63 @@ function LoteDialog({
                 </button>
               </div>
             ) : null}
+
+            {codigoLoteVista === 'A1' && (
+              <div className="a1-opciones-box">
+                <label className="campo-label">A1 — opciones</label>
+                <input
+                  className="input-base"
+                  list="a1-options"
+                  placeholder="Elija o escriba una opción"
+                  value={a1Option}
+                  onChange={(e) => onA1OptionChange(e.target.value)}
+                />
+                <datalist id="a1-options">
+                  <option value="RANGO DE DIRECCIONES">RANGO DE DIRECCIONES</option>
+                  <option value="COMIENZA EL RANGO DE NUMERACIÓN DESDE">COMIENZA EL RANGO DE NUMERACIÓN DESDE</option>
+                  <option value="TERMINA EL RANGO DE NUMERACIÓN EN">TERMINA EL RANGO DE NUMERACIÓN EN</option>
+                </datalist>
+
+                {a1Option === 'RANGO DE DIRECCIONES' && (
+                  <div className="a1-range-inline">
+                    <input
+                      className="input-base"
+                      placeholder="Desde"
+                      value={a1Desde}
+                      onChange={(e) => onA1DesdeChange(e.target.value)}
+                    />
+                    <input
+                      className="input-base"
+                      placeholder="Hasta"
+                      value={a1Hasta}
+                      onChange={(e) => onA1HastaChange(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {a1Option === 'COMIENZA EL RANGO DE NUMERACIÓN DESDE' && (
+                  <div>
+                    <input
+                      className="input-base"
+                      placeholder="Desde"
+                      value={a1Desde}
+                      onChange={(e) => onA1DesdeChange(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {a1Option === 'TERMINA EL RANGO DE NUMERACIÓN EN' && (
+                  <div>
+                    <input
+                      className="input-base"
+                      placeholder="Hasta"
+                      value={a1Hasta}
+                      onChange={(e) => onA1HastaChange(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="lote-formulario">
