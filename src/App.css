@@ -143,9 +143,9 @@
 }
 
 .consulta-historico-hero {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 16px;
   padding: 18px;
   border-radius: 18px;
@@ -208,7 +208,8 @@
 }
 
 .consulta-filtro-barra {
-  display: flex;
+  display: block;
+  width: 100%;
 }
 
 .consulta-filtros-grid {
@@ -216,6 +217,294 @@
   grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
   gap: 10px;
   width: 100%;
+}
+
+.consulta-filtro-unico {
+  grid-template-columns: 1fr;
+}
+
+.consulta-filtro-fecha {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  min-width: 0;
+}
+
+.consulta-filtro-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primario);
+}
+
+.consulta-filtro-select {
+  width: 100%;
+  min-width: 280px;
+}
+
+/* Layout específico para la página de consulta en pantallas grandes */
+.consulta-contenedor-web {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.consulta-contenedor-web-ancha {
+  min-width: 0;
+}
+
+.consulta-contenedor-web-ancha .consulta-historico-hero {
+  width: 100%;
+}
+
+.consulta-contenedor-web-ancha .consulta-resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.consulta-mapa-panel {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--color-borde);
+  background: linear-gradient(135deg, #fbfdff, #f4f8fc);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+}
+
+.consulta-mapa-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.consulta-mapa-header h3 {
+  margin: 4px 0 0;
+  color: var(--color-primario);
+  font-size: 20px;
+}
+
+.consulta-mapa-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-texto);
+}
+
+.leyenda-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.leyenda-urbana {
+  background: #1f6f8b;
+}
+
+.leyenda-rural {
+  background: #c62828;
+}
+
+.consulta-mapa-wrap {
+  width: 100%;
+  height: 460px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--color-borde);
+  background: #eef3f7;
+}
+
+.consulta-mapa {
+  width: 100%;
+  height: 100%;
+}
+
+.consulta-mapa-vacio {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  padding: 20px;
+  text-align: center;
+}
+
+.consulta-mapa-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-texto);
+}
+
+.consulta-mapa-popup strong {
+  color: var(--color-primario);
+}
+
+.consulta-mapa-popup-observacion {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-borde);
+}
+
+.consulta-mapa-divicon {
+  background: transparent;
+  border: none;
+}
+
+.consulta-mapa-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translate(-50%, -100%);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.consulta-mapa-marker-numero {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.24);
+}
+
+.consulta-mapa-marker-lote {
+  min-width: 56px;
+  max-width: 80px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  color: #334155;
+  font-size: 10px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.consulta-mapa-marker.marker-urbana .consulta-mapa-marker-numero {
+  background: #1f6f8b;
+}
+
+.consulta-mapa-marker.marker-rural .consulta-mapa-marker-numero {
+  background: #c62828;
+}
+
+.consulta-contenedor-web-ancha .consulta-filtros-grid {
+  grid-template-columns: minmax(300px, 420px);
+}
+
+.consulta-contenedor-web-ancha .consulta-resumen-diario {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.consulta-contenedor-web-ancha .consulta-tabla-wrapper {
+  width: 100%;
+  min-width: 0;
+}
+
+.consulta-contenedor-web-ancha .tabla-historico {
+  width: 100%;
+  min-width: 0;
+}
+
+.consulta-contenedor-web .consulta-resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.consulta-contenedor-web .consulta-filtros-grid {
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+}
+
+.consulta-contenedor-web .consulta-resumen-diario {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.consulta-dia-card {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-borde);
+  background: var(--color-blanco);
+}
+
+.contenedor.contenedor-consulta {
+  max-width: none;
+  width: 100%;
+  padding: 20px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.contenedor.contenedor-consulta .consulta-tabla-wrapper {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.contenedor.contenedor-consulta .tabla-historico {
+  width: 100%;
+  min-width: 100%;
+}
+
+.contenedor.contenedor-consulta .consulta-resumen-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.contenedor.contenedor-consulta .consulta-historico-hero {
+  align-items: center;
+}
+
+.contenedor.contenedor-consulta .consulta-descripcion {
+  max-width: 760px;
+}
+
+.contenedor.contenedor-consulta .consulta-resumen-diario {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.contenedor.contenedor-consulta .consulta-filtro-fecha {
+  max-width: 520px;
+}
+
+.contenedor.contenedor-consulta .consulta-historico-hero,
+.contenedor.contenedor-consulta .consulta-resumen-card,
+.contenedor.contenedor-consulta .consulta-dia-card {
+  min-width: 0;
 }
 
 .consulta-resumen-diario {

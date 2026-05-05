@@ -14,6 +14,19 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
   const ZOOM_MAX = 3
   const ZOOM_STEP = 0.25
 
+  const centrarLector = () => {
+    if (typeof document === 'undefined') return
+
+    const contenedor = document.getElementById(qrRegionId)
+    const objetivo = contenedor?.closest('.qr-inline') || contenedor
+
+    objetivo?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'nearest',
+    })
+  }
+
   const handleDecoded = async (decodedText) => {
     const now = Date.now()
     if (decodedText === lastCodeRef.current && now - lastTimeRef.current < DEBOUNCE_MS) return
@@ -122,8 +135,14 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
       return
     }
 
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      onError?.('La cámara requiere una conexión segura (HTTPS). Abre la app por HTTPS en el dispositivo para usar el QR.')
+      return
+    }
+
     startingRef.current = true
     setEscaneando(true)
+    window.requestAnimationFrame(() => centrarLector())
 
     const iniciar = async () => {
       try {
@@ -131,6 +150,7 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
         instanceRef.current = html5Qr
         const config = { fps: 10, qrbox: { width: 300, height: 300 }, disableFlip: false }
         await iniciarConCamara(html5Qr, config)
+        window.setTimeout(() => centrarLector(), 100)
       } catch (error) {
         onError?.(`No se pudo iniciar la cámara: ${error?.message || error}`)
         setEscaneando(false)

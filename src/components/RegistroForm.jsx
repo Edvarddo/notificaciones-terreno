@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import IconQr from './IconQr'
 import IconList from './IconList'
 import IconTribunal from './IconTribunal'
@@ -34,7 +35,23 @@ function RegistroForm({
   onEliminarUltimo,
   onAbrirLote,
   dialogoLoteAbierto,
+  a1Caso,
+  a1Valor1,
+  a1Valor2,
+  a1Casos,
+  onA1CasoChange,
+  onA1Valor1Change,
+  onA1Valor2Change,
 }) {
+  useEffect(() => {
+    if (escaneando) {
+      const contenedor = document.querySelector('.qr-inline:not(.qr-inline-oculto)')
+      if (contenedor) {
+        contenedor.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+      }
+    }
+  }, [escaneando])
+
   return (
     <form
       onSubmit={(e) => {
@@ -169,6 +186,69 @@ function RegistroForm({
           <strong>{codigoLimpioVista}:</strong> codigo ingresado manualmente
         </div>
       ) : null}
+
+      {codigoLimpioVista === 'A1' && (
+        <div className="a1-opciones-box">
+          <label className="campo-label">A1 — tipo de caso</label>
+          <select
+            className="input-base"
+            value={a1Caso}
+            onChange={(e) => onA1CasoChange(e.target.value)}
+          >
+            <option value="">Seleccione un caso</option>
+            {Object.entries(a1Casos).map(([key, caso]) => (
+              <option key={key} value={key}>
+                {caso.etiqueta}
+              </option>
+            ))}
+          </select>
+
+          {a1Caso === 'SALTO' && (
+            <div className="a1-range-inline">
+              <input
+                className="input-base"
+                placeholder="Dirección inicial"
+                value={a1Valor1}
+                onChange={(e) => onA1Valor1Change(e.target.value)}
+              />
+              <input
+                className="input-base"
+                placeholder="Dirección final"
+                value={a1Valor2}
+                onChange={(e) => onA1Valor2Change(e.target.value)}
+              />
+            </div>
+          )}
+
+          {a1Caso === 'INFERIOR' && (
+            <div>
+              <input
+                className="input-base"
+                placeholder="Numeración de referencia"
+                value={a1Valor1}
+                onChange={(e) => onA1Valor1Change(e.target.value)}
+              />
+            </div>
+          )}
+
+          {a1Caso === 'SUPERIOR' && (
+            <div>
+              <input
+                className="input-base"
+                placeholder="Numeración de referencia"
+                value={a1Valor1}
+                onChange={(e) => onA1Valor1Change(e.target.value)}
+              />
+            </div>
+          )}
+
+          {a1Caso === 'SIN_ORDEN' && (
+            <div className="a1-ayuda-caso">
+              Caso sin numeración ingresable. Se generará un comentario formal común.
+            </div>
+          )}
+        </div>
+      )}
 
       <label className="campo-label">
         Observacion

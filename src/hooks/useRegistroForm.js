@@ -9,9 +9,47 @@ function useRegistroForm() {
   const [mostraTribunal, setMostraTribunal] = useState(false)
   const [rit, setRit] = useState('')
   const [año, setAño] = useState('')
-  const [a1Option, setA1Option] = useState('')
-  const [a1Desde, setA1Desde] = useState('')
-  const [a1Hasta, setA1Hasta] = useState('')
+  const [a1Caso, setA1Caso] = useState('')
+  const [a1Valor1, setA1Valor1] = useState('')
+  const [a1Valor2, setA1Valor2] = useState('')
+
+  const A1_CASOS = {
+    SALTO: {
+      etiqueta: 'Salto de numeración desde XXXX hasta YYYY',
+      requiere: 2,
+      build: (valor1, valor2) => {
+        if (valor1 && valor2) return `Se constata salto de numeración desde ${valor1} hasta ${valor2}.`
+        if (valor1) return `Se constata salto de numeración desde ${valor1}.`
+        return 'Se constata salto de numeración.'
+      },
+    },
+    INFERIOR: {
+      etiqueta: 'Numeración inferior a XXXX',
+      requiere: 1,
+      build: (valor1) => {
+        if (valor1) {
+          return `Se constata numeración de referencia ${valor1}; se busca una numeración inferior a esa.`
+        }
+        return 'Se constata numeración de referencia para búsqueda inferior.'
+      },
+    },
+    SUPERIOR: {
+      etiqueta: 'Numeración superior a XXXX',
+      requiere: 1,
+      build: (valor1) => {
+        if (valor1) {
+          return `Se constata numeración de referencia ${valor1}; se busca una numeración superior a esa.`
+        }
+        return 'Se constata numeración de referencia para búsqueda superior.'
+      },
+    },
+    SIN_ORDEN: {
+      etiqueta: 'Numeración no definida en el área',
+      requiere: 0,
+      build: () =>
+        'Se constata que la numeración no se encuentra y no existe un orden definido en el área.',
+    },
+  }
 
   const OBSERVACIONES_SUGERIDAS = {
     D2: '.',
@@ -21,11 +59,7 @@ function useRegistroForm() {
 
   // Añadir B7 y A1 (A1 como opciones)
   OBSERVACIONES_SUGERIDAS.B7 = 'Se deja aviso'
-  OBSERVACIONES_SUGERIDAS.A1 = [
-    'RANGO DE DIRECCIONES',
-    'COMIENZA EL RANGO DE NUMERACIÓN DESDE',
-    'TERMINA EL RANGO DE NUMERACIÓN EN',
-  ]
+  OBSERVACIONES_SUGERIDAS.A1 = Object.values(A1_CASOS).map((caso) => caso.etiqueta)
 
   const obtenerObservacionSugerida = (codigoValue) => {
     return OBSERVACIONES_SUGERIDAS[codigoValue.trim().toUpperCase()] || ''
@@ -41,67 +75,57 @@ function useRegistroForm() {
 
     if (sugerenciaNueva) {
       if (Array.isArray(sugerenciaNueva)) {
-        const primera = sugerenciaNueva[0] || ''
+        const casoInicial = 'SALTO'
+        const textoInicial = A1_CASOS[casoInicial].build('', '')
         if (!observacion.trim() || observacion === sugerenciaActualNorm) {
-          setObservacion(primera)
+          setObservacion(textoInicial)
         }
-        setA1Option(primera)
-        setA1Desde('')
-        setA1Hasta('')
+        setA1Caso(casoInicial)
+        setA1Valor1('')
+        setA1Valor2('')
       } else {
         if (!observacion.trim() || observacion === sugerenciaActualNorm) {
           setObservacion(sugerenciaNueva)
         }
-        setA1Option('')
-        setA1Desde('')
-        setA1Hasta('')
+        setA1Caso('')
+        setA1Valor1('')
+        setA1Valor2('')
       }
     } else if (observacion.trim() && observacion === sugerenciaActualNorm) {
       setObservacion('')
     }
   }
 
-  const construirObservacionA1 = (option, desde, hasta) => {
-    if (!option) return ''
-    if (option === 'RANGO DE DIRECCIONES') {
-      if (desde && hasta) return `RANGO DE DIRECCIONES: ${desde} - ${hasta}`
-      if (desde) return `RANGO DE DIRECCIONES desde ${desde}`
-      if (hasta) return `RANGO DE DIRECCIONES hasta ${hasta}`
-      return 'RANGO DE DIRECCIONES'
-    }
-    if (option === 'COMIENZA EL RANGO DE NUMERACIÓN DESDE') {
-      return desde ? `COMIENZA EL RANGO DE NUMERACIÓN DESDE ${desde}` : 'COMIENZA EL RANGO DE NUMERACIÓN DESDE'
-    }
-    if (option === 'TERMINA EL RANGO DE NUMERACIÓN EN') {
-      return hasta ? `TERMINA EL RANGO DE NUMERACIÓN EN ${hasta}` : 'TERMINA EL RANGO DE NUMERACIÓN EN'
-    }
-    return option
+  const construirObservacionA1 = (caso, valor1, valor2) => {
+    const casoActual = A1_CASOS[caso]
+    if (!casoActual) return ''
+    return casoActual.build(valor1, valor2)
   }
 
-  const handleA1OptionChange = (option) => {
-    const anterior = construirObservacionA1(a1Option, a1Desde, a1Hasta)
-    setA1Option(option)
-    const nueva = construirObservacionA1(option, a1Desde, a1Hasta)
+  const handleA1CasoChange = (caso) => {
+    const anterior = construirObservacionA1(a1Caso, a1Valor1, a1Valor2)
+    setA1Caso(caso)
+    const nueva = construirObservacionA1(caso, '', '')
     if (!observacion.trim() || observacion === anterior) {
       setObservacion(nueva)
     }
   }
 
-  const handleA1DesdeChange = (valor) => {
+  const handleA1Valor1Change = (valor) => {
     const limpio = String(valor ?? '').trim()
-    const anterior = construirObservacionA1(a1Option, a1Desde, a1Hasta)
-    setA1Desde(limpio)
-    const nueva = construirObservacionA1(a1Option, limpio, a1Hasta)
+    const anterior = construirObservacionA1(a1Caso, a1Valor1, a1Valor2)
+    setA1Valor1(limpio)
+    const nueva = construirObservacionA1(a1Caso, limpio, a1Valor2)
     if (!observacion.trim() || observacion === anterior) {
       setObservacion(nueva)
     }
   }
 
-  const handleA1HastaChange = (valor) => {
+  const handleA1Valor2Change = (valor) => {
     const limpio = String(valor ?? '').trim()
-    const anterior = construirObservacionA1(a1Option, a1Desde, a1Hasta)
-    setA1Hasta(limpio)
-    const nueva = construirObservacionA1(a1Option, a1Desde, limpio)
+    const anterior = construirObservacionA1(a1Caso, a1Valor1, a1Valor2)
+    setA1Valor2(limpio)
+    const nueva = construirObservacionA1(a1Caso, a1Valor1, limpio)
     if (!observacion.trim() || observacion === anterior) {
       setObservacion(nueva)
     }
@@ -116,6 +140,9 @@ function useRegistroForm() {
     setMostraTribunal(false)
     setRit('')
     setAño('')
+    setA1Caso('')
+    setA1Valor1('')
+    setA1Valor2('')
   }
 
   const handleCodigoManualChange = (e) => {
@@ -132,6 +159,13 @@ function useRegistroForm() {
     mostraTribunal,
     rit,
     año,
+    a1Caso,
+    a1Valor1,
+    a1Valor2,
+    a1Casos: A1_CASOS,
+    handleA1CasoChange,
+    handleA1Valor1Change,
+    handleA1Valor2Change,
     setIdNotificacion,
     setCodigo,
     setObservacion,

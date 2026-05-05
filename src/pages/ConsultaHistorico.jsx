@@ -1,15 +1,25 @@
 import { useState, useEffect } from 'react'
 import { obtenerRegistros } from '../services/notificaciones'
+import ConsultaMapa from '../components/ConsultaMapa'
+
+const CODIGOS_EXITOSOS = new Set(['D2', 'D4', 'E1'])
+const CODIGOS_BUSQUEDA = new Set(['B3', 'B7', 'B10'])
+const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B5'])
 
 export default function ConsultaHistorico({ onVolver }) {
   const [registros, setRegistros] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
-  const [filtro, setFiltro] = useState('')
-  const [fechaDesde, setFechaDesde] = useState('')
-  const [fechaHasta, setFechaHasta] = useState('')
-  const [tipoFiltro, setTipoFiltro] = useState('todos')
-  const [codigoFiltro, setCodigoFiltro] = useState('')
+  const hoy = (() => {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  })()
+  // Por defecto filtrar por hoy
+  const [fechaDesde, setFechaDesde] = useState(hoy)
+  const [fechaHasta, setFechaHasta] = useState(hoy)
 
   useEffect(() => {
     cargarHistorico()
@@ -51,30 +61,10 @@ export default function ConsultaHistorico({ onVolver }) {
   }
 
   const registrosFiltrados = registros.filter((reg) => {
-    const texto = filtro.toLowerCase()
-    const codigoTexto = codigoFiltro.trim().toLowerCase()
     const fechaRegistro = reg.fecha_certificacion || ''
-
     const coincideFechaDesde = !fechaDesde || fechaRegistro >= fechaDesde
     const coincideFechaHasta = !fechaHasta || fechaRegistro <= fechaHasta
-    const coincideTipo =
-      tipoFiltro === 'todos' ||
-      (tipoFiltro === 'rural' && reg.es_no_urbana) ||
-      (tipoFiltro === 'urbana' && !reg.es_no_urbana)
-    const coincideCodigo = !codigoTexto || String(reg.codigo || '').toLowerCase().includes(codigoTexto)
-
-    return (
-      coincideFechaDesde &&
-      coincideFechaHasta &&
-      coincideTipo &&
-      coincideCodigo &&
-      (
-        reg.id_notificacion?.toString().includes(texto) ||
-        reg.codigo?.toLowerCase().includes(texto) ||
-        reg.observacion?.toLowerCase().includes(texto) ||
-        fechaRegistro.includes(texto)
-      )
-    )
+    return coincideFechaDesde && coincideFechaHasta
   })
 
   const registrosOrdenados = [...registrosFiltrados].sort((a, b) => {
@@ -85,12 +75,20 @@ export default function ConsultaHistorico({ onVolver }) {
 
   const resumen = registrosOrdenados.reduce(
     (acc, reg) => {
+      const codigo = String(reg.codigo ?? '').trim().toUpperCase()
+
       acc.total += 1
       if (reg.es_no_urbana) acc.rurales += 1
       else acc.urbanas += 1
+
+      if (CODIGOS_EXITOSOS.has(codigo)) acc.realizadas += 1
+      else if (CODIGOS_BUSQUEDA.has(codigo)) acc.busquedas += 1
+      else if (CODIGOS_NEGATIVOS.has(codigo)) acc.negativas += 1
+      else acc.otros += 1
+
       return acc
     },
-    { total: 0, urbanas: 0, rurales: 0 }
+    { total: 0, urbanas: 0, rurales: 0, realizadas: 0, negativas: 0, busquedas: 0, otros: 0 }
   )
 
   const resumenPorDia = registrosOrdenados.reduce((acc, reg) => {
@@ -104,77 +102,150 @@ export default function ConsultaHistorico({ onVolver }) {
     return acc
   }, {})
 
+  // calcular puntos (direcciones) y carga total por el conjunto visible
+  const cargaTotal = registrosOrdenados.length
+  const lotes = new Set()
+  for (const r of registrosOrdenados) {
+    const clave = String(r.codigo_lote ?? '').trim().toUpperCase()
+    if (clave) lotes.add(clave)
+  }
+  const puntos = lotes.size
+
+  const descargarCsv = () => {
+    const filas = registrosOrdenados.map((r) => ({
+      id_notificacion: r.id_notificacion ?? '',
+      codigo: r.codigo ?? '',
+      hora: r.hora ?? '',
+      observacion: r.observacion ?? '',
+      urbana: r.es_no_urbana ? 'No urbana' : 'Urbana',
+    }))
+
+    const escaparCsv = (valor) => {
+      const texto = String(valor ?? '')
+      if (texto.includes(',') || texto.includes('"') || texto.includes('\n')) {
+        return `"${texto.replace(/"/g, '""')}"`
+      }
+      return texto
+    }
+
+    const encabezado = ['id_notificacion', 'codigo', 'hora', 'observacion', 'urbana']
+    const lineas = [
+      encabezado.join(','),
+      ...filas.map((fila) =>
+        [
+          escaparCsv(fila.id_notificacion),
+          escaparCsv(fila.codigo),
+          escaparCsv(fila.hora),
+          escaparCsv(fila.observacion),
+          escaparCsv(fila.urbana),
+        ].join(',')
+      ),
+    ]
+
+    const contenido = '\uFEFF' + lineas.join('\n')
+    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `consulta_historico_${fechaDesde || hoy}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  // fechas disponibles para filtrar (desde los registros ya cargados)
+  const fechasDisponibles = Array.from(
+    new Set([hoy, ...registros.map((r) => r.fecha_certificacion || '')])
+  )
+    .filter(Boolean)
+    .sort((a, b) => b.localeCompare(a))
+
   return (
     <div className="consulta-historico-page">
-      <div className="consulta-historico-hero">
-        <div>
-          <p className="consulta-kicker">Consulta histórica</p>
-          <h2>Notificaciones de días anteriores</h2>
-          <p className="consulta-descripcion">
-            Busca por ID, código u observación sin mezclar esta vista con el formulario principal.
-          </p>
+      <div className="consulta-contenedor-web consulta-contenedor-web-ancha">
+        <div className="consulta-historico-hero">
+          <div>
+            <p className="consulta-kicker">Consulta histórica</p>
+            <h2>Notificaciones de días anteriores</h2>
+            <p className="consulta-descripcion">
+              Busca por ID, código u observación sin mezclar esta vista con el formulario principal.
+            </p>
+          </div>
+
+          <div className="consulta-hero-acciones">
+            <button className="boton-mini" type="button" onClick={descargarCsv} disabled={cargando || registrosOrdenados.length === 0}>
+              Descargar CSV
+            </button>
+            <button className="boton-secundario boton-volver-consulta" onClick={onVolver}>
+              Volver al formulario
+            </button>
+          </div>
         </div>
 
-        <button className="boton-secundario boton-volver-consulta" onClick={onVolver}>
-          Volver al formulario
-        </button>
-      </div>
+        <div className="consulta-resumen-grid">
+          <div className="consulta-resumen-card">
+            <span className="consulta-resumen-label">Carga total</span>
+            <strong>{cargaTotal}</strong>
+          </div>
 
-      <div className="consulta-resumen-grid">
-        <div className="consulta-resumen-card">
-          <span className="consulta-resumen-label">Mostrando</span>
-          <strong>{resumen.total}</strong>
+          <div className="consulta-resumen-card">
+            <span className="consulta-resumen-label">Puntos</span>
+            <strong>{puntos}</strong>
+          </div>
+
+          <div className="consulta-resumen-card">
+            <span className="consulta-resumen-label">Realizadas</span>
+            <strong>{resumen.realizadas}</strong>
+          </div>
+
+          <div className="consulta-resumen-card">
+            <span className="consulta-resumen-label">Negativas</span>
+            <strong>{resumen.negativas}</strong>
+          </div>
+
+          <div className="consulta-resumen-card">
+            <span className="consulta-resumen-label">Búsquedas</span>
+            <strong>{resumen.busquedas}</strong>
+          </div>
+
+          <div className="consulta-resumen-card">
+            <span className="consulta-resumen-label">Rurales</span>
+            <strong>{resumen.rurales}</strong>
+          </div>
+
+          <div className="consulta-resumen-card">
+            <span className="consulta-resumen-label">Urbanas</span>
+            <strong>{resumen.urbanas}</strong>
+          </div>
         </div>
-        <div className="consulta-resumen-card">
-          <span className="consulta-resumen-label">Urbanas</span>
-          <strong>{resumen.urbanas}</strong>
-        </div>
-        <div className="consulta-resumen-card">
-          <span className="consulta-resumen-label">Rurales</span>
-          <strong>{resumen.rurales}</strong>
-        </div>
-      </div>
+
+        <ConsultaMapa registros={registrosOrdenados} />
 
       <div className="consulta-filtro-barra">
-        <div className="consulta-filtros-grid">
-          <input
-            type="text"
-            placeholder="Buscar por ID, código, fecha u observación..."
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-            className="input-busqueda input-busqueda-ancha"
-          />
-          <input
-            type="date"
-            value={fechaDesde}
-            onChange={(e) => setFechaDesde(e.target.value)}
-            className="input-busqueda input-busqueda-ancha"
-            aria-label="Fecha desde"
-          />
-          <input
-            type="date"
-            value={fechaHasta}
-            onChange={(e) => setFechaHasta(e.target.value)}
-            className="input-busqueda input-busqueda-ancha"
-            aria-label="Fecha hasta"
-          />
-          <input
-            type="text"
-            placeholder="Filtrar por codigo"
-            value={codigoFiltro}
-            onChange={(e) => setCodigoFiltro(e.target.value)}
-            className="input-busqueda input-busqueda-ancha"
-          />
-          <select
-            className="input-busqueda input-busqueda-ancha"
-            value={tipoFiltro}
-            onChange={(e) => setTipoFiltro(e.target.value)}
-            aria-label="Tipo"
-          >
-            <option value="todos">Todos los tipos</option>
-            <option value="urbana">Urbanas</option>
-            <option value="rural">Rurales</option>
-          </select>
+        <div className="consulta-filtros-grid consulta-filtro-unico">
+          <label className="consulta-filtro-fecha">
+            <span className="consulta-filtro-label">Fecha de certificación</span>
+            <select
+              className="input-busqueda input-busqueda-ancha consulta-filtro-select"
+              value={fechaDesde}
+              onChange={(e) => {
+                const v = e.target.value
+                setFechaDesde(v)
+                setFechaHasta(v)
+              }}
+              aria-label="Filtrar por día de certificación"
+            >
+              {fechasDisponibles.length === 0 ? (
+                <option value={fechaDesde}>{fechaDesde}</option>
+              ) : (
+                fechasDisponibles.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))
+              )}
+            </select>
+          </label>
         </div>
       </div>
 
@@ -224,6 +295,7 @@ export default function ConsultaHistorico({ onVolver }) {
           </table>
         </div>
       )}
+      </div>
     </div>
   )
 }

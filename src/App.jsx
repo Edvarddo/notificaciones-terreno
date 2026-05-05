@@ -248,6 +248,7 @@ function App() {
       codigo: r.codigo ?? '',
       hora: r.hora ?? '',
       observacion: r.observacion ?? '',
+      urbana: r.es_no_urbana ? 'No urbana' : 'Urbana',
     }))
 
     const escaparCsv = (valor) => {
@@ -258,7 +259,7 @@ function App() {
       return texto
     }
 
-    const encabezado = ['id_notificacion', 'codigo', 'hora', 'observacion']
+    const encabezado = ['id_notificacion', 'codigo', 'hora', 'observacion', 'urbana']
     const lineas = [
       encabezado.join(','),
       ...filas.map((fila) =>
@@ -267,6 +268,7 @@ function App() {
           escaparCsv(fila.codigo),
           escaparCsv(fila.hora),
           escaparCsv(fila.observacion),
+          escaparCsv(fila.urbana),
         ].join(',')
       ),
     ]
@@ -306,7 +308,11 @@ function App() {
         vistaMonitoreo={mostrarMonitoreo}
       />
 
-      <div className={`contenedor ${mostrarMonitoreo ? 'contenedor-monitoreo' : ''}`}>
+      <div
+        className={`contenedor ${mostrarMonitoreo ? 'contenedor-monitoreo' : ''} ${
+          mostrarConsulta ? 'contenedor-consulta' : ''
+        }`}
+      >
         <div className="header-box">
           <div className="header-top">
             <div>
@@ -432,6 +438,13 @@ function App() {
           codigoLimpioVista={codigoLimpioVista}
           observacion={registro.observacion}
           onObservacionChange={registro.setObservacion}
+          a1Caso={registro.a1Caso}
+          a1Valor1={registro.a1Valor1}
+          a1Valor2={registro.a1Valor2}
+          a1Casos={registro.a1Casos}
+          onA1CasoChange={registro.handleA1CasoChange}
+          onA1Valor1Change={registro.handleA1Valor1Change}
+          onA1Valor2Change={registro.handleA1Valor2Change}
           comentarios={registro.comentarios}
           onComentariosChange={registro.setComentarios}
           esNoUrbana={registro.esNoUrbana}
@@ -532,12 +545,13 @@ function App() {
           onCopiarUltimoTribunalLote={lote.copiarUltimoTribunalLote}
           onQuitarTribunalLote={lote.quitarTribunalLote}
           onActualizarTribunalLote={lote.actualizarTribunalLote}
-          a1Option={lote.a1Option}
-          a1Desde={lote.a1Desde}
-          a1Hasta={lote.a1Hasta}
-          onA1OptionChange={lote.handleA1OptionChange}
-          onA1DesdeChange={lote.handleA1DesdeChange}
-          onA1HastaChange={lote.handleA1HastaChange}
+          a1Caso={lote.a1Caso}
+          a1Valor1={lote.a1Valor1}
+          a1Valor2={lote.a1Valor2}
+          a1Casos={lote.a1Casos}
+          onA1CasoChange={lote.handleA1CasoChange}
+          onA1Valor1Change={lote.handleA1Valor1Change}
+          onA1Valor2Change={lote.handleA1Valor2Change}
           ultimoIdAgregadoLote={ultimoIdAgregadoLote}
           onGuardarLote={guardarLote}
         />

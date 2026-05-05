@@ -2,7 +2,7 @@ import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 import buffer from '@turf/buffer'
 import { point, polygon } from '@turf/helpers'
 
-const POLIGONO_URBANO = [
+export const POLIGONO_URBANO = [
   [-68.94832338474046, -22.462238753570077],
   [-68.9461885173666, -22.466489832045426],
   [-68.9414909732049, -22.46538072861587],

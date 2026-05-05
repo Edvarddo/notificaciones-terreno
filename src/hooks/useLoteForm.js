@@ -9,20 +9,54 @@ function useLoteForm() {
   const [esNoUrbanaLote, setEsNoUrbanaLote] = useState(false)
   const [mostraTribunalLote, setMostraTribunalLote] = useState(false)
   const [tribunalesLote, setTribunalesLote] = useState([{ rit: '', año: '' }])
-  const [a1Option, setA1Option] = useState('')
-  const [a1Desde, setA1Desde] = useState('')
-  const [a1Hasta, setA1Hasta] = useState('')
+  const [a1Caso, setA1Caso] = useState('')
+  const [a1Valor1, setA1Valor1] = useState('')
+  const [a1Valor2, setA1Valor2] = useState('')
+
+  const A1_CASOS = {
+    SALTO: {
+      etiqueta: 'Salto de numeración desde XXXX hasta YYYY',
+      requiere: 2,
+      build: (valor1, valor2) => {
+        if (valor1 && valor2) return `Se constata salto de numeración desde ${valor1} hasta ${valor2}.`
+        if (valor1) return `Se constata salto de numeración desde ${valor1}.`
+        return 'Se constata salto de numeración.'
+      },
+    },
+    INFERIOR: {
+      etiqueta: 'Numeración inferior a XXXX',
+      requiere: 1,
+      build: (valor1) => {
+        if (valor1) {
+          return `Se constata numeración de referencia ${valor1}; se busca una numeración inferior a esa.`
+        }
+        return 'Se constata numeración de referencia para búsqueda inferior.'
+      },
+    },
+    SUPERIOR: {
+      etiqueta: 'Numeración superior a XXXX',
+      requiere: 1,
+      build: (valor1) => {
+        if (valor1) {
+          return `Se constata numeración de referencia ${valor1}; se busca una numeración superior a esa.`
+        }
+        return 'Se constata numeración de referencia para búsqueda superior.'
+      },
+    },
+    SIN_ORDEN: {
+      etiqueta: 'Numeración no definida en el área',
+      requiere: 0,
+      build: () =>
+        'Se constata que la numeración no se encuentra y no existe un orden definido en el área.',
+    },
+  }
 
   const OBSERVACIONES_SUGERIDAS = {
     D2: '.',
     E1: 'Se notifica personalmente en terreno',
     B3: 'Se deja aviso',
     B7: 'Se deja aviso',
-    A1: [
-      'RANGO DE DIRECCIONES',
-      'COMIENZA EL RANGO DE NUMERACIÓN DESDE',
-      'TERMINA EL RANGO DE NUMERACIÓN EN',
-    ],
+    A1: Object.values(A1_CASOS).map((caso) => caso.etiqueta),
   }
 
   const obtenerObservacionSugerida = (codigoValue) => {
@@ -39,69 +73,57 @@ function useLoteForm() {
 
     if (sugerenciaNueva) {
       if (Array.isArray(sugerenciaNueva)) {
-        const primera = sugerenciaNueva[0] || ''
+        const casoInicial = 'SALTO'
+        const textoInicial = A1_CASOS[casoInicial].build('', '')
         if (!observacionLote.trim() || observacionLote === sugerenciaActualNorm) {
-          setObservacionLote(primera)
+          setObservacionLote(textoInicial)
         }
-        // keep A1 option in sync
-        setA1Option(primera)
-        setA1Desde('')
-        setA1Hasta('')
+        setA1Caso(casoInicial)
+        setA1Valor1('')
+        setA1Valor2('')
       } else {
         if (!observacionLote.trim() || observacionLote === sugerenciaActualNorm) {
           setObservacionLote(sugerenciaNueva)
         }
-        // clear any previous A1 state when not A1
-        setA1Option('')
-        setA1Desde('')
-        setA1Hasta('')
+        setA1Caso('')
+        setA1Valor1('')
+        setA1Valor2('')
       }
     } else if (observacionLote.trim() && observacionLote === sugerenciaActualNorm) {
       setObservacionLote('')
     }
   }
 
-  const construirObservacionA1 = (option, desde, hasta) => {
-    if (!option) return ''
-    if (option === 'RANGO DE DIRECCIONES') {
-      if (desde && hasta) return `RANGO DE DIRECCIONES: ${desde} - ${hasta}`
-      if (desde) return `RANGO DE DIRECCIONES desde ${desde}`
-      if (hasta) return `RANGO DE DIRECCIONES hasta ${hasta}`
-      return 'RANGO DE DIRECCIONES'
-    }
-    if (option === 'COMIENZA EL RANGO DE NUMERACIÓN DESDE') {
-      return desde ? `COMIENZA EL RANGO DE NUMERACIÓN DESDE ${desde}` : 'COMIENZA EL RANGO DE NUMERACIÓN DESDE'
-    }
-    if (option === 'TERMINA EL RANGO DE NUMERACIÓN EN') {
-      return hasta ? `TERMINA EL RANGO DE NUMERACIÓN EN ${hasta}` : 'TERMINA EL RANGO DE NUMERACIÓN EN'
-    }
-    return option
+  const construirObservacionA1 = (caso, valor1, valor2) => {
+    const casoActual = A1_CASOS[caso]
+    if (!casoActual) return ''
+    return casoActual.build(valor1, valor2)
   }
 
-  const handleA1OptionChange = (option) => {
-    const anterior = construirObservacionA1(a1Option, a1Desde, a1Hasta)
-    setA1Option(option)
-    const nueva = construirObservacionA1(option, a1Desde, a1Hasta)
+  const handleA1CasoChange = (caso) => {
+    const anterior = construirObservacionA1(a1Caso, a1Valor1, a1Valor2)
+    setA1Caso(caso)
+    const nueva = construirObservacionA1(caso, '', '')
     if (!observacionLote.trim() || observacionLote === anterior) {
       setObservacionLote(nueva)
     }
   }
 
-  const handleA1DesdeChange = (valor) => {
+  const handleA1Valor1Change = (valor) => {
     const limpio = String(valor ?? '').trim()
-    const anterior = construirObservacionA1(a1Option, a1Desde, a1Hasta)
-    setA1Desde(limpio)
-    const nueva = construirObservacionA1(a1Option, limpio, a1Hasta)
+    const anterior = construirObservacionA1(a1Caso, a1Valor1, a1Valor2)
+    setA1Valor1(limpio)
+    const nueva = construirObservacionA1(a1Caso, limpio, a1Valor2)
     if (!observacionLote.trim() || observacionLote === anterior) {
       setObservacionLote(nueva)
     }
   }
 
-  const handleA1HastaChange = (valor) => {
+  const handleA1Valor2Change = (valor) => {
     const limpio = String(valor ?? '').trim()
-    const anterior = construirObservacionA1(a1Option, a1Desde, a1Hasta)
-    setA1Hasta(limpio)
-    const nueva = construirObservacionA1(a1Option, a1Desde, limpio)
+    const anterior = construirObservacionA1(a1Caso, a1Valor1, a1Valor2)
+    setA1Valor2(limpio)
+    const nueva = construirObservacionA1(a1Caso, a1Valor1, limpio)
     if (!observacionLote.trim() || observacionLote === anterior) {
       setObservacionLote(nueva)
     }
@@ -135,6 +157,9 @@ function useLoteForm() {
     setEsNoUrbanaLote(false)
     setMostraTribunalLote(false)
     setTribunalesLote([{ rit: '', año: '' }])
+    setA1Caso('')
+    setA1Valor1('')
+    setA1Valor2('')
   }
 
   const handleHoraLoteChange = (e) => {
@@ -194,12 +219,13 @@ function useLoteForm() {
     copiarUltimoTribunalLote,
     quitarTribunalLote,
     actualizarTribunalLote,
-    a1Option,
-    a1Desde,
-    a1Hasta,
-    handleA1OptionChange,
-    handleA1DesdeChange,
-    handleA1HastaChange,
+    a1Caso,
+    a1Valor1,
+    a1Valor2,
+    a1Casos: A1_CASOS,
+    handleA1CasoChange,
+    handleA1Valor1Change,
+    handleA1Valor2Change,
   }
 }
 

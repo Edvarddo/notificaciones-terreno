@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import IdHighlight from '../components/IdHighlight'
 import IconList from '../components/IconList'
 
@@ -34,14 +35,24 @@ function LoteDialog({
   onGuardarLote,
   ultimoIdAgregadoLote,
   onCopiarUltimoTribunalLote,
-  a1Option,
-  a1Desde,
-  a1Hasta,
-  onA1OptionChange,
-  onA1DesdeChange,
-  onA1HastaChange,
+  a1Caso,
+  a1Valor1,
+  a1Valor2,
+  a1Casos,
+  onA1CasoChange,
+  onA1Valor1Change,
+  onA1Valor2Change,
 }) {
   if (!abierto) return null
+
+  useEffect(() => {
+    if (escaneandoLote) {
+      const contenedor = document.querySelector('.qr-inline-lote:not(.qr-inline-oculto)')
+      if (contenedor) {
+        contenedor.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+      }
+    }
+  }, [escaneandoLote])
 
   return (
     <div className="dialogo-overlay" onClick={onClose}>
@@ -114,56 +125,62 @@ function LoteDialog({
 
             {codigoLoteVista === 'A1' && (
               <div className="a1-opciones-box">
-                <label className="campo-label">A1 — opciones</label>
-                <input
+                <label className="campo-label">A1 — tipo de caso</label>
+                <select
                   className="input-base"
-                  list="a1-options"
-                  placeholder="Elija o escriba una opción"
-                  value={a1Option}
-                  onChange={(e) => onA1OptionChange(e.target.value)}
-                />
-                <datalist id="a1-options">
-                  <option value="RANGO DE DIRECCIONES">RANGO DE DIRECCIONES</option>
-                  <option value="COMIENZA EL RANGO DE NUMERACIÓN DESDE">COMIENZA EL RANGO DE NUMERACIÓN DESDE</option>
-                  <option value="TERMINA EL RANGO DE NUMERACIÓN EN">TERMINA EL RANGO DE NUMERACIÓN EN</option>
-                </datalist>
+                  value={a1Caso}
+                  onChange={(e) => onA1CasoChange(e.target.value)}
+                >
+                  <option value="">Seleccione un caso</option>
+                  {Object.entries(a1Casos).map(([key, caso]) => (
+                    <option key={key} value={key}>
+                      {caso.etiqueta}
+                    </option>
+                  ))}
+                </select>
 
-                {a1Option === 'RANGO DE DIRECCIONES' && (
+                {a1Caso === 'SALTO' && (
                   <div className="a1-range-inline">
                     <input
                       className="input-base"
-                      placeholder="Desde"
-                      value={a1Desde}
-                      onChange={(e) => onA1DesdeChange(e.target.value)}
+                      placeholder="Dirección inicial"
+                      value={a1Valor1}
+                      onChange={(e) => onA1Valor1Change(e.target.value)}
                     />
                     <input
                       className="input-base"
-                      placeholder="Hasta"
-                      value={a1Hasta}
-                      onChange={(e) => onA1HastaChange(e.target.value)}
+                      placeholder="Dirección final"
+                      value={a1Valor2}
+                      onChange={(e) => onA1Valor2Change(e.target.value)}
                     />
                   </div>
                 )}
 
-                {a1Option === 'COMIENZA EL RANGO DE NUMERACIÓN DESDE' && (
+                {a1Caso === 'INFERIOR' && (
                   <div>
                     <input
                       className="input-base"
-                      placeholder="Desde"
-                      value={a1Desde}
-                      onChange={(e) => onA1DesdeChange(e.target.value)}
+                      placeholder="Numeración de referencia"
+                      value={a1Valor1}
+                      onChange={(e) => onA1Valor1Change(e.target.value)}
                     />
                   </div>
                 )}
 
-                {a1Option === 'TERMINA EL RANGO DE NUMERACIÓN EN' && (
+                {a1Caso === 'SUPERIOR' && (
                   <div>
                     <input
                       className="input-base"
-                      placeholder="Hasta"
-                      value={a1Hasta}
-                      onChange={(e) => onA1HastaChange(e.target.value)}
+                      placeholder="Numeración de referencia"
+                      value={a1Valor1}
+                      onChange={(e) => onA1Valor1Change(e.target.value)}
                     />
+                  </div>
+                )}
+
+                {a1Caso === 'SIN_ORDEN' && (
+                  <div className="a1-ayuda-caso">
+                    Caso sin numeración ingresable. Se generará un comentario formal común.
                   </div>
                 )}
               </div>
