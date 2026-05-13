@@ -70,11 +70,11 @@ function RegistroForm({
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={8}
+              maxLength={9}
               placeholder="Ej: 18099912"
               value={idNotificacion}
               onChange={(e) =>
-                onIdChange(e.target.value.replace(/\D/g, '').slice(0, 8))
+                onIdChange(e.target.value.replace(/\D/g, '').slice(0, 9))
               }
             />
             <button

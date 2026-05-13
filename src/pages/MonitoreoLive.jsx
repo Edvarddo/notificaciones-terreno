@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { obtenerRegistros, actualizarRegistroPorId } from '../services/notificaciones'
+import CodigoDialog from '../features/CodigoDialog'
 
 function generarIdPrueba() {
   // generar un id_notificacion aleatorio de 1-8 dígitos
@@ -12,6 +13,8 @@ function MonitoreoLive({ fechaCertificacion }) {
   const [editandoId, setEditandoId] = useState(null)
   const [esRebajadaEdit, setEsRebajadaEdit] = useState(false)
   const [codigoLoteEdit, setCodigoLoteEdit] = useState('')
+  const [codigoDialogAbierto, setCodigoDialogAbierto] = useState(false)
+  const [registroCodigoEditando, setRegistroCodigoEditando] = useState(null)
   const mounted = useRef(true)
   const channelRef = useRef(null)
 
@@ -88,14 +91,57 @@ function MonitoreoLive({ fechaCertificacion }) {
 
   const guardarEdicion = async (id) => {
     try {
-      await actualizarRegistroPorId(id, { es_rebajada: esRebajadaEdit, codigo_lote: codigoLoteEdit })
+      await actualizarRegistroPorId(id, {
+        es_rebajada: esRebajadaEdit,
+        codigo_lote: codigoLoteEdit,
+      })
       // Actualizar estado local
       setRegistros((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, es_rebajada: esRebajadaEdit, codigo_lote: codigoLoteEdit } : r))
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                es_rebajada: esRebajadaEdit,
+                codigo_lote: codigoLoteEdit,
+              }
+            : r
+        )
       )
       cancelarEdicion()
     } catch (err) {
       console.error('Error actualizando es_rebajada', err)
+    }
+  }
+
+  const abrirCambioCodigo = (registro) => {
+    setRegistroCodigoEditando(registro)
+    setCodigoDialogAbierto(true)
+  }
+
+  const cerrarCambioCodigo = () => {
+    setCodigoDialogAbierto(false)
+    setRegistroCodigoEditando(null)
+  }
+
+  const seleccionarCodigo = async (codigoElegido) => {
+    const registro = registroCodigoEditando
+    if (!registro) return
+
+    const nuevoCodigo = String(codigoElegido ?? '').trim().toUpperCase()
+    if (!nuevoCodigo) return
+
+    try {
+      await actualizarRegistroPorId(registro.id, {
+        codigo: nuevoCodigo,
+      })
+
+      setRegistros((prev) =>
+        prev.map((r) => (r.id === registro.id ? { ...r, codigo: nuevoCodigo } : r))
+      )
+
+      cerrarCambioCodigo()
+    } catch (err) {
+      console.error('Error cambiando código', err)
     }
   }
 
@@ -168,7 +214,9 @@ function MonitoreoLive({ fechaCertificacion }) {
                       <span className="sin-id">--</span>
                     )}
                   </td>
-                  <td>{r.codigo}</td>
+                  <td>
+                    {r.codigo}
+                  </td>
                   <td>{r.hora}</td>
                   <td>{r.observacion}</td>
                   <td>
@@ -207,6 +255,14 @@ function MonitoreoLive({ fechaCertificacion }) {
                       <div className="acciones-tabla">
                         <button
                           type="button"
+                          className="boton-tabla editar"
+                          onClick={() => abrirCambioCodigo(r)}
+                          title="Cambiar código"
+                        >
+                          Código
+                        </button>
+                        <button
+                          type="button"
                           className="boton-tabla guardar"
                           onClick={() => guardarEdicion(r.id)}
                           title="Guardar cambios"
@@ -223,14 +279,24 @@ function MonitoreoLive({ fechaCertificacion }) {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        className="boton-tabla editar"
-                        onClick={() => abrirEdicion(r)}
-                        title="Editar rebajada"
-                      >
-                        ✎
-                      </button>
+                      <div className="acciones-tabla">
+                        <button
+                          type="button"
+                          className="boton-tabla editar"
+                          onClick={() => abrirEdicion(r)}
+                          title="Editar rebajada"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          type="button"
+                          className="boton-tabla editar"
+                          onClick={() => abrirCambioCodigo(r)}
+                          title="Cambiar código"
+                        >
+                          Código
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -239,6 +305,14 @@ function MonitoreoLive({ fechaCertificacion }) {
           </tbody>
         </table>
       </div>
+
+      <CodigoDialog
+        abierto={codigoDialogAbierto}
+        titulo="Cambiar código"
+        valorActual={registroCodigoEditando?.codigo ? String(registroCodigoEditando.codigo).trim().toUpperCase() : ''}
+        onClose={cerrarCambioCodigo}
+        onSelect={seleccionarCodigo}
+      />
     </div>
   )
 }

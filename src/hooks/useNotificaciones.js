@@ -18,6 +18,7 @@ import {
   clasificarPorFallbackManual,
   determinarSiEsNoUrbanaDesdeGPS,
 } from '../utils/geolocalizacion'
+import { validarIdNotificacion, esIdNotificacionValida } from '../utils/validation'
 
 function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const timersMensajesRef = useRef(new Map())
@@ -302,7 +303,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   }) => {
     limpiarMensajes()
 
-    const idLimpio = idNotificacion.trim()
+    const validacionId = validarIdNotificacion(idNotificacion)
+    const idLimpio = validacionId.valor
     const codigoLimpio = codigo.trim().toUpperCase()
     const observacionLimpia = observacion.trim() || '.'
     const comentariosLimpios = comentarios.trim() || ''
@@ -319,8 +321,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
 
     // Si tiene ID, validar formato
-    if (idLimpio && !/^\d{1,8}$/.test(idLimpio)) {
-      const msg = 'El ID debe ser numerico y maximo 8 digitos'
+    if (idLimpio && !validacionId.ok) {
+      const msg = validacionId.error || 'La ID de notificacion debe contener 8 o 9 digitos'
       setErrorMsg(msg)
       enfocarId?.()
       return { ok: false, error: msg }
@@ -518,9 +520,9 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     const idsNormalizados = idsTemporales.map((id) => String(id).trim())
 
     if (!modoTribunal) {
-      const idsInvalidos = idsNormalizados.filter((id) => !/^\d{1,8}$/.test(id))
+      const idsInvalidos = idsNormalizados.filter((id) => !esIdNotificacionValida(id))
       if (idsInvalidos.length > 0) {
-        const msg = `Hay IDs invalidas en el lote: ${idsInvalidos.join(', ')}`
+        const msg = `Hay IDs invalidas en el lote: ${idsInvalidos.join(', ')}. Deben tener 8 o 9 digitos.`
         setErrorMsg(msg)
         await onBeforeError?.()
         return { ok: false, error: msg }

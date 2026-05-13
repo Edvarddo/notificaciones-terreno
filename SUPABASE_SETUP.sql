@@ -39,6 +39,20 @@ CREATE POLICY allow_delete_public
 -- Primero: eliminar la restricción NOT NULL si existe
 ALTER TABLE public.notificaciones_terreno ALTER COLUMN id_notificacion DROP NOT NULL;
 
+-- Validación en base de datos: la ID debe ser de 8 o 9 dígitos cuando exista
+ALTER TABLE public.notificaciones_terreno
+ADD CONSTRAINT notificaciones_terreno_id_notificacion_formato_chk
+CHECK (
+  id_notificacion IS NULL OR id_notificacion ~ '^[0-9]{8,9}$'
+);
+
+-- Validación básica para la hora en formato HHMM
+ALTER TABLE public.notificaciones_terreno
+ADD CONSTRAINT notificaciones_terreno_hora_formato_chk
+CHECK (
+  hora IS NULL OR hora ~ '^[0-9]{4}$'
+);
+
 -- Agregar las nuevas columnas
 ALTER TABLE public.notificaciones_terreno
 ADD COLUMN IF NOT EXISTS comentarios TEXT DEFAULT '',

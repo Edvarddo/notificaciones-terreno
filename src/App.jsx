@@ -13,6 +13,8 @@ import useNotificaciones from './hooks/useNotificaciones'
 import useLoteForm from './hooks/useLoteForm'
 import useRegistroForm from './hooks/useRegistroForm'
 import { extraerIdDesdeQr } from './utils/qr'
+import { escaparValorCsv } from './utils/csv'
+import { validarIdNotificacion } from './utils/validation'
 import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
 
@@ -43,7 +45,6 @@ function App() {
 
   const registro = useRegistroForm()
   const lote = useLoteForm()
-
   const codigoLimpioVista = registro.codigo.trim().toUpperCase()
   const descripcionCodigo = MAPA_CODIGOS[codigoLimpioVista] || ''
 
@@ -110,14 +111,14 @@ function App() {
     onError: notificaciones.setErrorMsg,
     onDetected: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
-
-      if (!/^\d{1,8}$/.test(idExtraido)) {
-        notificaciones.setErrorMsg('QR inválido: ID no numérica o mayor a 8 dígitos')
+      const validacion = validarIdNotificacion(idExtraido)
+      if (!validacion.ok) {
+        notificaciones.setErrorMsg('QR inválido: la ID debe tener 8 o 9 dígitos numéricos')
         return
       }
 
-      registro.setIdNotificacion(idExtraido)
-      notificaciones.setMensaje(`Escaneado ${idExtraido} con éxito`)
+      registro.setIdNotificacion(validacion.valor)
+      notificaciones.setMensaje(`Escaneado ${validacion.valor} con éxito`)
       await qrIndividual.detenerEscaneo()
       enfocarId()
     },
@@ -128,19 +129,19 @@ function App() {
     onError: notificaciones.setErrorMsg,
     onDetected: async (decodedText) => {
       const idExtraido = extraerIdDesdeQr(decodedText)
-
-      if (!/^\d{1,8}$/.test(idExtraido)) {
-        notificaciones.setErrorMsg('QR inválido: ID no numérica o mayor a 8 dígitos')
+      const validacion = validarIdNotificacion(idExtraido)
+      if (!validacion.ok) {
+        notificaciones.setErrorMsg('QR inválido: la ID debe tener 8 o 9 dígitos numéricos')
         return
       }
 
-      const resultado = lote.agregarIdTemporal(idExtraido, (idDuplicado) => {
+      const resultado = lote.agregarIdTemporal(validacion.valor, (idDuplicado) => {
         notificaciones.setMensaje(`ID repetido omitido: ${idDuplicado}`)
       })
 
       if (resultado.agregado) {
         notificaciones.setMensaje(`Escaneado ${resultado.id} con éxito`)
-        setUltimoIdAgregadoLote(idExtraido)
+        setUltimoIdAgregadoLote(validacion.valor)
 
         if (ultimoIdAgregadoLoteTimer.current) {
           clearTimeout(ultimoIdAgregadoLoteTimer.current)
@@ -251,24 +252,16 @@ function App() {
       urbana: r.es_no_urbana ? 'No urbana' : 'Urbana',
     }))
 
-    const escaparCsv = (valor) => {
-      const texto = String(valor ?? '')
-      if (texto.includes(',') || texto.includes('"') || texto.includes('\n')) {
-        return `"${texto.replace(/"/g, '""')}"`
-      }
-      return texto
-    }
-
     const encabezado = ['id_notificacion', 'codigo', 'hora', 'observacion', 'urbana']
     const lineas = [
       encabezado.join(','),
       ...filas.map((fila) =>
         [
-          escaparCsv(fila.id_notificacion),
-          escaparCsv(fila.codigo),
-          escaparCsv(fila.hora),
-          escaparCsv(fila.observacion),
-          escaparCsv(fila.urbana),
+          escaparValorCsv(fila.id_notificacion),
+          escaparValorCsv(fila.codigo),
+          escaparValorCsv(fila.hora),
+          escaparValorCsv(fila.observacion),
+          escaparValorCsv(fila.urbana),
         ].join(',')
       ),
     ]

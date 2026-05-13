@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { normalizarIdNotificacion } from '../utils/validation'
 
 function useRegistroForm() {
-  const [idNotificacion, setIdNotificacion] = useState('')
+  const [idNotificacion, setIdNotificacionState] = useState('')
   const [codigo, setCodigoState] = useState('')
   const [observacion, setObservacion] = useState('')
   const [comentarios, setComentarios] = useState('')
@@ -132,7 +133,7 @@ function useRegistroForm() {
   }
 
   const limpiarFormulario = () => {
-    setIdNotificacion('')
+    setIdNotificacionState('')
     setCodigoState('')
     setObservacion('')
     setComentarios('')
@@ -148,6 +149,10 @@ function useRegistroForm() {
   const handleCodigoManualChange = (e) => {
     const limpio = e.target.value.replace(/[^a-zA-Z0-9]/g, '')
     setCodigo(limpio.toUpperCase())
+  }
+
+  const handleIdNotificacionChange = (valor) => {
+    setIdNotificacionState(normalizarIdNotificacion(valor))
   }
 
   return {
@@ -166,7 +171,7 @@ function useRegistroForm() {
     handleA1CasoChange,
     handleA1Valor1Change,
     handleA1Valor2Change,
-    setIdNotificacion,
+    setIdNotificacion: handleIdNotificacionChange,
     setCodigo,
     setObservacion,
     setComentarios,
