@@ -10,8 +10,10 @@ const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B5'])
 function RegistroTable({
   registros,
   onRecargar,
+  onFinalizarCarga,
   onActualizarRegistro,
   onDescargarCsv,
+  cargaFinalizada = false,
   cargaTotal = 0,
   puntos = 0,
   urbanas = 0,
@@ -193,6 +195,14 @@ function RegistroTable({
       <div className="registros-header">
         <h2 className="titulo-seccion">Notificaciones registradas</h2>
         <div className="registros-header-acciones">
+          <button
+            className="boton-mini boton-finalizar-carga"
+            onClick={onFinalizarCarga}
+            type="button"
+            disabled={cargaFinalizada}
+          >
+            {cargaFinalizada ? 'Carga finalizada' : 'Finalizar carga'}
+          </button>
           <button className="boton-mini" onClick={onDescargarCsv} type="button">
             Descargar CSV
           </button>
@@ -201,6 +211,12 @@ function RegistroTable({
           </button>
         </div>
       </div>
+
+      {cargaFinalizada ? (
+        <div className="carga-finalizada-banner carga-finalizada-banner-tabla">
+          La carga quedó cerrada. No se pueden registrar nuevas notificaciones en este navegador.
+        </div>
+      ) : null}
 
       <div className="resumen-grid">
         <div className="resumen-card">
@@ -305,9 +321,9 @@ function RegistroTable({
                     title="Seleccionar todos"
                   />
                 </th>
-                <th>ID / RIT</th>
-                <th>CÓDIGO</th>
-                <th>HORA</th>
+                <th className="col-clave col-id">ID / RIT</th>
+                <th className="col-clave col-codigo">CÓDIGO</th>
+                <th className="col-clave col-hora">HORA</th>
                 <th>TIPO</th>
                 <th>LOTE</th>
                 <th>OBSERVACIÓN</th>
@@ -329,7 +345,7 @@ function RegistroTable({
                         disabled={enEdicion}
                       />
                     </td>
-                    <td className="td-id td-id-fija">
+                    <td className="td-id td-id-fija col-clave col-id">
                       {r.id_notificacion ? (
                         <IdHighlight value={r.id_notificacion} />
                       ) : r.rit ? (
@@ -339,7 +355,7 @@ function RegistroTable({
                       )}
                     </td>
 
-                    <td className="td-codigo td-codigo-editable">
+                    <td className="td-codigo td-codigo-editable col-clave col-codigo">
                       {enEdicion ? (
                         <div className="codigo-input-wrapper">
                           <input
@@ -364,7 +380,7 @@ function RegistroTable({
                       )}
                     </td>
 
-                    <td className="td-hora td-hora-ancha">
+                    <td className="td-hora td-hora-ancha col-clave col-hora">
                       {enEdicion ? (
                         <input
                           className="input-tabla input-hora"

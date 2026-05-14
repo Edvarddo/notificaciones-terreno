@@ -13,6 +13,7 @@ function LoteDialog({
   onResetZoom,
   zoom,
   guardandoLote,
+  cargaFinalizada,
   onLimpiarLote,
   idsTemporales,
   onQuitarId,
@@ -114,7 +115,7 @@ function LoteDialog({
               type="button"
               className="boton-secundario"
               onClick={onToggleEscaneo}
-              disabled={guardandoLote}
+              disabled={guardandoLote || cargaFinalizada}
             >
               {escaneandoLote ? 'Cerrar escaneo' : 'Abrir escaneo'}
             </button>
@@ -123,7 +124,7 @@ function LoteDialog({
               type="button"
               className="boton-secundario"
               onClick={onLimpiarLote}
-              disabled={guardandoLote}
+              disabled={guardandoLote || cargaFinalizada}
             >
               Limpiar lote
             </button>
@@ -132,7 +133,7 @@ function LoteDialog({
               type="button"
               className={`boton-icono boton-tribunal-toggle ${mostraTribunalLote ? 'tribunal-activo' : ''}`}
               onClick={onMostraTribunalLote}
-              disabled={guardandoLote}
+                disabled={guardandoLote || cargaFinalizada}
               title="Tribunal en lote"
               aria-label="Tribunal en lote"
             >
@@ -250,7 +251,7 @@ function LoteDialog({
                             type="button"
                             className="boton-mini"
                             onClick={onAgregarTribunalLote}
-                            disabled={guardandoLote}
+                            disabled={guardandoLote || cargaFinalizada}
                           >
                             + caso
                           </button>
@@ -258,7 +259,7 @@ function LoteDialog({
                             type="button"
                             className="boton-mini"
                             onClick={onCopiarUltimoTribunalLote}
-                            disabled={guardandoLote}
+                            disabled={guardandoLote || cargaFinalizada}
                           >
                             Copiar último
                           </button>
@@ -266,7 +267,7 @@ function LoteDialog({
                             type="button"
                             className="boton-mini"
                             onClick={() => onQuitarTribunalLote(index)}
-                            disabled={guardandoLote || tribunalesLote.length === 1}
+                            disabled={guardandoLote || cargaFinalizada || tribunalesLote.length === 1}
                           >
                             -
                           </button>
@@ -323,6 +324,7 @@ function LoteDialog({
                   onClick={onAbrirCodigos}
                   title="Codigos frecuentes"
                   aria-label="Codigos frecuentes"
+                  disabled={cargaFinalizada}
                 >
                   <IconList />
                 </button>
@@ -443,9 +445,9 @@ function LoteDialog({
                 type="button"
                 className="boton-principal"
                 onClick={onGuardarLote}
-                disabled={guardandoLote}
+                  disabled={guardandoLote || cargaFinalizada}
               >
-                {guardandoLote ? 'Guardando lote...' : 'Guardar lote'}
+                {cargaFinalizada ? 'Carga finalizada' : guardandoLote ? 'Guardando lote...' : 'Guardar lote'}
               </button>
             </div>
           </div>

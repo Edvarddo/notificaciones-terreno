@@ -31,6 +31,7 @@ function RegistroForm({
   año,
   onAñoChange,
   cargando,
+  cargaFinalizada,
   onGuardar,
   onEliminarUltimo,
   onAbrirLote,
@@ -282,15 +283,15 @@ function RegistroForm({
       </label>
 
       <div className="acciones">
-        <button type="submit" className="boton-principal" disabled={cargando}>
-          {cargando ? 'Guardando...' : 'Guardar'}
+        <button type="submit" className="boton-principal" disabled={cargando || cargaFinalizada}>
+          {cargaFinalizada ? 'Carga finalizada' : cargando ? 'Guardando...' : 'Guardar'}
         </button>
 
         <button
           type="button"
           className="boton-secundario"
           onClick={onEliminarUltimo}
-          disabled={cargando}
+          disabled={cargando || cargaFinalizada}
         >
           Eliminar ultimo
         </button>
@@ -299,11 +300,17 @@ function RegistroForm({
           type="button"
           className="boton-secundario"
           onClick={onAbrirLote}
-          disabled={cargando || escaneando}
+          disabled={cargando || escaneando || cargaFinalizada}
         >
           Escaneo multiple
         </button>
       </div>
+
+      {cargaFinalizada ? (
+        <div className="carga-finalizada-banner">
+          La carga del día fue finalizada. Ya no se permiten nuevas notificaciones.
+        </div>
+      ) : null}
     </form>
   )
 }

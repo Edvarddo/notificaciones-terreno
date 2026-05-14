@@ -1060,12 +1060,13 @@ body {
 
 .boton-principal {
   flex: 1;
-  min-height: 52px;
+  min-height: 68px;
+  padding: 18px 18px;
   border: none;
   border-radius: 12px;
   background: var(--color-primario);
   color: var(--color-blanco);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: bold;
   cursor: pointer;
 }
@@ -1412,6 +1413,33 @@ body {
   font-size: 12px;
 }
 
+.tabla-registros th.col-clave,
+.tabla-registros td.col-clave {
+  background: linear-gradient(180deg, #f8fbff 0%, #eef5fb 100%);
+}
+
+.tabla-registros th.col-clave {
+  color: var(--color-primario);
+  letter-spacing: 0.03em;
+}
+
+.tabla-registros td.col-clave {
+  box-shadow: inset 0 0 0 1px rgba(31, 111, 139, 0.08);
+}
+
+.tabla-registros td.col-id,
+.tabla-registros td.col-codigo,
+.tabla-registros td.col-hora {
+  font-weight: 700;
+  color: var(--color-primario);
+}
+
+.tabla-registros td.col-id .codigo-badge,
+.tabla-registros td.col-codigo .codigo-badge,
+.tabla-registros td.col-hora {
+  font-size: 14px;
+}
+
 .tabla-registros td {
   padding: 10px 8px;
   text-align: left;
@@ -1467,6 +1495,29 @@ body {
 
 .tabla-registros tbody tr:not(.fila-rebajada):hover {
   background-color: #f8fbfe;
+}
+
+.carga-finalizada-banner {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(198, 40, 40, 0.2);
+  background: linear-gradient(135deg, #fff4f4, #ffecec);
+  color: #a11f1f;
+  font-weight: 700;
+}
+
+.carga-finalizada-banner-tabla {
+  margin-bottom: 12px;
+}
+
+.boton-finalizar-carga {
+  background: linear-gradient(135deg, #8b1e3f, #c62828);
+  color: #fff;
+}
+
+.boton-finalizar-carga:disabled {
+  opacity: 0.75;
 }
 
 .qr-inline {

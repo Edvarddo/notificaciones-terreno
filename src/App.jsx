@@ -110,6 +110,11 @@ function App() {
     qrRegionId: 'qr-reader',
     onError: notificaciones.setErrorMsg,
     onDetected: async (decodedText) => {
+      if (notificaciones.cargaFinalizada) {
+        notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevas notificaciones.')
+        return
+      }
+
       const idExtraido = extraerIdDesdeQr(decodedText)
       const validacion = validarIdNotificacion(idExtraido)
       if (!validacion.ok) {
@@ -128,6 +133,11 @@ function App() {
     qrRegionId: 'qr-reader-lote',
     onError: notificaciones.setErrorMsg,
     onDetected: async (decodedText) => {
+      if (notificaciones.cargaFinalizada) {
+        notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevas notificaciones.')
+        return
+      }
+
       const idExtraido = extraerIdDesdeQr(decodedText)
       const validacion = validarIdNotificacion(idExtraido)
       if (!validacion.ok) {
@@ -158,6 +168,11 @@ function App() {
   })
 
   const abrirDialogoLote = () => {
+    if (notificaciones.cargaFinalizada) {
+      notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevas notificaciones.')
+      return
+    }
+
     notificaciones.limpiarMensajes()
     if (!lote.horaLote) {
       lote.setHoraLote(obtenerHoraActual())
@@ -181,6 +196,11 @@ function App() {
   }
 
   const toggleQrIndividual = async () => {
+    if (notificaciones.cargaFinalizada) {
+      notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevas notificaciones.')
+      return
+    }
+
     if (qrIndividual.escaneando) {
       await qrIndividual.detenerEscaneo()
     } else {
@@ -193,6 +213,11 @@ function App() {
   }
 
   const guardar = async () => {
+    if (notificaciones.cargaFinalizada) {
+      notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevos registros.')
+      return
+    }
+
     const ok = await notificaciones.guardarRegistro({
       idNotificacion: registro.idNotificacion,
       codigo: registro.codigo,
@@ -209,6 +234,11 @@ function App() {
   }
 
   const guardarLote = async () => {
+    if (notificaciones.cargaFinalizada) {
+      notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevos registros.')
+      return
+    }
+
     await notificaciones.guardarLoteRegistros({
       idsTemporales: lote.idsTemporales,
       horaLote: lote.horaLote,
@@ -226,6 +256,21 @@ function App() {
         await cerrarDialogoLote()
       },
     })
+  }
+
+  const finalizarCarga = async () => {
+    const confirmar = window.confirm(
+      '¿Finalizar la carga del día? Ya no se permitirán nuevas notificaciones y se enviará el resumen por correo.'
+    )
+
+    if (!confirmar) return
+
+    const resultado = await notificaciones.finalizarCarga()
+    if (resultado?.ok) {
+      await qrIndividual.detenerEscaneo().catch(() => {})
+      await qrLote.detenerEscaneo().catch(() => {})
+      setDialogoLoteAbierto(false)
+    }
   }
 
   const abrirDialogoEliminarUltimo = () => {
@@ -454,6 +499,7 @@ function App() {
           onEliminarUltimo={abrirDialogoEliminarUltimo}
           onAbrirLote={abrirDialogoLote}
           dialogoLoteAbierto={dialogoLoteAbierto}
+          cargaFinalizada={notificaciones.cargaFinalizada}
         />
 
         {notificaciones.mensaje ? (
@@ -479,8 +525,10 @@ function App() {
         <RegistroTable
           registros={notificaciones.registros}
           onRecargar={notificaciones.cargar}
+          onFinalizarCarga={finalizarCarga}
           onActualizarRegistro={notificaciones.actualizarRegistro}
           onDescargarCsv={descargarCsv}
+          cargaFinalizada={notificaciones.cargaFinalizada}
           cargaTotal={notificaciones.estadisticas.cargaTotal}
           puntos={notificaciones.estadisticas.puntos}
           urbanas={notificaciones.estadisticas.urbanas}
@@ -518,6 +566,7 @@ function App() {
           onResetZoom={qrLote.resetZoom}
           zoom={qrLote.zoom}
           guardandoLote={notificaciones.guardandoLote}
+          cargaFinalizada={notificaciones.cargaFinalizada}
           onLimpiarLote={lote.limpiarLote}
           idsTemporales={lote.idsTemporales}
           onQuitarId={lote.quitarIdTemporal}

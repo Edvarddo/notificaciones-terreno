@@ -19,6 +19,7 @@ import {
   determinarSiEsNoUrbanaDesdeGPS,
 } from '../utils/geolocalizacion'
 import { validarIdNotificacion, esIdNotificacionValida } from '../utils/validation'
+import { enviarReporteFinalizacionCarga } from '../services/cierre'
 
 function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const timersMensajesRef = useRef(new Map())
@@ -31,6 +32,13 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const [errorMsg, setErrorMsgState] = useState('')
   const [mensajes, setMensajes] = useState([])
   const [estadisticas, setEstadisticas] = useState({ puntos: 0, rurales: 0, urbanas: 0 })
+  const [cargaFinalizada, setCargaFinalizada] = useState(() => {
+    try {
+      return localStorage.getItem(`carga-finalizada:${fechaCertificacion}`) === '1'
+    } catch {
+      return false
+    }
+  })
   const [pendientesSync, setPendientesSync] = useState(0)
   const [sincronizandoPendientes, setSincronizandoPendientes] = useState(false)
   const [pendientesDetalle, setPendientesDetalle] = useState([])
@@ -273,6 +281,14 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   }
 
   useEffect(() => {
+    try {
+      setCargaFinalizada(localStorage.getItem(`carga-finalizada:${fechaCertificacion}`) === '1')
+    } catch {
+      setCargaFinalizada(false)
+    }
+  }, [fechaCertificacion])
+
+  useEffect(() => {
     return () => {
       timersMensajesRef.current.forEach((timer) => clearTimeout(timer))
       timersMensajesRef.current.clear()
@@ -283,13 +299,22 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     const cargar = async () => {
     try {
-      const data = await obtenerRegistros(fechaCertificacion)
-      setRegistros(data)
-      const stats = await obtenerEstadisticas(fechaCertificacion)
-      setEstadisticas(stats)
+        const data = await obtenerRegistros(fechaCertificacion)
+        setRegistros(data)
+        const stats = await obtenerEstadisticas(fechaCertificacion)
+        setEstadisticas(stats)
+        return { data, stats }
     } catch (error) {
       setErrorMsg(`No se pudieron cargar los registros: ${error.message}`)
+        return { data: [], stats: { puntos: 0, rurales: 0, urbanas: 0 } }
     }
+    }
+
+    const bloquearSiCargaFinalizada = () => {
+      if (!cargaFinalizada) return null
+      const msg = 'La carga ya fue finalizada. No se permiten nuevos registros.'
+      setErrorMsg(msg)
+      return { ok: false, error: msg }
     }
 
   const guardarRegistro = async ({
@@ -302,6 +327,9 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     año,
   }) => {
     limpiarMensajes()
+
+    const bloqueo = bloquearSiCargaFinalizada()
+    if (bloqueo) return bloqueo
 
     const validacionId = validarIdNotificacion(idNotificacion)
     const idLimpio = validacionId.valor
@@ -508,6 +536,9 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     onBeforeError,
   }) => {
     limpiarMensajes()
+
+    const bloqueo = bloquearSiCargaFinalizada()
+    if (bloqueo) return bloqueo
 
     const modoTribunal = Boolean(mostraTribunalLote)
 
@@ -755,6 +786,87 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     return { ok: true }
   }
 
+  const construirResumenCarga = (registrosDia, statsDia) => {
+    const resumenPorCodigo = (registrosDia || []).reduce(
+      (acc, registro) => {
+        const codigo = String(registro?.codigo ?? '').trim().toUpperCase()
+        acc.total += 1
+
+        if (['D2', 'D4', 'E1'].includes(codigo)) acc.exitosas += 1
+        else if (['B3', 'B7', 'B10'].includes(codigo)) acc.busqueda += 1
+        else if (['A1', 'A2', 'A3', 'B5'].includes(codigo)) acc.negativas += 1
+        else acc.otros += 1
+
+        return acc
+      },
+      { total: 0, exitosas: 0, busqueda: 0, negativas: 0, otros: 0 }
+    )
+
+    return {
+      fecha_certificacion: fechaCertificacion,
+      carga_total: statsDia?.cargaTotal ?? registrosDia.length,
+      puntos: statsDia?.puntos ?? 0,
+      urbanas: statsDia?.urbanas ?? 0,
+      rurales: statsDia?.rurales ?? 0,
+      total_notificaciones: resumenPorCodigo.total,
+      exitosas: resumenPorCodigo.exitosas,
+      busqueda: resumenPorCodigo.busqueda,
+      negativas: resumenPorCodigo.negativas,
+      otros: resumenPorCodigo.otros,
+    }
+  }
+
+  const finalizarCarga = async () => {
+    limpiarMensajes()
+
+    if (cargaFinalizada) {
+      const msg = 'La carga ya fue finalizada.'
+      setErrorMsg(msg)
+      return { ok: false, error: msg }
+    }
+
+    if (pendientesSync > 0 || sincronizandoPendientes) {
+      const msg = 'Hay operaciones pendientes de sincronización. Conéctate y sincroniza antes de finalizar.'
+      setErrorMsg(msg)
+      return { ok: false, error: msg }
+    }
+
+    let registrosDia = registros
+    let statsDia = estadisticas
+
+    try {
+      const snapshot = await cargar()
+      registrosDia = snapshot?.data ?? registrosDia
+      statsDia = snapshot?.stats ?? statsDia
+    } catch {
+      // cargar() ya deja el error visible si falla
+    }
+
+    try {
+      const envio = await enviarReporteFinalizacionCarga(fechaCertificacion)
+      if (!envio?.ok) {
+        const msg = envio?.error || 'No se pudo enviar el reporte de cierre'
+        setErrorMsg(msg)
+        return { ok: false, error: msg }
+      }
+    } catch (error) {
+      const msg = `No se pudo enviar el reporte de cierre: ${error.message}`
+      setErrorMsg(msg)
+      return { ok: false, error: msg }
+    }
+
+    try {
+      localStorage.setItem(`carga-finalizada:${fechaCertificacion}`, '1')
+    } catch {
+      // noop
+    }
+
+    setCargaFinalizada(true)
+    setMensaje('Carga finalizada y reporte enviado')
+    agregarMensajeVisual('Se envió el reporte diario por correo y la carga quedó cerrada.', 'sincronizado')
+    return { ok: true, resumen: resumenCarga }
+  }
+
   return {
     registros,
     cargando,
@@ -767,6 +879,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     sincronizandoPendientes,
     pendientesDetalle,
     pendientesPorTipo,
+    cargaFinalizada,
     setMensaje,
     setErrorMsg,
     setMensajes,
@@ -776,6 +889,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     eliminarUltimoRegistro,
     guardarLoteRegistros,
     actualizarRegistro,
+    finalizarCarga,
   }
 }
 
