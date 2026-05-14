@@ -348,7 +348,7 @@ Deno.serve(async (req) => {
     resendBody.attachments = [
       {
         filename: `reporte-${fecha}.pdf`,
-        data: attachmentBase64,
+        content: attachmentBase64,
         type: 'application/pdf',
       },
     ]
