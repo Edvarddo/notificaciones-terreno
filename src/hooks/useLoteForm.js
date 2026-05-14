@@ -10,6 +10,7 @@ function useLoteForm() {
   const [mostraTribunalLote, setMostraTribunalLote] = useState(false)
   const [tribunalesLote, setTribunalesLote] = useState([{ rit: '', año: '' }])
   const [codigoPorId, setCodigoPorId] = useState({})
+  const [observacionPorId, setObservacionPorId] = useState({})
   const [a1Caso, setA1Caso] = useState('')
   const [a1Valor1, setA1Valor1] = useState('')
   const [a1Valor2, setA1Valor2] = useState('')
@@ -153,6 +154,12 @@ function useLoteForm() {
       delete next[idQuitar]
       return next
     })
+    // also remove any per-id observacion override
+    setObservacionPorId((prev) => {
+      const next = { ...prev }
+      delete next[idQuitar]
+      return next
+    })
   }
 
   const limpiarLote = () => {
@@ -165,6 +172,7 @@ function useLoteForm() {
     setMostraTribunalLote(false)
     setTribunalesLote([{ rit: '', año: '' }])
     setCodigoPorId({})
+    setObservacionPorId({})
     setA1Caso('')
     setA1Valor1('')
     setA1Valor2('')
@@ -173,6 +181,15 @@ function useLoteForm() {
   const setCodigoParaId = (id, codigo) => {
     const limpio = String(codigo ?? '').trim().toUpperCase()
     setCodigoPorId((prev) => ({ ...prev, [id]: limpio }))
+  }
+
+  const setObservacionParaId = (id, observacion) => {
+    const limpio = String(observacion ?? '').trim()
+    setObservacionPorId((prev) => ({ ...prev, [id]: limpio }))
+  }
+
+  const obtenerObservacionParaId = (id) => {
+    return String(observacionPorId[id] ?? '')
   }
 
   const obtenerCodigoParaId = (id) => {
@@ -218,6 +235,7 @@ function useLoteForm() {
     horaLote,
     codigoLote,
     observacionLote,
+    observacionPorId,
     esNoUrbanaLote,
     mostraTribunalLote,
     tribunalesLote,
@@ -229,7 +247,10 @@ function useLoteForm() {
     setMostraTribunalLote,
     setTribunalesLote,
     setCodigoParaId,
+    setObservacionParaId,
+    obtenerObservacionParaId,
     obtenerCodigoParaId,
+    obtenerObservacionSugerida,
     agregarIdTemporal,
     quitarIdTemporal,
     limpiarLote,

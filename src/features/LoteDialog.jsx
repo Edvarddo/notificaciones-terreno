@@ -23,6 +23,9 @@ function LoteDialog({
   onAbrirCodigos,
   codigoPorId,
   onSetCodigoParaId,
+  observacionPorId,
+  onSetObservacionParaId,
+  obtenerObservacionSugerida,
   codigoLoteVista,
   descripcionCodigoLote,
   observacionLote,
@@ -75,6 +78,14 @@ function LoteDialog({
       onSetCodigoParaId(codigoDialogId, codigoSeleccionado)
     }
     cerrarCodigoDialog()
+  }
+
+  const editarObservacionParaId = (id) => {
+    const actual = (observacionPorId && observacionPorId[id]) || observacionLote || ''
+    const nuevo = window.prompt(`Observación para ${id}`, actual)
+    if (nuevo !== null && onSetObservacionParaId) {
+      onSetObservacionParaId(id, nuevo)
+    }
   }
 
   return (
@@ -354,40 +365,66 @@ function LoteDialog({
                     <th>#</th>
                     <th>ID NOTIFICACION</th>
                     <th>CODIGO</th>
+                    <th>OBSERVACION</th>
+                    <th>SUGERENCIAS</th>
                     <th>ACCION</th>
                   </tr>
                 </thead>
                 <tbody>
                   {idsTemporales.length === 0 ? (
                     <tr>
-                      <td colSpan="3">No hay IDs cargados en el lote.</td>
+                      <td colSpan="6">No hay IDs cargados en el lote.</td>
                     </tr>
                   ) : (
-                    idsTemporales.map((id, index) => (
-                      <tr key={id}>
-                        <td>{index + 1}</td>
-                        <td><IdHighlight value={id} /></td>
-                        <td>{(codigoPorId && codigoPorId[id]) || codigoLote || '-'}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="boton-secundario"
-                            onClick={() => abrirCodigoParaId(id)}
-                            title="Cambiar código"
-                          >
-                            Cambiar código
-                          </button>
+                    idsTemporales.map((id, index) => {
+                      const codigoEfectivo = ((codigoPorId && codigoPorId[id]) || codigoLote || '').toString().trim().toUpperCase()
+                      let sugerencia = ''
+                      try {
+                        sugerencia = obtenerObservacionSugerida ? obtenerObservacionSugerida(codigoEfectivo) : ''
+                        if (Array.isArray(sugerencia)) {
+                          sugerencia = sugerencia[0] || ''
+                        }
+                      } catch (e) {
+                        sugerencia = ''
+                      }
 
-                          <button
-                            type="button"
-                            className="boton-quitar-fila"
-                            onClick={() => onQuitarId(id)}
-                          >
-                            Quitar
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                      return (
+                        <tr key={id}>
+                          <td>{index + 1}</td>
+                          <td><IdHighlight value={id} /></td>
+                          <td>{codigoEfectivo || '-'}</td>
+                          <td>{(observacionPorId && observacionPorId[id]) || observacionLote || '-'}</td>
+                          <td>{sugerencia || '-'}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="boton-secundario"
+                              onClick={() => abrirCodigoParaId(id)}
+                              title="Cambiar código"
+                            >
+                              Cambiar código
+                            </button>
+
+                            <button
+                              type="button"
+                              className="boton-secundario"
+                              onClick={() => editarObservacionParaId(id)}
+                              title="Editar observación"
+                            >
+                              Editar observación
+                            </button>
+
+                            <button
+                              type="button"
+                              className="boton-quitar-fila"
+                              onClick={() => onQuitarId(id)}
+                            >
+                              Quitar
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>

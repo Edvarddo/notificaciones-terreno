@@ -528,6 +528,9 @@ function App() {
           onAbrirCodigos={() => setDialogoCodigoLoteAbierto(true)}
           codigoPorId={lote.codigoPorId}
           onSetCodigoParaId={lote.setCodigoParaId}
+          observacionPorId={lote.observacionPorId}
+          onSetObservacionParaId={lote.setObservacionParaId}
+          obtenerObservacionSugerida={lote.obtenerObservacionSugerida}
           codigoLoteVista={codigoLoteVista}
           descripcionCodigoLote={descripcionCodigoLote}
           observacionLote={lote.observacionLote}
