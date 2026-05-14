@@ -202,35 +202,15 @@ Deno.serve(async (req) => {
       <div style="background: #f9fafb; padding: 40px 32px;">
         <div style="max-width: 900px; margin: 0 auto;">
           
-          <!-- Resumen KPIs - Tabla Simple -->
-          <table style="width: 100%; margin-bottom: 32px; border-collapse: collapse; background: #fff;">
-            <tr>
-              <td style="padding: 16px; text-align: center; border-bottom: 3px solid #0b3c5d;">
-                <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 8px;">Carga</div>
-                <div style="font-size: 32px; font-weight: 700; color: #0b3c5d;">${formatNumber(resumen.carga_total)}</div>
-              </td>
-              <td style="padding: 16px; text-align: center; border-bottom: 3px solid #0b3c5d;">
-                <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 8px;">Puntos</div>
-                <div style="font-size: 32px; font-weight: 700; color: #0b3c5d;">${formatNumber(resumen.puntos)}</div>
-              </td>
-              <td style="padding: 16px; text-align: center; border-bottom: 3px solid #0b3c5d;">
-                <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 8px;">Urbanas</div>
-                <div style="font-size: 32px; font-weight: 700; color: #047857;">${formatNumber(resumen.urbanas)}</div>
-              </td>
-              <td style="padding: 16px; text-align: center; border-bottom: 3px solid #0b3c5d;">
-                <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 8px;">Rurales</div>
-                <div style="font-size: 32px; font-weight: 700; color: #d97706;">${formatNumber(resumen.rurales)}</div>
-              </td>
-              <td style="padding: 16px; text-align: center; border-bottom: 3px solid #0b3c5d;">
-                <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 8px;">Exitosas</div>
-                <div style="font-size: 32px; font-weight: 700; color: #7c3aed;">${formatNumber(resumen.exitosas)}</div>
-              </td>
-              <td style="padding: 16px; text-align: center; border-bottom: 3px solid #0b3c5d;">
-                <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 8px;">Búsqueda</div>
-                <div style="font-size: 32px; font-weight: 700; color: #f59e0b;">${formatNumber(resumen.busqueda)}</div>
-              </td>
-            </tr>
-          </table>
+          <!-- Resumen KPIs - Muy Simple -->
+          <div style="margin-bottom: 32px; font-size: 14px; line-height: 1.8; color: #374151;">
+            <div><strong>Carga total:</strong> ${formatNumber(resumen.carga_total)}</div>
+            <div><strong>Puntos (direcciones):</strong> ${formatNumber(resumen.puntos)}</div>
+            <div><strong>Urbanas:</strong> ${formatNumber(resumen.urbanas)}</div>
+            <div><strong>Rurales:</strong> ${formatNumber(resumen.rurales)}</div>
+            <div><strong>Exitosas:</strong> ${formatNumber(resumen.exitosas)}</div>
+            <div><strong>Búsqueda:</strong> ${formatNumber(resumen.busqueda)}</div>
+          </div>
 
           <!-- Table Section -->
           <div style="background: #fff; border-radius: 6px; overflow: hidden; border: 1px solid #e5e7eb;">
