@@ -90,6 +90,8 @@ const calcularResumen = (registros: RegistroTerreno[], fecha: string): ResumenCa
 
 // Import Supabase client
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// PDF generation (pure JS, works in Deno)
+import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -262,6 +264,95 @@ Deno.serve(async (req) => {
 
     </div>
   `
+  // Generate a simple PDF version of the report and attach it to the email
+  const generatePdf = async (registros: RegistroTerreno[], resumen: ResumenCarga, fecha: string) => {
+    const pdfDoc = await PDFDocument.create()
+    const pageSize = { width: 595.28, height: 841.89 } // A4 in points
+    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
+
+    let page = pdfDoc.addPage([pageSize.width, pageSize.height])
+    const margin = 40
+    let y = pageSize.height - margin
+
+    const drawText = (text: string, size = 12, color = rgb(0.13, 0.2, 0.26), options: any = {}) => {
+      page.drawText(text, { x: margin, y, size, font: helvetica, color, ...options })
+      y -= size + 6
+    }
+
+    // Header
+    drawText(`Reporte de cierre - ${fecha}`, 16)
+    y -= 6
+
+    // Resumen
+    drawText(`Carga total: ${formatNumber(resumen.carga_total)}`, 12)
+    drawText(`Puntos (direcciones): ${formatNumber(resumen.puntos)}`, 12)
+    drawText(`Urbanas: ${formatNumber(resumen.urbanas)}    Rurales: ${formatNumber(resumen.rurales)}`, 12)
+    drawText(`Exitosas: ${formatNumber(resumen.exitosas)}    Búsqueda: ${formatNumber(resumen.busqueda)}`, 12)
+
+    y -= 6
+    drawText('Detalle de notificaciones:', 13)
+
+    // Table header
+    const cols = [120, 220, 300, 420, 480]
+    const headerFontSize = 11
+    page.drawText('ID', { x: margin, y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
+    page.drawText('CÓDIGO', { x: margin + cols[0], y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
+    page.drawText('HORA', { x: margin + cols[1], y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
+    page.drawText('OBSERVACIÓN', { x: margin + cols[2], y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
+    page.drawText('TIPO', { x: margin + cols[3], y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
+    y -= headerFontSize + 8
+
+    const rowFontSize = 10
+    for (const r of registros) {
+      if (y < margin + 60) {
+        page = pdfDoc.addPage([pageSize.width, pageSize.height])
+        y = pageSize.height - margin
+      }
+
+      const idText = (r.id_notificacion || `${r.rit || ''}-${r.año || ''}`).slice(0, 20)
+      page.drawText(idText, { x: margin, y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
+      page.drawText(String(r.codigo || '').slice(0, 15), { x: margin + cols[0], y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
+      page.drawText(String(r.hora || '').slice(0, 10), { x: margin + cols[1], y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
+      page.drawText(String(r.observacion || '—').slice(0, 50), { x: margin + cols[2], y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
+      page.drawText(r.es_no_urbana ? 'Rural' : 'Urbana', { x: margin + cols[3], y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
+      y -= rowFontSize + 6
+    }
+
+    const pdfBytes = await pdfDoc.save()
+    return pdfBytes
+  }
+
+  let attachmentBase64: string | null = null
+  try {
+    const pdfBytes = await generatePdf(registrosTerreno, resumen, fecha)
+    // base64 encode
+    let binary = ''
+    const bytes = new Uint8Array(pdfBytes)
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    attachmentBase64 = btoa(binary)
+  } catch (e) {
+    // If PDF generation fails, continue without attachment
+    console.error('PDF generation failed', e)
+    attachmentBase64 = null
+  }
+
+  const resendBody: any = {
+    from: FROM_EMAIL,
+    to: [TO_EMAIL],
+    subject,
+    text,
+    html,
+  }
+
+  if (attachmentBase64) {
+    resendBody.attachments = [
+      {
+        filename: `reporte-${fecha}.pdf`,
+        data: attachmentBase64,
+        type: 'application/pdf',
+      },
+    ]
+  }
 
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -269,13 +360,7 @@ Deno.serve(async (req) => {
       Authorization: `Bearer ${RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: FROM_EMAIL,
-      to: [TO_EMAIL],
-      subject,
-      text,
-      html,
-    }),
+    body: JSON.stringify(resendBody),
   })
 
   const resendJson = await resendResponse.json().catch(() => ({}))
