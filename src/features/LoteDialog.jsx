@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import IdHighlight from '../components/IdHighlight'
 import IconList from '../components/IconList'
+import CodigoDialog from './CodigoDialog'
 
 function LoteDialog({
   abierto,
@@ -20,6 +21,8 @@ function LoteDialog({
   codigoLote,
   onCodigoChange,
   onAbrirCodigos,
+  codigoPorId,
+  onSetCodigoParaId,
   codigoLoteVista,
   descripcionCodigoLote,
   observacionLote,
@@ -53,6 +56,26 @@ function LoteDialog({
       }
     }
   }, [escaneandoLote])
+
+  const [codigoDialogAbierto, setCodigoDialogAbierto] = useState(false)
+  const [codigoDialogId, setCodigoDialogId] = useState(null)
+
+  const abrirCodigoParaId = (id) => {
+    setCodigoDialogId(id)
+    setCodigoDialogAbierto(true)
+  }
+
+  const cerrarCodigoDialog = () => {
+    setCodigoDialogAbierto(false)
+    setCodigoDialogId(null)
+  }
+
+  const manejarSeleccionCodigo = (codigoSeleccionado) => {
+    if (codigoDialogId && onSetCodigoParaId) {
+      onSetCodigoParaId(codigoDialogId, codigoSeleccionado)
+    }
+    cerrarCodigoDialog()
+  }
 
   return (
     <div className="dialogo-overlay" onClick={onClose}>
@@ -330,6 +353,7 @@ function LoteDialog({
                   <tr>
                     <th>#</th>
                     <th>ID NOTIFICACION</th>
+                    <th>CODIGO</th>
                     <th>ACCION</th>
                   </tr>
                 </thead>
@@ -343,7 +367,17 @@ function LoteDialog({
                       <tr key={id}>
                         <td>{index + 1}</td>
                         <td><IdHighlight value={id} /></td>
+                        <td>{(codigoPorId && codigoPorId[id]) || codigoLote || '-'}</td>
                         <td>
+                          <button
+                            type="button"
+                            className="boton-secundario"
+                            onClick={() => abrirCodigoParaId(id)}
+                            title="Cambiar código"
+                          >
+                            Cambiar código
+                          </button>
+
                           <button
                             type="button"
                             className="boton-quitar-fila"
@@ -358,6 +392,14 @@ function LoteDialog({
                 </tbody>
               </table>
             </div>
+
+            <CodigoDialog
+              abierto={codigoDialogAbierto}
+              titulo={codigoDialogId ? `Codigo para ${codigoDialogId}` : 'Codigos'}
+              valorActual={codigoDialogId ? (codigoPorId && codigoPorId[codigoDialogId]) || codigoLote : codigoLote}
+              onClose={cerrarCodigoDialog}
+              onSelect={manejarSeleccionCodigo}
+            />
 
             <div className="acciones">
               <button

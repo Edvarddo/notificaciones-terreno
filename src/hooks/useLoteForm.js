@@ -9,6 +9,7 @@ function useLoteForm() {
   const [esNoUrbanaLote, setEsNoUrbanaLote] = useState(false)
   const [mostraTribunalLote, setMostraTribunalLote] = useState(false)
   const [tribunalesLote, setTribunalesLote] = useState([{ rit: '', año: '' }])
+  const [codigoPorId, setCodigoPorId] = useState({})
   const [a1Caso, setA1Caso] = useState('')
   const [a1Valor1, setA1Valor1] = useState('')
   const [a1Valor2, setA1Valor2] = useState('')
@@ -146,6 +147,12 @@ function useLoteForm() {
   const quitarIdTemporal = (idQuitar) => {
     idsTemporalesRef.current = idsTemporalesRef.current.filter((id) => id !== idQuitar)
     setIdsTemporales(idsTemporalesRef.current)
+    // also remove any per-id codigo override
+    setCodigoPorId((prev) => {
+      const next = { ...prev }
+      delete next[idQuitar]
+      return next
+    })
   }
 
   const limpiarLote = () => {
@@ -157,9 +164,19 @@ function useLoteForm() {
     setEsNoUrbanaLote(false)
     setMostraTribunalLote(false)
     setTribunalesLote([{ rit: '', año: '' }])
+    setCodigoPorId({})
     setA1Caso('')
     setA1Valor1('')
     setA1Valor2('')
+  }
+
+  const setCodigoParaId = (id, codigo) => {
+    const limpio = String(codigo ?? '').trim().toUpperCase()
+    setCodigoPorId((prev) => ({ ...prev, [id]: limpio }))
+  }
+
+  const obtenerCodigoParaId = (id) => {
+    return String(codigoPorId[id] ?? '')
   }
 
   const handleHoraLoteChange = (e) => {
@@ -204,12 +221,15 @@ function useLoteForm() {
     esNoUrbanaLote,
     mostraTribunalLote,
     tribunalesLote,
+    codigoPorId,
     setHoraLote,
     setCodigoLote: handleCodigoLoteChange,
     setObservacionLote,
     setEsNoUrbanaLote,
     setMostraTribunalLote,
     setTribunalesLote,
+    setCodigoParaId,
+    obtenerCodigoParaId,
     agregarIdTemporal,
     quitarIdTemporal,
     limpiarLote,

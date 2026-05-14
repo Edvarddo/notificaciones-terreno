@@ -503,6 +503,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     esNoUrbanaLote,
     mostraTribunalLote,
     tribunalesLote,
+    codigoPorId = {},
     onSuccess,
     onBeforeError,
   }) => {
@@ -605,7 +606,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
           id_notificacion: id,
           fecha_certificacion: fechaCertificacion,
           hora: horaLote,
-          codigo: codigoNormalizado,
+          codigo: (codigoPorId && codigoPorId[String(id)]) ? String(codigoPorId[String(id)]).trim().toUpperCase() : codigoNormalizado,
           observacion: observacionNormalizada,
           es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
           codigo_lote: idLoteUnico,

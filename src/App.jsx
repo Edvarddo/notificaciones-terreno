@@ -213,6 +213,7 @@ function App() {
       idsTemporales: lote.idsTemporales,
       horaLote: lote.horaLote,
       codigoLote: lote.codigoLote,
+      codigoPorId: lote.codigoPorId,
       observacionLote: lote.observacionLote,
       esNoUrbanaLote: lote.esNoUrbanaLote,
       ritLote: lote.ritLote,
@@ -525,6 +526,8 @@ function App() {
           codigoLote={lote.codigoLote}
           onCodigoChange={lote.handleCodigoLoteManualChange}
           onAbrirCodigos={() => setDialogoCodigoLoteAbierto(true)}
+          codigoPorId={lote.codigoPorId}
+          onSetCodigoParaId={lote.setCodigoParaId}
           codigoLoteVista={codigoLoteVista}
           descripcionCodigoLote={descripcionCodigoLote}
           observacionLote={lote.observacionLote}
