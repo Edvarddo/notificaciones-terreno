@@ -91,8 +91,6 @@ const calcularResumen = (registros: RegistroTerreno[], fecha: string): ResumenCa
 
 // Import Supabase client
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-// PDF generation (pure JS, works in Deno)
-import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -266,165 +264,12 @@ Deno.serve(async (req) => {
 
     </div>
   `
-    // Generate a PDF that visually matches the email (header, KPI cards, table)
-    const generatePdf = async (registros: RegistroTerreno[], resumen: ResumenCarga, fecha: string) => {
-    const pdfDoc = await PDFDocument.create()
-    const pageSize = { width: 595.28, height: 841.89 } // A4
-    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
-    const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
-
-    const margin = 36
-    const cardWidth = 140
-    const cardHeight = 70
-    const gap = 12
-
-    let page = pdfDoc.addPage([pageSize.width, pageSize.height])
-    let yTop = pageSize.height - margin
-
-    // Header band (solid color similar to email)
-    page.drawRectangle({ x: 0, y: pageSize.height - 120, width: pageSize.width, height: 120, color: rgb(0.043, 0.235, 0.365) })
-    // center title
-    const title = 'Reporte de Cierre'
-    const titleSize = 20
-    const titleWidth = helveticaBold.widthOfTextAtSize(title, titleSize)
-    page.drawText(title, { x: (pageSize.width - titleWidth) / 2, y: pageSize.height - 60, size: titleSize, font: helveticaBold, color: rgb(1, 1, 1) })
-    const fechaText = `Fecha: ${fecha}`
-    const fechaSize = 11
-    const fechaWidth = helvetica.widthOfTextAtSize(fechaText, fechaSize)
-    page.drawText(fechaText, { x: (pageSize.width - fechaWidth) / 2, y: pageSize.height - 88, size: fechaSize, font: helvetica, color: rgb(1, 1, 1) })
-
-    // KPIs cards area
-    // Center KPI cards
-    const kpis = [
-      { label: 'Carga', value: resumen.carga_total || 0, color: rgb(0.043, 0.235, 0.365) },
-      { label: 'Puntos', value: resumen.puntos || 0, color: rgb(0.043, 0.235, 0.365) },
-      { label: 'Urbanas', value: resumen.urbanas || 0, color: rgb(0.0, 0.529, 0.341) },
-      { label: 'Rurales', value: resumen.rurales || 0, color: rgb(0.855, 0.471, 0.039) },
-      { label: 'Exitosas', value: resumen.exitosas || 0, color: rgb(0.486, 0.239, 0.933) },
-      { label: 'Búsqueda', value: resumen.busqueda || 0, color: rgb(0.96, 0.62, 0.075) },
-    ]
-    // layout: compute how many per row to center nicely (max 3 per row)
-    const perRow = 3
-    let kpiIndex = 0
-    let kpiRowY = pageSize.height - 150
-    while (kpiIndex < kpis.length) {
-      const row = kpis.slice(kpiIndex, kpiIndex + perRow)
-      let startX = (pageSize.width - (row.length * cardWidth + (row.length - 1) * gap)) / 2
-      for (const kpi of row) {
-        page.drawRectangle({ x: startX, y: kpiRowY - cardHeight, width: cardWidth, height: cardHeight, color: rgb(1, 1, 1), borderColor: rgb(0.9, 0.9, 0.9), borderWidth: 0.5 })
-        const labelSize = 9
-        const labelWidth = helveticaBold.widthOfTextAtSize(kpi.label, labelSize)
-        page.drawText(kpi.label, { x: startX + 10, y: kpiRowY - 28, size: labelSize, font: helveticaBold, color: rgb(0.42, 0.46, 0.52) })
-        const valueStr = String(formatNumber(kpi.value))
-        const valueSize = 16
-        page.drawText(valueStr, { x: startX + 10, y: kpiRowY - 50, size: valueSize, font: helveticaBold, color: kpi.color })
-        startX += cardWidth + gap
-      }
-      kpiIndex += perRow
-      kpiRowY -= cardHeight + 18
-    }
-
-    // Move to table area
-    let tableY = yTop - cardHeight - 20
-    if (tableY < 200) {
-      page = pdfDoc.addPage([pageSize.width, pageSize.height])
-      tableY = pageSize.height - margin - 40
-    }
-
-    // Table header background + improved visuals (alternating row shading and column separators)
-    const tableX = margin
-    const tableWidth = pageSize.width - margin * 2
-    const colWidths = [120, 80, 70, tableWidth - 120 - 80 - 70 - 80, 80] // ID, CÓDIGO, HORA, OBS, TIPO
-    const headerHeight = 24
-    page.drawRectangle({ x: tableX, y: tableY - headerHeight, width: tableWidth, height: headerHeight, color: rgb(0.956, 0.958, 0.96) })
-    // headers centered/left-friendly
-    let hx = tableX + 8
-    const headerFontSize = 11
-    const headers = ['ID', 'CÓDIGO', 'HORA', 'OBSERVACIÓN', 'TIPO']
-    for (let i = 0; i < headers.length; i++) {
-      page.drawText(headers[i], { x: hx, y: tableY - 18, size: headerFontSize, font: helveticaBold, color: rgb(0.2, 0.2, 0.2) })
-      // vertical separator
-      const sepX = tableX + colWidths.slice(0, i + 1).reduce((s, v) => s + v, 0)
-      page.drawLine({ start: { x: sepX, y: tableY - headerHeight }, end: { x: sepX, y: tableY + 6 }, thickness: 0.5, color: rgb(0.88, 0.88, 0.88) })
-      hx += colWidths[i]
-    }
-
-    // rows with alternating background
-    let tableRowY = tableY - headerHeight - 10
-    const rowFontSize = 10
-    let rowIdx = 0
-    for (const r of registros) {
-      if (tableRowY < margin + 40) {
-        page = pdfDoc.addPage([pageSize.width, pageSize.height])
-        tableRowY = pageSize.height - margin - 40
-      }
-
-      // alternating background
-      if (rowIdx % 2 === 1) {
-        page.drawRectangle({ x: tableX, y: tableRowY - 6, width: tableWidth, height: rowFontSize + 10, color: rgb(0.98, 0.98, 0.98) })
-      }
-
-      let rx = tableX + 8
-      const idText = (r.id_notificacion || `${r.rit || ''}-${r.año || ''}`).slice(0, 18)
-      page.drawText(idText, { x: rx, y: tableRowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
-      rx += colWidths[0]
-
-      page.drawText(String(r.codigo || '').slice(0, 12), { x: rx, y: tableRowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
-      rx += colWidths[1]
-
-      page.drawText(String(r.hora || '').slice(0, 8), { x: rx, y: tableRowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
-      rx += colWidths[2]
-
-      page.drawText(String(r.observacion || '—').slice(0, 80), { x: rx, y: tableRowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
-      rx += colWidths[3]
-
-      const tipo = r.es_no_urbana ? 'Rural' : 'Urbana'
-      page.drawText(tipo, { x: rx, y: tableRowY, size: rowFontSize, font: helveticaBold, color: r.es_no_urbana ? rgb(0.85, 0.38, 0.06) : rgb(0.02, 0.44, 0.31) })
-
-      // bottom row separator
-      page.drawLine({ start: { x: tableX, y: tableRowY - 8 }, end: { x: tableX + tableWidth, y: tableRowY - 8 }, thickness: 0.4, color: rgb(0.92, 0.92, 0.92) })
-
-      tableRowY -= rowFontSize + 14
-      rowIdx += 1
-    }
-
-    // Footer small text
-    page.drawText(`Reporte generado automáticamente • ${fecha}`, { x: margin, y: margin - 4, size: 9, font: helvetica, color: rgb(0.5, 0.5, 0.5) })
-
-    const pdfBytes = await pdfDoc.save()
-    return pdfBytes
-  }
-
-    let attachmentBase64: string | null = null
-    try {
-      const pdfBytes = await generatePdf(registrosTerreno, resumen, fecha)
-      // base64 encode
-      let binary = ''
-      const bytes = new Uint8Array(pdfBytes)
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-      attachmentBase64 = btoa(binary)
-    } catch (e) {
-      // If PDF generation fails, continue without attachment
-      console.error('PDF generation failed', e)
-      attachmentBase64 = null
-    }
-
     const resendBody: any = {
       from: FROM_EMAIL,
       to: [TO_EMAIL],
       subject,
       text,
       html,
-    }
-
-    if (attachmentBase64) {
-      resendBody.attachments = [
-        {
-          filename: `reporte-${fecha}.pdf`,
-          content: attachmentBase64,
-          type: 'application/pdf',
-        },
-      ]
     }
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
