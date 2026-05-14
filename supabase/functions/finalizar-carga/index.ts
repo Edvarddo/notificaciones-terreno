@@ -202,41 +202,45 @@ Deno.serve(async (req) => {
       <div style="background: #f9fafb; padding: 40px 32px;">
         <div style="max-width: 900px; margin: 0 auto;">
           
-          <!-- KPIs Row 1 -->
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
-            <div style="background: #fff; padding: 20px; border-left: 4px solid #1f6f8b; border-radius: 4px;">
-              <div style="font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Carga Total</div>
-              <div style="font-size: 26px; font-weight: 700; color: #0b3c5d;">${formatNumber(resumen.carga_total)}</div>
+          <!-- Grupo 1: Carga Total y Puntos -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <div style="background: #fff; padding: 24px; border-left: 5px solid #1f6f8b; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="font-size: 12px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Carga Total</div>
+              <div style="font-size: 36px; font-weight: 700; color: #0b3c5d; line-height: 1;">${formatNumber(resumen.carga_total)}</div>
             </div>
-            <div style="background: #fff; padding: 20px; border-left: 4px solid #1f6f8b; border-radius: 4px;">
-              <div style="font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Puntos</div>
-              <div style="font-size: 26px; font-weight: 700; color: #0b3c5d;">${formatNumber(resumen.puntos)}</div>
-            </div>
-            <div style="background: #fff; padding: 20px; border-left: 4px solid #047857; border-radius: 4px;">
-              <div style="font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Urbanas</div>
-              <div style="font-size: 26px; font-weight: 700; color: #047857;">${formatNumber(resumen.urbanas)}</div>
-            </div>
-            <div style="background: #fff; padding: 20px; border-left: 4px solid #d97706; border-radius: 4px;">
-              <div style="font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Rurales</div>
-              <div style="font-size: 26px; font-weight: 700; color: #d97706;">${formatNumber(resumen.rurales)}</div>
+            <div style="background: #fff; padding: 24px; border-left: 5px solid #1f6f8b; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="font-size: 12px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Puntos</div>
+              <div style="font-size: 36px; font-weight: 700; color: #0b3c5d; line-height: 1;">${formatNumber(resumen.puntos)}</div>
             </div>
           </div>
 
-          <!-- KPIs Row 2 -->
+          <!-- Grupo 2: Urbanas y Rurales -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <div style="background: #fff; padding: 24px; border-left: 5px solid #047857; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="font-size: 12px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Urbanas</div>
+              <div style="font-size: 36px; font-weight: 700; color: #047857; line-height: 1;">${formatNumber(resumen.urbanas)}</div>
+            </div>
+            <div style="background: #fff; padding: 24px; border-left: 5px solid #d97706; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <div style="font-size: 12px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Rurales</div>
+              <div style="font-size: 36px; font-weight: 700; color: #d97706; line-height: 1;">${formatNumber(resumen.rurales)}</div>
+            </div>
+          </div>
+
+          <!-- Grupo 3: Desglose por Tipo -->
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px;">
-            <div style="background: #fff; padding: 20px; border-top: 3px solid #7c3aed; border-radius: 4px;">
+            <div style="background: #fff; padding: 18px; border-top: 4px solid #7c3aed; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
               <div style="font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Exitosas</div>
               <div style="font-size: 24px; font-weight: 700; color: #7c3aed;">${formatNumber(resumen.exitosas)}</div>
             </div>
-            <div style="background: #fff; padding: 20px; border-top: 3px solid #f59e0b; border-radius: 4px;">
+            <div style="background: #fff; padding: 18px; border-top: 4px solid #f59e0b; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
               <div style="font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Búsqueda</div>
               <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">${formatNumber(resumen.busqueda)}</div>
             </div>
-            <div style="background: #fff; padding: 20px; border-top: 3px solid #ef4444; border-radius: 4px;">
+            <div style="background: #fff; padding: 18px; border-top: 4px solid #ef4444; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
               <div style="font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Negativas</div>
               <div style="font-size: 24px; font-weight: 700; color: #ef4444;">${formatNumber(resumen.negativas)}</div>
             </div>
-            <div style="background: #fff; padding: 20px; border-top: 3px solid #6b7280; border-radius: 4px;">
+            <div style="background: #fff; padding: 18px; border-top: 4px solid #6b7280; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
               <div style="font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Otros</div>
               <div style="font-size: 24px; font-weight: 700; color: #6b7280;">${formatNumber(resumen.otros)}</div>
             </div>
