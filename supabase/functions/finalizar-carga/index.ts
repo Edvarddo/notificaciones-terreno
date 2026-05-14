@@ -107,11 +107,14 @@ Deno.serve(async (req) => {
   try {
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
     const FROM_EMAIL = Deno.env.get('ACCESS_CODE_FROM_EMAIL')
-    const TO_EMAIL = Deno.env.get('ACCESS_CODE_RECIPIENT_EMAIL')
+    const TO_EMAILS = (Deno.env.get('ACCESS_CODE_RECIPIENT_EMAILS') || '')
+      .split(',')
+      .map((email) => email.trim())
+      .filter(Boolean)
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    if (!RESEND_API_KEY || !FROM_EMAIL || !TO_EMAIL) {
+    if (!RESEND_API_KEY || !FROM_EMAIL || TO_EMAILS.length === 0) {
       return new Response(JSON.stringify({ error: 'Faltan variables de entorno de correo' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -266,7 +269,7 @@ Deno.serve(async (req) => {
   `
     const resendBody: any = {
       from: FROM_EMAIL,
-      to: [TO_EMAIL],
+      to: TO_EMAILS,
       subject,
       text,
       html,
