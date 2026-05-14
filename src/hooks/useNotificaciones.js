@@ -250,7 +250,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
   const resolverClasificacionTerreno = async (esNoUrbanaManual) => {
     try {
-      return await determinarSiEsNoUrbanaDesdeGPS()
+      return await determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual)
     } catch (error) {
       return clasificarPorFallbackManual(esNoUrbanaManual)
     }

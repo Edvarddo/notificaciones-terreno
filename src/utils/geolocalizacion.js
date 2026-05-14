@@ -41,6 +41,8 @@ const MARGEN_BAJA_PRECISION_METROS = 20
 const UMBRAL_PRECISION_ALTA_METROS = 10
 const UMBRAL_PRECISION_MEDIA_METROS = 20
 const UMBRAL_PRECISION_BAJA_METROS = 30
+const ULTIMA_POSICION_KEY = 'notificaciones-terreno-ultima-posicion-gps'
+const ULTIMA_POSICION_TTL_MS = 30 * 60 * 1000
 
 const obtenerPoligonoConMargen = (margenMetros) => {
   try {
@@ -98,30 +100,125 @@ function obtenerPosicionActual(options = { enableHighAccuracy: true, timeout: 10
   })
 }
 
-export async function determinarSiEsNoUrbanaDesdeGPS() {
-  const posicion = await obtenerPosicionActual()
-  const lng = posicion.coords.longitude
-  const lat = posicion.coords.latitude
-  const precisionGps = posicion.coords.accuracy
-  const margenAplicado = calcularMargenSegunPrecision(precisionGps)
-  const poligonoUrbano = obtenerPoligonoConMargen(margenAplicado)
-  const esUrbana = puntoEnPoligono([lng, lat], poligonoUrbano)
+function guardarUltimaPosicionGps({ latitud, longitud, precision }) {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return
 
-  console.log('[geo] ubicacion GPS', {
-    latitud: lat,
-    longitud: lng,
-    precision: precisionGps,
-    esUrbana,
-    esNoUrbana: !esUrbana,
-    poligono: 'POLIGONO_URBANO',
-    margenMetros: margenAplicado,
-  })
+    window.localStorage.setItem(
+      ULTIMA_POSICION_KEY,
+      JSON.stringify({
+        latitud,
+        longitud,
+        precision,
+        timestamp: Date.now(),
+      })
+    )
+  } catch (error) {
+    console.warn('[geo] no se pudo guardar la ultima posicion GPS', error)
+  }
+}
 
-  return {
-    latitud: lat,
-    longitud: lng,
-    es_no_urbana: !esUrbana,
-    fuente: 'gps',
+function leerUltimaPosicionGps() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null
+
+    const raw = window.localStorage.getItem(ULTIMA_POSICION_KEY)
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw)
+    if (!Number.isFinite(parsed?.latitud) || !Number.isFinite(parsed?.longitud)) return null
+
+    const timestamp = Number(parsed?.timestamp || 0)
+    if (!timestamp || Date.now() - timestamp > ULTIMA_POSICION_TTL_MS) return null
+
+    return {
+      latitud: Number(parsed.latitud),
+      longitud: Number(parsed.longitud),
+      precision: Number(parsed.precision || NaN),
+      timestamp,
+    }
+  } catch (error) {
+    console.warn('[geo] no se pudo leer la ultima posicion GPS', error)
+    return null
+  }
+}
+
+async function obtenerPosicionConReintentos() {
+  const intentos = [
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 },
+    { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 },
+  ]
+
+  let ultimoError = null
+
+  for (const opciones of intentos) {
+    try {
+      return await obtenerPosicionActual(opciones)
+    } catch (error) {
+      ultimoError = error
+      console.warn('[geo] intento GPS fallido', { opciones, error: error?.message || error })
+    }
+  }
+
+  throw ultimoError || new Error('No fue posible obtener la geolocalización')
+}
+
+export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
+  try {
+    const posicion = await obtenerPosicionConReintentos()
+    const lng = posicion.coords.longitude
+    const lat = posicion.coords.latitude
+    const precisionGps = posicion.coords.accuracy
+    const margenAplicado = calcularMargenSegunPrecision(precisionGps)
+    const poligonoUrbano = obtenerPoligonoConMargen(margenAplicado)
+    const esUrbana = puntoEnPoligono([lng, lat], poligonoUrbano)
+
+    guardarUltimaPosicionGps({ latitud: lat, longitud: lng, precision: precisionGps })
+
+    console.log('[geo] ubicacion GPS', {
+      latitud: lat,
+      longitud: lng,
+      precision: precisionGps,
+      esUrbana,
+      esNoUrbana: !esUrbana,
+      poligono: 'POLIGONO_URBANO',
+      margenMetros: margenAplicado,
+    })
+
+    return {
+      latitud: lat,
+      longitud: lng,
+      es_no_urbana: !esUrbana,
+      fuente: 'gps',
+    }
+  } catch (error) {
+    console.warn('[geo] GPS no disponible, intentando ultima posicion conocida', error?.message || error)
+
+    const ultimaPosicion = leerUltimaPosicionGps()
+    if (ultimaPosicion) {
+      const margenAplicado = calcularMargenSegunPrecision(ultimaPosicion.precision)
+      const poligonoUrbano = obtenerPoligonoConMargen(margenAplicado)
+      const esUrbana = puntoEnPoligono([ultimaPosicion.longitud, ultimaPosicion.latitud], poligonoUrbano)
+
+      console.log('[geo] usando ultima posicion GPS conocida', {
+        latitud: ultimaPosicion.latitud,
+        longitud: ultimaPosicion.longitud,
+        precision: ultimaPosicion.precision,
+        esUrbana,
+        esNoUrbana: !esUrbana,
+        fuente: 'gps-cache',
+      })
+
+      return {
+        latitud: ultimaPosicion.latitud,
+        longitud: ultimaPosicion.longitud,
+        es_no_urbana: !esUrbana,
+        fuente: 'gps-cache',
+      }
+    }
+
+    return clasificarPorFallbackManual(esNoUrbanaManual)
   }
 }
 
