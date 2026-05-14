@@ -202,29 +202,29 @@ Deno.serve(async (req) => {
       <div style="background: #f9fafb; padding: 40px 32px;">
         <div style="max-width: 900px; margin: 0 auto;">
           
-          <!-- Resumen KPIs - Simple -->
-          <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 32px;">
-            <div style="background: #fff; padding: 16px; border-radius: 4px; text-align: center;">
+          <!-- Resumen KPIs - Simple (compatible con email clients) -->
+          <div style="margin-bottom: 32px; text-align: center; font-size: 0;">
+            <div style="display: inline-block; width: 15%; margin: 8px 2%; background: #fff; padding: 16px; border-radius: 4px; text-align: center; font-size: 16px; vertical-align: top;">
               <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 6px;">Carga</div>
               <div style="font-size: 28px; font-weight: 700; color: #0b3c5d;">${formatNumber(resumen.carga_total)}</div>
             </div>
-            <div style="background: #fff; padding: 16px; border-radius: 4px; text-align: center;">
+            <div style="display: inline-block; width: 15%; margin: 8px 2%; background: #fff; padding: 16px; border-radius: 4px; text-align: center; font-size: 16px; vertical-align: top;">
               <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 6px;">Puntos</div>
               <div style="font-size: 28px; font-weight: 700; color: #0b3c5d;">${formatNumber(resumen.puntos)}</div>
             </div>
-            <div style="background: #fff; padding: 16px; border-radius: 4px; text-align: center;">
+            <div style="display: inline-block; width: 15%; margin: 8px 2%; background: #fff; padding: 16px; border-radius: 4px; text-align: center; font-size: 16px; vertical-align: top;">
               <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 6px;">Urbanas</div>
               <div style="font-size: 28px; font-weight: 700; color: #047857;">${formatNumber(resumen.urbanas)}</div>
             </div>
-            <div style="background: #fff; padding: 16px; border-radius: 4px; text-align: center;">
+            <div style="display: inline-block; width: 15%; margin: 8px 2%; background: #fff; padding: 16px; border-radius: 4px; text-align: center; font-size: 16px; vertical-align: top;">
               <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 6px;">Rurales</div>
               <div style="font-size: 28px; font-weight: 700; color: #d97706;">${formatNumber(resumen.rurales)}</div>
             </div>
-            <div style="background: #fff; padding: 16px; border-radius: 4px; text-align: center;">
+            <div style="display: inline-block; width: 15%; margin: 8px 2%; background: #fff; padding: 16px; border-radius: 4px; text-align: center; font-size: 16px; vertical-align: top;">
               <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 6px;">Exitosas</div>
               <div style="font-size: 28px; font-weight: 700; color: #7c3aed;">${formatNumber(resumen.exitosas)}</div>
             </div>
-            <div style="background: #fff; padding: 16px; border-radius: 4px; text-align: center;">
+            <div style="display: inline-block; width: 15%; margin: 8px 2%; background: #fff; padding: 16px; border-radius: 4px; text-align: center; font-size: 16px; vertical-align: top;">
               <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 6px;">Búsqueda</div>
               <div style="font-size: 28px; font-weight: 700; color: #f59e0b;">${formatNumber(resumen.busqueda)}</div>
             </div>
