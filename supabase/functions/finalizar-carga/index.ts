@@ -22,6 +22,7 @@ type RegistroTerreno = {
   rit?: string
   año?: number
   codigo?: string
+  codigo_lote?: string
   hora?: string
   observacion?: string
   es_no_urbana?: boolean
@@ -105,75 +106,76 @@ Deno.serve(async (req) => {
     })
   }
 
-  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-  const FROM_EMAIL = Deno.env.get('ACCESS_CODE_FROM_EMAIL')
-  const TO_EMAIL = Deno.env.get('ACCESS_CODE_RECIPIENT_EMAIL')
-  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-  if (!RESEND_API_KEY || !FROM_EMAIL || !TO_EMAIL) {
-    return new Response(JSON.stringify({ error: 'Faltan variables de entorno de correo' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: 'Faltan variables de entorno de Supabase' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
-
-  let payload: { fecha?: string }
   try {
-    payload = await req.json()
-  } catch {
-    return new Response(JSON.stringify({ error: 'JSON inválido' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+    const FROM_EMAIL = Deno.env.get('ACCESS_CODE_FROM_EMAIL')
+    const TO_EMAIL = Deno.env.get('ACCESS_CODE_RECIPIENT_EMAIL')
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-  const fecha = (payload?.fecha || new Date().toISOString().slice(0, 10)).trim()
+    if (!RESEND_API_KEY || !FROM_EMAIL || !TO_EMAIL) {
+      return new Response(JSON.stringify({ error: 'Faltan variables de entorno de correo' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
-  // Conectar a Supabase y obtener registros del día
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-  const { data: registros, error: registrosError } = await supabase
-    .from('notificaciones_terreno')
-    .select('*')
-    .eq('fecha_certificacion', fecha)
-    .order('id', { ascending: false })
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return new Response(JSON.stringify({ error: 'Faltan variables de entorno de Supabase' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
-  if (registrosError) {
-    return new Response(JSON.stringify({ error: `Error al obtener registros: ${registrosError.message}` }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
+    let payload: { fecha?: string }
+    try {
+      payload = await req.json()
+    } catch {
+      return new Response(JSON.stringify({ error: 'JSON inválido' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
-  const registrosTerreno = (registros || []) as RegistroTerreno[]
+    const fecha = (payload?.fecha || new Date().toISOString().slice(0, 10)).trim()
 
-  // Calcular resumen desde los datos
-  const resumen = calcularResumen(registrosTerreno, fecha)
+    // Conectar a Supabase y obtener registros del día
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const { data: registros, error: registrosError } = await supabase
+      .from('notificaciones_terreno')
+      .select('*')
+      .eq('fecha_certificacion', fecha)
+      .order('id', { ascending: false })
 
-  const subject = `Reporte de cierre - ${fecha}`
-  const text = [
-    `Reporte de cierre ${fecha}`,
-    `Carga total: ${formatNumber(resumen.carga_total)}`,
-    `Puntos (direcciones): ${formatNumber(resumen.puntos)}`,
-    `Total notificaciones hechas: ${formatNumber(resumen.total_notificaciones)}`,
-    `Exitosas / realizadas: ${formatNumber(resumen.exitosas)}`,
-    `Búsqueda / pendientes: ${formatNumber(resumen.busqueda)}`,
-    `Negativas / concluidas: ${formatNumber(resumen.negativas)}`,
-    `Urbanas: ${formatNumber(resumen.urbanas)}`,
-    `Rurales: ${formatNumber(resumen.rurales)}`,
-    '',
-    'Notificaciones sacadas a terreno:',
-    ...registrosTerreno.map(r => `- ${r.id_notificacion || `${r.rit}-${r.año}`} [${r.codigo}] ${r.es_no_urbana ? 'Rural' : 'Urbana'}`),
-  ].join('\n')
+    if (registrosError) {
+      return new Response(JSON.stringify({ error: `Error al obtener registros: ${registrosError.message}` }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
-  const registrosHtml = registrosTerreno
+    const registrosTerreno = (registros || []) as RegistroTerreno[]
+
+    // Calcular resumen desde los datos
+    const resumen = calcularResumen(registrosTerreno, fecha)
+
+    const subject = `Reporte de cierre - ${fecha}`
+    const text = [
+      `Reporte de cierre ${fecha}`,
+      `Carga total: ${formatNumber(resumen.carga_total)}`,
+      `Puntos (direcciones): ${formatNumber(resumen.puntos)}`,
+      `Total notificaciones hechas: ${formatNumber(resumen.total_notificaciones)}`,
+      `Exitosas / realizadas: ${formatNumber(resumen.exitosas)}`,
+      `Búsqueda / pendientes: ${formatNumber(resumen.busqueda)}`,
+      `Negativas / concluidas: ${formatNumber(resumen.negativas)}`,
+      `Urbanas: ${formatNumber(resumen.urbanas)}`,
+      `Rurales: ${formatNumber(resumen.rurales)}`,
+      '',
+      'Notificaciones sacadas a terreno:',
+      ...registrosTerreno.map(r => `- ${r.id_notificacion || `${r.rit}-${r.año}`} [${r.codigo}] ${r.es_no_urbana ? 'Rural' : 'Urbana'}`),
+    ].join('\n')
+
+    const registrosHtml = registrosTerreno
     .map(
       (r, idx) => `
     <tr>
@@ -188,7 +190,7 @@ Deno.serve(async (req) => {
     )
     .join('')
 
-  const html = `
+    const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1f2937; background: #ffffff;">
       
       <!-- Header Band -->
@@ -264,8 +266,8 @@ Deno.serve(async (req) => {
 
     </div>
   `
-  // Generate a PDF that visually matches the email (header, KPI cards, table)
-  const generatePdf = async (registros: RegistroTerreno[], resumen: ResumenCarga, fecha: string) => {
+    // Generate a PDF that visually matches the email (header, KPI cards, table)
+    const generatePdf = async (registros: RegistroTerreno[], resumen: ResumenCarga, fecha: string) => {
     const pdfDoc = await PDFDocument.create()
     const pageSize = { width: 595.28, height: 841.89 } // A4
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
@@ -303,24 +305,23 @@ Deno.serve(async (req) => {
     ]
     // layout: compute how many per row to center nicely (max 3 per row)
     const perRow = 3
-    const totalRowWidth = perRow * cardWidth + (perRow - 1) * gap
     let kpiIndex = 0
-    let rowY = pageSize.height - 150
+    let kpiRowY = pageSize.height - 150
     while (kpiIndex < kpis.length) {
       const row = kpis.slice(kpiIndex, kpiIndex + perRow)
       let startX = (pageSize.width - (row.length * cardWidth + (row.length - 1) * gap)) / 2
       for (const kpi of row) {
-        page.drawRectangle({ x: startX, y: rowY - cardHeight, width: cardWidth, height: cardHeight, color: rgb(1, 1, 1), borderColor: rgb(0.9, 0.9, 0.9), borderWidth: 0.5 })
+        page.drawRectangle({ x: startX, y: kpiRowY - cardHeight, width: cardWidth, height: cardHeight, color: rgb(1, 1, 1), borderColor: rgb(0.9, 0.9, 0.9), borderWidth: 0.5 })
         const labelSize = 9
         const labelWidth = helveticaBold.widthOfTextAtSize(kpi.label, labelSize)
-        page.drawText(kpi.label, { x: startX + 10, y: rowY - 28, size: labelSize, font: helveticaBold, color: rgb(0.42, 0.46, 0.52) })
+        page.drawText(kpi.label, { x: startX + 10, y: kpiRowY - 28, size: labelSize, font: helveticaBold, color: rgb(0.42, 0.46, 0.52) })
         const valueStr = String(formatNumber(kpi.value))
         const valueSize = 16
-        page.drawText(valueStr, { x: startX + 10, y: rowY - 50, size: valueSize, font: helveticaBold, color: kpi.color })
+        page.drawText(valueStr, { x: startX + 10, y: kpiRowY - 50, size: valueSize, font: helveticaBold, color: kpi.color })
         startX += cardWidth + gap
       }
       kpiIndex += perRow
-      rowY -= cardHeight + 18
+      kpiRowY -= cardHeight + 18
     }
 
     // Move to table area
@@ -349,41 +350,41 @@ Deno.serve(async (req) => {
     }
 
     // rows with alternating background
-    let rowY = tableY - headerHeight - 10
+    let tableRowY = tableY - headerHeight - 10
     const rowFontSize = 10
     let rowIdx = 0
     for (const r of registros) {
-      if (rowY < margin + 40) {
+      if (tableRowY < margin + 40) {
         page = pdfDoc.addPage([pageSize.width, pageSize.height])
-        rowY = pageSize.height - margin - 40
+        tableRowY = pageSize.height - margin - 40
       }
 
       // alternating background
       if (rowIdx % 2 === 1) {
-        page.drawRectangle({ x: tableX, y: rowY - 6, width: tableWidth, height: rowFontSize + 10, color: rgb(0.98, 0.98, 0.98) })
+        page.drawRectangle({ x: tableX, y: tableRowY - 6, width: tableWidth, height: rowFontSize + 10, color: rgb(0.98, 0.98, 0.98) })
       }
 
       let rx = tableX + 8
       const idText = (r.id_notificacion || `${r.rit || ''}-${r.año || ''}`).slice(0, 18)
-      page.drawText(idText, { x: rx, y: rowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
+      page.drawText(idText, { x: rx, y: tableRowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
       rx += colWidths[0]
 
-      page.drawText(String(r.codigo || '').slice(0, 12), { x: rx, y: rowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
+      page.drawText(String(r.codigo || '').slice(0, 12), { x: rx, y: tableRowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
       rx += colWidths[1]
 
-      page.drawText(String(r.hora || '').slice(0, 8), { x: rx, y: rowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
+      page.drawText(String(r.hora || '').slice(0, 8), { x: rx, y: tableRowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
       rx += colWidths[2]
 
-      page.drawText(String(r.observacion || '—').slice(0, 80), { x: rx, y: rowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
+      page.drawText(String(r.observacion || '—').slice(0, 80), { x: rx, y: tableRowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
       rx += colWidths[3]
 
       const tipo = r.es_no_urbana ? 'Rural' : 'Urbana'
-      page.drawText(tipo, { x: rx, y: rowY, size: rowFontSize, font: helveticaBold, color: r.es_no_urbana ? rgb(0.85, 0.38, 0.06) : rgb(0.02, 0.44, 0.31) })
+      page.drawText(tipo, { x: rx, y: tableRowY, size: rowFontSize, font: helveticaBold, color: r.es_no_urbana ? rgb(0.85, 0.38, 0.06) : rgb(0.02, 0.44, 0.31) })
 
       // bottom row separator
-      page.drawLine({ start: { x: tableX, y: rowY - 8 }, end: { x: tableX + tableWidth, y: rowY - 8 }, thickness: 0.4, color: rgb(0.92, 0.92, 0.92) })
+      page.drawLine({ start: { x: tableX, y: tableRowY - 8 }, end: { x: tableX + tableWidth, y: tableRowY - 8 }, thickness: 0.4, color: rgb(0.92, 0.92, 0.92) })
 
-      rowY -= rowFontSize + 14
+      tableRowY -= rowFontSize + 14
       rowIdx += 1
     }
 
@@ -394,56 +395,64 @@ Deno.serve(async (req) => {
     return pdfBytes
   }
 
-  let attachmentBase64: string | null = null
-  try {
-    const pdfBytes = await generatePdf(registrosTerreno, resumen, fecha)
-    // base64 encode
-    let binary = ''
-    const bytes = new Uint8Array(pdfBytes)
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-    attachmentBase64 = btoa(binary)
-  } catch (e) {
-    // If PDF generation fails, continue without attachment
-    console.error('PDF generation failed', e)
-    attachmentBase64 = null
-  }
+    let attachmentBase64: string | null = null
+    try {
+      const pdfBytes = await generatePdf(registrosTerreno, resumen, fecha)
+      // base64 encode
+      let binary = ''
+      const bytes = new Uint8Array(pdfBytes)
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+      attachmentBase64 = btoa(binary)
+    } catch (e) {
+      // If PDF generation fails, continue without attachment
+      console.error('PDF generation failed', e)
+      attachmentBase64 = null
+    }
 
-  const resendBody: any = {
-    from: FROM_EMAIL,
-    to: [TO_EMAIL],
-    subject,
-    text,
-    html,
-  }
+    const resendBody: any = {
+      from: FROM_EMAIL,
+      to: [TO_EMAIL],
+      subject,
+      text,
+      html,
+    }
 
-  if (attachmentBase64) {
-    resendBody.attachments = [
-      {
-        filename: `reporte-${fecha}.pdf`,
-        content: attachmentBase64,
-        type: 'application/pdf',
+    if (attachmentBase64) {
+      resendBody.attachments = [
+        {
+          filename: `reporte-${fecha}.pdf`,
+          content: attachmentBase64,
+          type: 'application/pdf',
+        },
+      ]
+    }
+
+    const resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-    ]
-  }
+      body: JSON.stringify(resendBody),
+    })
 
-  const resendResponse = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(resendBody),
-  })
+    const resendJson = await resendResponse.json().catch(() => ({}))
+    if (!resendResponse.ok) {
+      return new Response(JSON.stringify({ error: resendJson?.message || 'No se pudo enviar el correo' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
-  const resendJson = await resendResponse.json().catch(() => ({}))
-  if (!resendResponse.ok) {
-    return new Response(JSON.stringify({ error: resendJson?.message || 'No se pudo enviar el correo' }), {
+    return new Response(JSON.stringify({ ok: true, id: resendJson?.id || null }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (error) {
+    console.error('finalizar-carga unexpected error', error)
+    const message = error instanceof Error ? error.message : 'Error inesperado en la función'
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
-
-  return new Response(JSON.stringify({ ok: true, id: resendJson?.id || null }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
 })
