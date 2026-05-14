@@ -202,14 +202,34 @@ Deno.serve(async (req) => {
       <div style="background: #f9fafb; padding: 40px 32px;">
         <div style="max-width: 900px; margin: 0 auto;">
           
-          <!-- Resumen KPIs - Muy Simple -->
-          <div style="margin-bottom: 32px; font-size: 14px; line-height: 1.8; color: #374151;">
-            <div><strong>Carga total:</strong> ${formatNumber(resumen.carga_total)}</div>
-            <div><strong>Puntos (direcciones):</strong> ${formatNumber(resumen.puntos)}</div>
-            <div><strong>Urbanas:</strong> ${formatNumber(resumen.urbanas)}</div>
-            <div><strong>Rurales:</strong> ${formatNumber(resumen.rurales)}</div>
-            <div><strong>Exitosas:</strong> ${formatNumber(resumen.exitosas)}</div>
-            <div><strong>Búsqueda:</strong> ${formatNumber(resumen.busqueda)}</div>
+          <!-- Resumen KPIs - Simple y Limpio -->
+          <div style="background: #f0f9ff; border-left: 4px solid #0b3c5d; padding: 20px; margin-bottom: 32px; border-radius: 4px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; font-size: 14px; color: #1f2937;">
+              <div>
+                <div style="color: #6b7280; font-size: 12px; margin-bottom: 4px;">Carga total</div>
+                <div style="font-size: 20px; font-weight: 700; color: #0b3c5d;">${formatNumber(resumen.carga_total)}</div>
+              </div>
+              <div>
+                <div style="color: #6b7280; font-size: 12px; margin-bottom: 4px;">Puntos</div>
+                <div style="font-size: 20px; font-weight: 700; color: #0b3c5d;">${formatNumber(resumen.puntos)}</div>
+              </div>
+              <div>
+                <div style="color: #6b7280; font-size: 12px; margin-bottom: 4px;">Urbanas</div>
+                <div style="font-size: 20px; font-weight: 700; color: #047857;">${formatNumber(resumen.urbanas)}</div>
+              </div>
+              <div>
+                <div style="color: #6b7280; font-size: 12px; margin-bottom: 4px;">Rurales</div>
+                <div style="font-size: 20px; font-weight: 700; color: #d97706;">${formatNumber(resumen.rurales)}</div>
+              </div>
+              <div>
+                <div style="color: #6b7280; font-size: 12px; margin-bottom: 4px;">Exitosas</div>
+                <div style="font-size: 20px; font-weight: 700; color: #7c3aed;">${formatNumber(resumen.exitosas)}</div>
+              </div>
+              <div>
+                <div style="color: #6b7280; font-size: 12px; margin-bottom: 4px;">Búsqueda</div>
+                <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${formatNumber(resumen.busqueda)}</div>
+              </div>
+            </div>
           </div>
 
           <!-- Table Section -->
