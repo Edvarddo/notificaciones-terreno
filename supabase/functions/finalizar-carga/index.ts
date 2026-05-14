@@ -264,59 +264,131 @@ Deno.serve(async (req) => {
 
     </div>
   `
-  // Generate a simple PDF version of the report and attach it to the email
+  // Generate a PDF that visually matches the email (header, KPI cards, table)
   const generatePdf = async (registros: RegistroTerreno[], resumen: ResumenCarga, fecha: string) => {
     const pdfDoc = await PDFDocument.create()
-    const pageSize = { width: 595.28, height: 841.89 } // A4 in points
+    const pageSize = { width: 595.28, height: 841.89 } // A4
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+
+    const margin = 36
+    const cardWidth = 140
+    const cardHeight = 70
+    const gap = 12
 
     let page = pdfDoc.addPage([pageSize.width, pageSize.height])
-    const margin = 40
-    let y = pageSize.height - margin
+    let yTop = pageSize.height - margin
 
-    const drawText = (text: string, size = 12, color = rgb(0.13, 0.2, 0.26), options: any = {}) => {
-      page.drawText(text, { x: margin, y, size, font: helvetica, color, ...options })
-      y -= size + 6
+    // Header band (solid color similar to email)
+    page.drawRectangle({ x: 0, y: pageSize.height - 120, width: pageSize.width, height: 120, color: rgb(0.043, 0.235, 0.365) })
+    // center title
+    const title = 'Reporte de Cierre'
+    const titleSize = 20
+    const titleWidth = helveticaBold.widthOfTextAtSize(title, titleSize)
+    page.drawText(title, { x: (pageSize.width - titleWidth) / 2, y: pageSize.height - 60, size: titleSize, font: helveticaBold, color: rgb(1, 1, 1) })
+    const fechaText = `Fecha: ${fecha}`
+    const fechaSize = 11
+    const fechaWidth = helvetica.widthOfTextAtSize(fechaText, fechaSize)
+    page.drawText(fechaText, { x: (pageSize.width - fechaWidth) / 2, y: pageSize.height - 88, size: fechaSize, font: helvetica, color: rgb(1, 1, 1) })
+
+    // KPIs cards area
+    // Center KPI cards
+    const kpis = [
+      { label: 'Carga', value: resumen.carga_total || 0, color: rgb(0.043, 0.235, 0.365) },
+      { label: 'Puntos', value: resumen.puntos || 0, color: rgb(0.043, 0.235, 0.365) },
+      { label: 'Urbanas', value: resumen.urbanas || 0, color: rgb(0.0, 0.529, 0.341) },
+      { label: 'Rurales', value: resumen.rurales || 0, color: rgb(0.855, 0.471, 0.039) },
+      { label: 'Exitosas', value: resumen.exitosas || 0, color: rgb(0.486, 0.239, 0.933) },
+      { label: 'Búsqueda', value: resumen.busqueda || 0, color: rgb(0.96, 0.62, 0.075) },
+    ]
+    // layout: compute how many per row to center nicely (max 3 per row)
+    const perRow = 3
+    const totalRowWidth = perRow * cardWidth + (perRow - 1) * gap
+    let kpiIndex = 0
+    let rowY = pageSize.height - 150
+    while (kpiIndex < kpis.length) {
+      const row = kpis.slice(kpiIndex, kpiIndex + perRow)
+      let startX = (pageSize.width - (row.length * cardWidth + (row.length - 1) * gap)) / 2
+      for (const kpi of row) {
+        page.drawRectangle({ x: startX, y: rowY - cardHeight, width: cardWidth, height: cardHeight, color: rgb(1, 1, 1), borderColor: rgb(0.9, 0.9, 0.9), borderWidth: 0.5 })
+        const labelSize = 9
+        const labelWidth = helveticaBold.widthOfTextAtSize(kpi.label, labelSize)
+        page.drawText(kpi.label, { x: startX + 10, y: rowY - 28, size: labelSize, font: helveticaBold, color: rgb(0.42, 0.46, 0.52) })
+        const valueStr = String(formatNumber(kpi.value))
+        const valueSize = 16
+        page.drawText(valueStr, { x: startX + 10, y: rowY - 50, size: valueSize, font: helveticaBold, color: kpi.color })
+        startX += cardWidth + gap
+      }
+      kpiIndex += perRow
+      rowY -= cardHeight + 18
     }
 
-    // Header
-    drawText(`Reporte de cierre - ${fecha}`, 16)
-    y -= 6
+    // Move to table area
+    let tableY = yTop - cardHeight - 20
+    if (tableY < 200) {
+      page = pdfDoc.addPage([pageSize.width, pageSize.height])
+      tableY = pageSize.height - margin - 40
+    }
 
-    // Resumen
-    drawText(`Carga total: ${formatNumber(resumen.carga_total)}`, 12)
-    drawText(`Puntos (direcciones): ${formatNumber(resumen.puntos)}`, 12)
-    drawText(`Urbanas: ${formatNumber(resumen.urbanas)}    Rurales: ${formatNumber(resumen.rurales)}`, 12)
-    drawText(`Exitosas: ${formatNumber(resumen.exitosas)}    Búsqueda: ${formatNumber(resumen.busqueda)}`, 12)
-
-    y -= 6
-    drawText('Detalle de notificaciones:', 13)
-
-    // Table header
-    const cols = [120, 220, 300, 420, 480]
+    // Table header background + improved visuals (alternating row shading and column separators)
+    const tableX = margin
+    const tableWidth = pageSize.width - margin * 2
+    const colWidths = [120, 80, 70, tableWidth - 120 - 80 - 70 - 80, 80] // ID, CÓDIGO, HORA, OBS, TIPO
+    const headerHeight = 24
+    page.drawRectangle({ x: tableX, y: tableY - headerHeight, width: tableWidth, height: headerHeight, color: rgb(0.956, 0.958, 0.96) })
+    // headers centered/left-friendly
+    let hx = tableX + 8
     const headerFontSize = 11
-    page.drawText('ID', { x: margin, y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
-    page.drawText('CÓDIGO', { x: margin + cols[0], y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
-    page.drawText('HORA', { x: margin + cols[1], y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
-    page.drawText('OBSERVACIÓN', { x: margin + cols[2], y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
-    page.drawText('TIPO', { x: margin + cols[3], y: y, size: headerFontSize, font: helvetica, color: rgb(0.2,0.2,0.2) })
-    y -= headerFontSize + 8
+    const headers = ['ID', 'CÓDIGO', 'HORA', 'OBSERVACIÓN', 'TIPO']
+    for (let i = 0; i < headers.length; i++) {
+      page.drawText(headers[i], { x: hx, y: tableY - 18, size: headerFontSize, font: helveticaBold, color: rgb(0.2, 0.2, 0.2) })
+      // vertical separator
+      const sepX = tableX + colWidths.slice(0, i + 1).reduce((s, v) => s + v, 0)
+      page.drawLine({ start: { x: sepX, y: tableY - headerHeight }, end: { x: sepX, y: tableY + 6 }, thickness: 0.5, color: rgb(0.88, 0.88, 0.88) })
+      hx += colWidths[i]
+    }
 
+    // rows with alternating background
+    let rowY = tableY - headerHeight - 10
     const rowFontSize = 10
+    let rowIdx = 0
     for (const r of registros) {
-      if (y < margin + 60) {
+      if (rowY < margin + 40) {
         page = pdfDoc.addPage([pageSize.width, pageSize.height])
-        y = pageSize.height - margin
+        rowY = pageSize.height - margin - 40
       }
 
-      const idText = (r.id_notificacion || `${r.rit || ''}-${r.año || ''}`).slice(0, 20)
-      page.drawText(idText, { x: margin, y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
-      page.drawText(String(r.codigo || '').slice(0, 15), { x: margin + cols[0], y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
-      page.drawText(String(r.hora || '').slice(0, 10), { x: margin + cols[1], y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
-      page.drawText(String(r.observacion || '—').slice(0, 50), { x: margin + cols[2], y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
-      page.drawText(r.es_no_urbana ? 'Rural' : 'Urbana', { x: margin + cols[3], y, size: rowFontSize, font: helvetica, color: rgb(0,0,0) })
-      y -= rowFontSize + 6
+      // alternating background
+      if (rowIdx % 2 === 1) {
+        page.drawRectangle({ x: tableX, y: rowY - 6, width: tableWidth, height: rowFontSize + 10, color: rgb(0.98, 0.98, 0.98) })
+      }
+
+      let rx = tableX + 8
+      const idText = (r.id_notificacion || `${r.rit || ''}-${r.año || ''}`).slice(0, 18)
+      page.drawText(idText, { x: rx, y: rowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
+      rx += colWidths[0]
+
+      page.drawText(String(r.codigo || '').slice(0, 12), { x: rx, y: rowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
+      rx += colWidths[1]
+
+      page.drawText(String(r.hora || '').slice(0, 8), { x: rx, y: rowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
+      rx += colWidths[2]
+
+      page.drawText(String(r.observacion || '—').slice(0, 80), { x: rx, y: rowY, size: rowFontSize, font: helvetica, color: rgb(0.06, 0.06, 0.06) })
+      rx += colWidths[3]
+
+      const tipo = r.es_no_urbana ? 'Rural' : 'Urbana'
+      page.drawText(tipo, { x: rx, y: rowY, size: rowFontSize, font: helveticaBold, color: r.es_no_urbana ? rgb(0.85, 0.38, 0.06) : rgb(0.02, 0.44, 0.31) })
+
+      // bottom row separator
+      page.drawLine({ start: { x: tableX, y: rowY - 8 }, end: { x: tableX + tableWidth, y: rowY - 8 }, thickness: 0.4, color: rgb(0.92, 0.92, 0.92) })
+
+      rowY -= rowFontSize + 14
+      rowIdx += 1
     }
+
+    // Footer small text
+    page.drawText(`Reporte generado automáticamente • ${fecha}`, { x: margin, y: margin - 4, size: 9, font: helvetica, color: rgb(0.5, 0.5, 0.5) })
 
     const pdfBytes = await pdfDoc.save()
     return pdfBytes
