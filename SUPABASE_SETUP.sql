@@ -61,7 +61,52 @@ ADD COLUMN IF NOT EXISTS rit VARCHAR(20),
 ADD COLUMN IF NOT EXISTS año INTEGER,
 ADD COLUMN IF NOT EXISTS geolocalizacion_fuente TEXT,
 ADD COLUMN IF NOT EXISTS latitud DOUBLE PRECISION,
-ADD COLUMN IF NOT EXISTS longitud DOUBLE PRECISION;
+ADD COLUMN IF NOT EXISTS longitud DOUBLE PRECISION,
+ADD COLUMN IF NOT EXISTS carga_id UUID;
+
+-- Tabla para agrupar registros por carga
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS public.cargas_terreno (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fecha_certificacion DATE NOT NULL,
+  estado TEXT NOT NULL DEFAULT 'activa' CHECK (estado IN ('activa', 'cerrada')),
+  creada_en TIMESTAMPTZ NOT NULL DEFAULT now(),
+  cerrada_en TIMESTAMPTZ NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS cargas_terreno_fecha_activa_unique
+  ON public.cargas_terreno (fecha_certificacion)
+  WHERE estado = 'activa';
+
+CREATE INDEX IF NOT EXISTS cargas_terreno_fecha_estado_idx
+  ON public.cargas_terreno (fecha_certificacion, estado, creada_en DESC);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'notificaciones_terreno_carga_id_fk'
+  ) THEN
+    ALTER TABLE public.notificaciones_terreno
+    ADD CONSTRAINT notificaciones_terreno_carga_id_fk
+    FOREIGN KEY (carga_id) REFERENCES public.cargas_terreno(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'notificaciones_terreno_carga_id_chk'
+  ) THEN
+    ALTER TABLE public.notificaciones_terreno
+    ADD CONSTRAINT notificaciones_terreno_carga_id_chk
+    CHECK (carga_id IS NULL OR carga_id::text ~ '^[0-9a-fA-F-]{36}$');
+  END IF;
+END $$;
 
 -- 8. PRUEBA: Inserta un registro desde SQL y observa que aparece en MonitoreoLive
 INSERT INTO public.notificaciones_terreno 

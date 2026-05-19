@@ -1,6 +1,68 @@
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
+const ACCESS_CODE_FROM_EMAIL = Deno.env.get('ACCESS_CODE_FROM_EMAIL') || 'onboarding@resend.dev'
+const ACCESS_CODE_RECIPIENT_EMAILS = Deno.env.get('ACCESS_CODE_RECIPIENT_EMAILS') || 'lalo_13ya@hotmail.com'
+
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+
+async function crearCargaActiva(fecha: string) {
+  const { data, error } = await supabase
+    .from('cargas_terreno')
+    .insert([
+      {
+        fecha_certificacion: fecha,
+        estado: 'activa',
+      },
+    ])
+    .select('*')
+    .single()
+
+  if (!error && data) {
+    return data
+  }
+
+  const { data: activaExistente, error: errorBusqueda } = await supabase
+    .from('cargas_terreno')
+    .select('*')
+    .eq('fecha_certificacion', fecha)
+    .eq('estado', 'activa')
+    .order('creada_en', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!errorBusqueda && activaExistente) {
+    return activaExistente
+  }
+
+  throw error
+}
+
+const allowedOrigins = new Set([
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://localhost:5173',
+  'https://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'https://192.168.1.7:5173',
+  'https://192.168.1.7:5174',
+  'https://notificaciones-terreno.vercel.app',
+])
+
+function buildCorsHeaders(req: Request) {
+  const requestOrigin = req.headers.get('origin') ?? ''
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigins.has(requestOrigin)
+      ? requestOrigin
+      : 'https://notificaciones-terreno.vercel.app',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey, x-client-info',
+    'Access-Control-Allow-Credentials': 'true',
+  }
 }
 
 type ResumenCarga = {
@@ -29,6 +91,14 @@ type RegistroTerreno = {
   latitud?: number
   longitud?: number
   geolocalizacion_fuente?: string
+}
+
+type CargaTerreno = {
+  id: string
+  fecha_certificacion: string
+  estado: string
+  creada_en?: string
+  cerrada_en?: string | null
 }
 
 const escapeHtml = (value: unknown) =>
@@ -89,10 +159,9 @@ const calcularResumen = (registros: RegistroTerreno[], fecha: string): ResumenCa
   }
 }
 
-// Import Supabase client
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
 Deno.serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -105,30 +174,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-    const FROM_EMAIL = Deno.env.get('ACCESS_CODE_FROM_EMAIL')
-    const TO_EMAILS = (Deno.env.get('ACCESS_CODE_RECIPIENT_EMAILS') || '')
+    const TO_EMAILS = ACCESS_CODE_RECIPIENT_EMAILS
       .split(',')
       .map((email) => email.trim())
       .filter(Boolean)
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    if (!RESEND_API_KEY || !FROM_EMAIL || TO_EMAILS.length === 0) {
+    if (!RESEND_API_KEY || !ACCESS_CODE_FROM_EMAIL || TO_EMAILS.length === 0) {
       return new Response(JSON.stringify({ error: 'Faltan variables de entorno de correo' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return new Response(JSON.stringify({ error: 'Faltan variables de entorno de Supabase' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    let payload: { fecha?: string }
+    let payload: { fecha?: string; carga_id?: string }
     try {
       payload = await req.json()
     } catch {
@@ -139,14 +197,33 @@ Deno.serve(async (req) => {
     }
 
     const fecha = (payload?.fecha || new Date().toISOString().slice(0, 10)).trim()
+    const cargaId = (payload?.carga_id || '').trim()
+    const action = (payload?.action || '').trim()
 
-    // Conectar a Supabase y obtener registros del día
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    const { data: registros, error: registrosError } = await supabase
+    // If client only wants to create/obtain a carga, handle short-circuit action
+    if (action === 'crear_carga') {
+      try {
+        const nueva = await crearCargaActiva(fecha)
+        return new Response(JSON.stringify({ ok: true, nueva_carga: nueva }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err instanceof Error ? err.message : 'No se pudo crear la carga' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    let consultaRegistros = supabase
       .from('notificaciones_terreno')
       .select('*')
-      .eq('fecha_certificacion', fecha)
-      .order('id', { ascending: false })
+
+    consultaRegistros = cargaId
+      ? consultaRegistros.eq('carga_id', cargaId)
+      : consultaRegistros.eq('fecha_certificacion', fecha)
+
+    const { data: registros, error: registrosError } = await consultaRegistros.order('id', { ascending: false })
 
     if (registrosError) {
       return new Response(JSON.stringify({ error: `Error al obtener registros: ${registrosError.message}` }), {
@@ -157,12 +234,33 @@ Deno.serve(async (req) => {
 
     const registrosTerreno = (registros || []) as RegistroTerreno[]
 
+    let cargaActiva: CargaTerreno | null = null
+    if (cargaId) {
+      const { data: cargaEncontrada, error: cargaError } = await supabase
+        .from('cargas_terreno')
+        .select('*')
+        .eq('id', cargaId)
+        .maybeSingle()
+
+      if (cargaError || !cargaEncontrada) {
+        return new Response(JSON.stringify({ error: 'No se encontró la carga activa a cerrar' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      cargaActiva = cargaEncontrada as CargaTerreno
+    }
+
     // Calcular resumen desde los datos
     const resumen = calcularResumen(registrosTerreno, fecha)
 
-    const subject = `Reporte de cierre - ${fecha}`
+    const etiquetaCarga = cargaId ? `Carga ${cargaId.slice(0, 8)}` : 'Carga del día'
+
+    const subject = `Reporte de cierre - ${fecha} - ${etiquetaCarga}`
     const text = [
       `Reporte de cierre ${fecha}`,
+      `Grupo: ${etiquetaCarga}`,
       `Carga total: ${formatNumber(resumen.carga_total)}`,
       `Puntos (direcciones): ${formatNumber(resumen.puntos)}`,
       `Total notificaciones hechas: ${formatNumber(resumen.total_notificaciones)}`,
@@ -200,6 +298,7 @@ Deno.serve(async (req) => {
           <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85; margin-bottom: 12px;">Poder Judicial</div>
           <h1 style="margin: 0 0 8px; font-size: 32px; font-weight: 700;">Reporte de Cierre</h1>
           <div style="font-size: 15px; opacity: 0.9;">Fecha: <strong>${escapeHtml(fecha)}</strong></div>
+          <div style="font-size: 13px; opacity: 0.8; margin-top: 6px;">Grupo: <strong>${escapeHtml(etiquetaCarga)}</strong></div>
         </div>
       </div>
 
@@ -267,8 +366,28 @@ Deno.serve(async (req) => {
 
     </div>
   `
+
+    if (cargaId && cargaActiva) {
+      const { error: cerrarError } = await supabase
+        .from('cargas_terreno')
+        .update({
+          estado: 'cerrada',
+          cerrada_en: new Date().toISOString(),
+        })
+        .eq('id', cargaActiva.id)
+
+      if (cerrarError) {
+        return new Response(JSON.stringify({ error: `No se pudo cerrar la carga: ${cerrarError.message}` }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    const nuevaCarga = await crearCargaActiva(fecha)
+
     const resendBody: any = {
-      from: FROM_EMAIL,
+      from: ACCESS_CODE_FROM_EMAIL,
       to: TO_EMAILS,
       subject,
       text,
@@ -292,7 +411,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    return new Response(JSON.stringify({ ok: true, id: resendJson?.id || null }), {
+    return new Response(JSON.stringify({ ok: true, id: resendJson?.id || null, nueva_carga: nuevaCarga }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {

@@ -6,6 +6,8 @@ import RegistroForm from './components/RegistroForm'
 import RegistroTable from './components/RegistroTable'
 import IconTrash from './components/IconTrash'
 import MenuLateral from './components/MenuLateral'
+import Modal from './components/Modal'
+import ConfirmDialog from './components/ConfirmDialog'
 import CodigoDialog from './features/CodigoDialog'
 import LoteDialog from './features/LoteDialog'
 import useQrScanner from './hooks/useQrScanner'
@@ -23,6 +25,8 @@ function App() {
   const [dialogoLoteAbierto, setDialogoLoteAbierto] = useState(false)
   const [dialogoCodigoLoteAbierto, setDialogoCodigoLoteAbierto] = useState(false)
   const [dialogoEliminarAbierto, setDialogoEliminarAbierto] = useState(false)
+  const [confirmFinalizarAbierto, setConfirmFinalizarAbierto] = useState(false)
+  const [confirmEliminarAbierto, setConfirmEliminarAbierto] = useState(false)
 
   const inputIdRef = useRef(null)
   const [mostrarConsulta, setMostrarConsulta] = useState(false)
@@ -33,7 +37,9 @@ function App() {
     dialogoCodigoAbierto ||
     dialogoLoteAbierto ||
     dialogoCodigoLoteAbierto ||
-    dialogoEliminarAbierto
+    dialogoEliminarAbierto ||
+    confirmFinalizarAbierto ||
+    confirmEliminarAbierto
 
   const [fechaCertificacion] = useState(() => {
     const hoy = new Date()
@@ -89,7 +95,6 @@ function App() {
   }
 
   useEffect(() => {
-    notificaciones.cargar()
     enfocarId()
   }, [])
 
@@ -111,7 +116,7 @@ function App() {
     onError: notificaciones.setErrorMsg,
     onDetected: async (decodedText) => {
       if (notificaciones.cargaFinalizada) {
-        notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevas notificaciones.')
+        notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
         return
       }
 
@@ -134,7 +139,7 @@ function App() {
     onError: notificaciones.setErrorMsg,
     onDetected: async (decodedText) => {
       if (notificaciones.cargaFinalizada) {
-        notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevas notificaciones.')
+        notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
         return
       }
 
@@ -169,7 +174,7 @@ function App() {
 
   const abrirDialogoLote = () => {
     if (notificaciones.cargaFinalizada) {
-      notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevas notificaciones.')
+      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
       return
     }
 
@@ -197,7 +202,7 @@ function App() {
 
   const toggleQrIndividual = async () => {
     if (notificaciones.cargaFinalizada) {
-      notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevas notificaciones.')
+      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
       return
     }
 
@@ -214,7 +219,7 @@ function App() {
 
   const guardar = async () => {
     if (notificaciones.cargaFinalizada) {
-      notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevos registros.')
+      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
       return
     }
 
@@ -235,7 +240,7 @@ function App() {
 
   const guardarLote = async () => {
     if (notificaciones.cargaFinalizada) {
-      notificaciones.setErrorMsg('La carga ya fue finalizada. No se permiten nuevos registros.')
+      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
       return
     }
 
@@ -259,31 +264,43 @@ function App() {
   }
 
   const finalizarCarga = async () => {
-    const confirmar = window.confirm(
-      '¿Finalizar la carga del día? Ya no se permitirán nuevas notificaciones y se enviará el resumen por correo.'
-    )
+    setConfirmFinalizarAbierto(true)
+  }
 
-    if (!confirmar) return
-
+  const confirmarFinalizarCarga = async () => {
     const resultado = await notificaciones.finalizarCarga()
     if (resultado?.ok) {
       await qrIndividual.detenerEscaneo().catch(() => {})
       await qrLote.detenerEscaneo().catch(() => {})
       setDialogoLoteAbierto(false)
     }
+    setConfirmFinalizarAbierto(false)
+  }
+
+  const cancelarFinalizarCarga = () => {
+    setConfirmFinalizarAbierto(false)
   }
 
   const abrirDialogoEliminarUltimo = () => {
+    abrirConfirmEliminar()
+  }
+
+  const abrirConfirmEliminar = () => {
     if (!notificaciones.registros.length) {
       notificaciones.setErrorMsg('No hay registros para eliminar')
       return
     }
-    setDialogoEliminarAbierto(true)
+    setConfirmEliminarAbierto(true)
   }
 
   const confirmarEliminarUltimo = async () => {
     await notificaciones.eliminarUltimoRegistro()
+    setConfirmEliminarAbierto(false)
     setDialogoEliminarAbierto(false)
+  }
+
+  const cancelarEliminarUltimo = () => {
+    setConfirmEliminarAbierto(false)
   }
 
   const descargarCsv = () => {
@@ -455,7 +472,7 @@ function App() {
         ) : null}
 
         {mostrarMonitoreo ? (
-          <MonitoreoLive fechaCertificacion={fechaCertificacion} />
+          <MonitoreoLive fechaCertificacion={fechaCertificacion} cargaId={notificaciones.cargaActivaId} />
         ) : mostrarConsulta ? (
           <ConsultaHistorico onVolver={irAFormulario} />
         ) : (
@@ -533,6 +550,30 @@ function App() {
           puntos={notificaciones.estadisticas.puntos}
           urbanas={notificaciones.estadisticas.urbanas}
           rurales={notificaciones.estadisticas.rurales}
+        />
+
+        <ConfirmDialog
+          abierto={confirmFinalizarAbierto}
+          titulo="Finalizar carga del día"
+          mensaje="¿Finalizar la carga actual? Se cerrará el grupo de notificaciones de hoy y se enviará un resumen por correo. No podrás agregar nuevos registros a esta carga."
+          textoConfirmar="Finalizar"
+          textoCancel="Cancelar"
+          colorConfirmar="rojo"
+          onConfirmar={confirmarFinalizarCarga}
+          onCancelar={cancelarFinalizarCarga}
+          cargando={notificaciones.cargaFinalizada}
+        />
+
+        <ConfirmDialog
+          abierto={confirmEliminarAbierto}
+          titulo="Eliminar último registro"
+          mensaje="¿Eliminar el último registro de la lista? Esta acción no se puede deshacer."
+          textoConfirmar="Eliminar"
+          textoCancel="Cancelar"
+          colorConfirmar="naranja"
+          onConfirmar={confirmarEliminarUltimo}
+          onCancelar={cancelarEliminarUltimo}
+          cargando={notificaciones.cargando}
         />
 
         <CodigoDialog

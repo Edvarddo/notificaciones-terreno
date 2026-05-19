@@ -8,7 +8,7 @@ function generarIdPrueba() {
   return String(Math.floor(100000 + Math.random() * 899999))
 }
 
-function MonitoreoLive({ fechaCertificacion }) {
+function MonitoreoLive({ fechaCertificacion, cargaId }) {
   const [registros, setRegistros] = useState([])
   const [editandoId, setEditandoId] = useState(null)
   const [esRebajadaEdit, setEsRebajadaEdit] = useState(false)
@@ -20,7 +20,7 @@ function MonitoreoLive({ fechaCertificacion }) {
 
   async function refetch() {
     try {
-      const data = await obtenerRegistros(fechaCertificacion)
+      const data = await obtenerRegistros(fechaCertificacion, cargaId)
       if (mounted.current) setRegistros(data || [])
       console.log('Refetched registros, count=', data?.length || 0)
     } catch (err) {
@@ -33,7 +33,7 @@ function MonitoreoLive({ fechaCertificacion }) {
 
     async function cargarInicial() {
       try {
-        const data = await obtenerRegistros(fechaCertificacion)
+        const data = await obtenerRegistros(fechaCertificacion, cargaId)
         if (mounted.current) setRegistros(data || [])
       } catch (err) {
         console.error('Error cargando registros iniciales', err)
@@ -46,7 +46,7 @@ function MonitoreoLive({ fechaCertificacion }) {
     console.log('Iniciando polling al montar MonitoreoLive (cada 10s)')
     const pollInterval = setInterval(async () => {
       try {
-        const data = await obtenerRegistros(fechaCertificacion)
+        const data = await obtenerRegistros(fechaCertificacion, cargaId)
         if (!mounted.current) return
         const count = data?.length || 0
         setRegistros(data || [])
@@ -71,7 +71,7 @@ function MonitoreoLive({ fechaCertificacion }) {
       setPollingActive(false)
       console.log('MonitoreoLive cleanup: polling detenido')
     }
-  }, [fechaCertificacion])
+  }, [fechaCertificacion, cargaId])
 
   const reiniciarSuscripcion = async () => {
     await refetch()
@@ -156,7 +156,7 @@ function MonitoreoLive({ fechaCertificacion }) {
     console.log('Polling iniciado (cada 2s)')
     pollingRef.current = setInterval(async () => {
       try {
-        const data = await obtenerRegistros(fechaCertificacion)
+        const data = await obtenerRegistros(fechaCertificacion, cargaId)
         if (!mounted.current) return
         const count = data?.length || 0
         setRegistros(data || [])

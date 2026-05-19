@@ -10,7 +10,7 @@ async function readJsonSafe(res) {
   }
 }
 
-export async function enviarReporteFinalizacionCarga(fecha) {
+export async function enviarReporteFinalizacionCarga(fecha, cargaId) {
   try {
     const res = await fetch(FINALIZAR_CARGA_URL, {
       method: 'POST',
@@ -18,7 +18,7 @@ export async function enviarReporteFinalizacionCarga(fecha) {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
-      body: JSON.stringify({ fecha }),
+      body: JSON.stringify({ fecha, carga_id: cargaId }),
     })
 
     const json = await readJsonSafe(res)

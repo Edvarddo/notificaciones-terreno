@@ -201,7 +201,7 @@ function RegistroTable({
             type="button"
             disabled={cargaFinalizada}
           >
-            {cargaFinalizada ? 'Carga finalizada' : 'Finalizar carga'}
+            {cargaFinalizada ? 'Cerrando carga...' : 'Finalizar carga'}
           </button>
           <button className="boton-mini" onClick={onDescargarCsv} type="button">
             Descargar CSV
@@ -214,7 +214,7 @@ function RegistroTable({
 
       {cargaFinalizada ? (
         <div className="carga-finalizada-banner carga-finalizada-banner-tabla">
-          La carga quedó cerrada. No se pueden registrar nuevas notificaciones en este navegador.
+          Se está cerrando la carga actual. En breve se habilitará la siguiente.
         </div>
       ) : null}
 

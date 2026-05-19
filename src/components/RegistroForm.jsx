@@ -284,7 +284,7 @@ function RegistroForm({
 
       <div className="acciones">
         <button type="submit" className="boton-principal" disabled={cargando || cargaFinalizada}>
-          {cargaFinalizada ? 'Carga finalizada' : cargando ? 'Guardando...' : 'Guardar'}
+          {cargaFinalizada ? 'Cerrando carga...' : cargando ? 'Guardando...' : 'Guardar'}
         </button>
 
         <button
@@ -308,7 +308,7 @@ function RegistroForm({
 
       {cargaFinalizada ? (
         <div className="carga-finalizada-banner">
-          La carga del día fue finalizada. Ya no se permiten nuevas notificaciones.
+          Se está cerrando esta carga. Espera un momento para continuar.
         </div>
       ) : null}
     </form>

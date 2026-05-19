@@ -117,7 +117,7 @@ function LoteDialog({
               onClick={onToggleEscaneo}
               disabled={guardandoLote || cargaFinalizada}
             >
-              {escaneandoLote ? 'Cerrar escaneo' : 'Abrir escaneo'}
+              {cargaFinalizada ? 'Cerrando carga...' : escaneandoLote ? 'Cerrar escaneo' : 'Abrir escaneo'}
             </button>
 
             <button
@@ -126,7 +126,7 @@ function LoteDialog({
               onClick={onLimpiarLote}
               disabled={guardandoLote || cargaFinalizada}
             >
-              Limpiar lote
+              {cargaFinalizada ? 'Cerrando carga...' : 'Limpiar lote'}
             </button>
 
             <button
@@ -447,7 +447,7 @@ function LoteDialog({
                 onClick={onGuardarLote}
                   disabled={guardandoLote || cargaFinalizada}
               >
-                {cargaFinalizada ? 'Carga finalizada' : guardandoLote ? 'Guardando lote...' : 'Guardar lote'}
+                {cargaFinalizada ? 'Cerrando carga...' : guardandoLote ? 'Guardando lote...' : 'Guardar lote'}
               </button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   obtenerRegistros,
+  obtenerOCrearCargaActiva,
   insertarRegistro,
   insertarLote,
   eliminarRegistroPorId,
@@ -21,6 +22,14 @@ import {
 import { validarIdNotificacion, esIdNotificacionValida } from '../utils/validation'
 import { enviarReporteFinalizacionCarga } from '../services/cierre'
 
+const generarCargaId = () => {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID()
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const timersMensajesRef = useRef(new Map())
   const mensajeTimerRef = useRef(null)
@@ -32,13 +41,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const [errorMsg, setErrorMsgState] = useState('')
   const [mensajes, setMensajes] = useState([])
   const [estadisticas, setEstadisticas] = useState({ puntos: 0, rurales: 0, urbanas: 0 })
-  const [cargaFinalizada, setCargaFinalizada] = useState(() => {
-    try {
-      return localStorage.getItem(`carga-finalizada:${fechaCertificacion}`) === '1'
-    } catch {
-      return false
-    }
-  })
+  const [cargaActivaId, setCargaActivaId] = useState('')
+  const [cargaFinalizada, setCargaFinalizada] = useState(false)
   const [pendientesSync, setPendientesSync] = useState(0)
   const [sincronizandoPendientes, setSincronizandoPendientes] = useState(false)
   const [pendientesDetalle, setPendientesDetalle] = useState([])
@@ -280,11 +284,47 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     setMensajes([])
   }
 
+  const asegurarCargaActiva = async () => {
+    if (cargaActivaId) {
+      return cargaActivaId
+    }
+
+    const carga = await obtenerOCrearCargaActiva(fechaCertificacion)
+    const cargaId = carga?.id ? String(carga.id) : ''
+    if (cargaId) {
+      setCargaActivaId(cargaId)
+    }
+
+    return cargaId
+  }
+
   useEffect(() => {
-    try {
-      setCargaFinalizada(localStorage.getItem(`carga-finalizada:${fechaCertificacion}`) === '1')
-    } catch {
-      setCargaFinalizada(false)
+    let cancelled = false
+
+    const prepararCargaActiva = async () => {
+      try {
+        const carga = await obtenerOCrearCargaActiva(fechaCertificacion)
+        if (cancelled) return
+
+        const cargaId = carga?.id ? String(carga.id) : ''
+        setCargaActivaId(cargaId)
+        setCargaFinalizada(false)
+
+        if (cargaId) {
+          await cargar(cargaId)
+        }
+      } catch (error) {
+        if (cancelled) return
+
+        setCargaActivaId('')
+        setErrorMsg(`No se pudo preparar la carga activa: ${error.message}`)
+      }
+    }
+
+    prepararCargaActiva()
+
+    return () => {
+      cancelled = true
     }
   }, [fechaCertificacion])
 
@@ -297,22 +337,38 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
   }, [])
 
-    const cargar = async () => {
+    const cargar = async (cargaId = cargaActivaId) => {
+    // Si no hay cargaId, intentar cargar por fecha (fallback) — útil mientras se resuelve creación de cargas
+    const usarFecha = !cargaId
+
     try {
-        const data = await obtenerRegistros(fechaCertificacion)
-        setRegistros(data)
-        const stats = await obtenerEstadisticas(fechaCertificacion)
-        setEstadisticas(stats)
-        return { data, stats }
+      const data = await obtenerRegistros(fechaCertificacion, cargaId || null)
+      setRegistros(data)
+      const stats = await obtenerEstadisticas(fechaCertificacion, cargaId || null)
+      setEstadisticas(stats)
+      return { data, stats }
     } catch (error) {
       setErrorMsg(`No se pudieron cargar los registros: ${error.message}`)
-        return { data: [], stats: { puntos: 0, rurales: 0, urbanas: 0 } }
+      // Si falló y no habíamos intentado por fecha, intentar una vez por fecha como último recurso
+      if (!usarFecha) {
+        try {
+          const data = await obtenerRegistros(fechaCertificacion, null)
+          setRegistros(data)
+          const stats = await obtenerEstadisticas(fechaCertificacion, null)
+          setEstadisticas(stats)
+          return { data, stats }
+        } catch (err2) {
+          setErrorMsg(`No se pudieron cargar los registros por fecha: ${err2.message}`)
+        }
+      }
+
+      return { data: [], stats: { puntos: 0, rurales: 0, urbanas: 0 } }
     }
     }
 
     const bloquearSiCargaFinalizada = () => {
       if (!cargaFinalizada) return null
-      const msg = 'La carga ya fue finalizada. No se permiten nuevos registros.'
+      const msg = 'La carga se está cerrando. Espera un momento.'
       setErrorMsg(msg)
       return { ok: false, error: msg }
     }
@@ -330,6 +386,13 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     const bloqueo = bloquearSiCargaFinalizada()
     if (bloqueo) return bloqueo
+
+    const cargaId = await asegurarCargaActiva()
+    if (!cargaId) {
+      const msg = 'Todavía no se pudo resolver la carga activa'
+      setErrorMsg(msg)
+      return { ok: false, error: msg }
+    }
 
     const validacionId = validarIdNotificacion(idNotificacion)
     const idLimpio = validacionId.valor
@@ -398,6 +461,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
               latitud: clasificacionTerreno.latitud,
               longitud: clasificacionTerreno.longitud,
               codigo_lote: codigoLote,
+              carga_id: cargaId,
               rit: ritLimpio || null,
               año: año || null,
             },
@@ -445,6 +509,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         latitud: clasificacionTerreno.latitud,
         longitud: clasificacionTerreno.longitud,
         codigo_lote: codigoLote,
+        carga_id: cargaId,
         rit: ritLimpio || null,
         año: año || null,
       })
@@ -467,6 +532,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
               latitud: clasificacionTerreno.latitud,
               longitud: clasificacionTerreno.longitud,
               codigo_lote: codigoLote,
+              carga_id: cargaId,
               rit: ritLimpio || null,
               año: año || null,
             },
@@ -629,6 +695,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
             latitud: clasificacionTerreno.latitud,
             longitud: clasificacionTerreno.longitud,
             codigo_lote: idLoteUnico,
+            carga_id: cargaId,
             rit: item.rit,
             año: Number(item.año),
           }]
@@ -644,6 +711,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
           latitud: clasificacionTerreno.latitud,
           longitud: clasificacionTerreno.longitud,
           codigo_lote: idLoteUnico,
+          carga_id: cargaId,
           rit: null,
           año: null,
         }))
@@ -819,8 +887,10 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const finalizarCarga = async () => {
     limpiarMensajes()
 
+    const cargaId = await asegurarCargaActiva()
+
     if (cargaFinalizada) {
-      const msg = 'La carga ya fue finalizada.'
+      const msg = 'La carga se está cerrando. Espera un momento.'
       setErrorMsg(msg)
       return { ok: false, error: msg }
     }
@@ -833,6 +903,9 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     let registrosDia = registros
     let statsDia = estadisticas
+    let envio = null
+
+    setCargaFinalizada(true)
 
     try {
       const snapshot = await cargar()
@@ -843,28 +916,31 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
 
     try {
-      const envio = await enviarReporteFinalizacionCarga(fechaCertificacion)
+      envio = await enviarReporteFinalizacionCarga(fechaCertificacion, cargaId)
       if (!envio?.ok) {
         const msg = envio?.error || 'No se pudo enviar el reporte de cierre'
         setErrorMsg(msg)
+        setCargaFinalizada(false)
         return { ok: false, error: msg }
       }
     } catch (error) {
       const msg = `No se pudo enviar el reporte de cierre: ${error.message}`
       setErrorMsg(msg)
+      setCargaFinalizada(false)
       return { ok: false, error: msg }
     }
 
-    try {
-      localStorage.setItem(`carga-finalizada:${fechaCertificacion}`, '1')
-    } catch {
-      // noop
+    const nuevaCargaId = String(envio?.nueva_carga?.id || envio?.carga_activa?.id || '')
+
+    if (nuevaCargaId) {
+      setCargaActivaId(nuevaCargaId)
+      await cargar(nuevaCargaId)
     }
 
-    setCargaFinalizada(true)
-    setMensaje('Carga finalizada y reporte enviado')
-    agregarMensajeVisual('Se envió el reporte diario por correo y la carga quedó cerrada.', 'sincronizado')
-    return { ok: true, resumen: resumenCarga }
+    setCargaFinalizada(false)
+    setMensaje('Carga finalizada y nueva carga iniciada')
+    agregarMensajeVisual('Se envió el reporte por correo y la siguiente carga quedó habilitada.', 'sincronizado')
+    return { ok: true, resumen: construirResumenCarga(registrosDia, statsDia) }
   }
 
   return {
@@ -875,6 +951,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     mensajes,
     errorMsg,
     estadisticas,
+    cargaActivaId,
     pendientesSync,
     sincronizandoPendientes,
     pendientesDetalle,
