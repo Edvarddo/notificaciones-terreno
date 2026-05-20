@@ -374,14 +374,6 @@ function App() {
           mostrarConsulta ? 'contenedor-consulta' : ''
         }`}
       >
-        <div className="header-box">
-          <div className="header-top">
-            <div>
-              <p className="subtitulo-header">Registro de notificaciones en terreno</p>
-            </div>
-          </div>
-        </div>
-
         {dialogoEliminarAbierto ? (
           <div className="dialogo-overlay top" onClick={() => setDialogoEliminarAbierto(false)}>
             <div className="dialogo-codigos dialogo-confirmar" onClick={(e) => e.stopPropagation()}>
