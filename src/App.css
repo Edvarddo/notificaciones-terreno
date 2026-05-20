@@ -928,12 +928,64 @@ body {
 }
 
 .fecha-box {
-  background: var(--color-fondo-suave);
-  border: 1px solid var(--color-borde);
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 16px;
+  background: linear-gradient(135deg, #0b3c5d 0%, #1f6f8b 100%);
+  border: none;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
   font-size: 15px;
+  color: var(--color-blanco);
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(11, 60, 93, 0.18);
+}
+
+.fecha-box-contenido {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.fecha-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fecha-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
+.fecha-valor {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.fecha-carga {
+  font-family: 'Monaco', 'Courier New', monospace;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+@media (max-width: 480px) {
+  .fecha-box {
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+
+  .fecha-box-contenido {
+    gap: 16px;
+  }
+
+  .fecha-valor {
+    font-size: 14px;
+  }
 }
 
 .estado-sync {

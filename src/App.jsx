@@ -422,7 +422,16 @@ function App() {
         ) : null}
 
         <div className="fecha-box">
-          <strong>Fecha de certificacion:</strong> {fechaCertificacion}
+          <div className="fecha-box-contenido">
+            <div className="fecha-item">
+              <span className="fecha-label">Fecha:</span>
+              <span className="fecha-valor">{fechaCertificacion}</span>
+            </div>
+            <div className="fecha-item">
+              <span className="fecha-label">Carga:</span>
+              <span className="fecha-valor fecha-carga">{notificaciones.cargaActivaId ? notificaciones.cargaActivaId.slice(0, 8) : '—'}</span>
+            </div>
+          </div>
         </div>
 
         {notificaciones.sincronizandoPendientes || notificaciones.pendientesSync > 0 ? (
