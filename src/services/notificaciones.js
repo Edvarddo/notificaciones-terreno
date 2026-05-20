@@ -182,3 +182,15 @@ export async function obtenerEstadisticas(fechaCertificacion, cargaId = null) {
     urbanas,
   }
 }
+
+export async function obtenerTodasLasCargasDeUnDia(fechaCertificacion) {
+  const { data, error } = await supabase
+    .from('cargas_terreno')
+    .select('id, creada_en')
+    .eq('fecha_certificacion', fechaCertificacion)
+    .order('creada_en', { ascending: true })
+
+  if (error) throw error
+  return data || []
+}
+}

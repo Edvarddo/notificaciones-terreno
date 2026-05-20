@@ -422,15 +422,17 @@ function App() {
         ) : null}
 
         <div className="fecha-box">
-          <div className="fecha-box-contenido">
+          <div className="fecha-box-principal">
             <div className="fecha-item">
-              <span className="fecha-label">Fecha:</span>
+              <span className="fecha-label">Fecha</span>
               <span className="fecha-valor">{fechaCertificacion}</span>
             </div>
-            <div className="fecha-item">
-              <span className="fecha-label">Carga:</span>
-              <span className="fecha-valor fecha-carga">{notificaciones.cargaActivaId ? notificaciones.cargaActivaId.slice(0, 8) : '—'}</span>
-            </div>
+            {notificaciones.cargaActivaId && (
+              <div className="carga-item">
+                <span className="fecha-label">Carga</span>
+                <span className="carga-numero">Carga {notificaciones.numeroCarga}</span>
+              </div>
+            )}
           </div>
         </div>
 

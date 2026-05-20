@@ -8,6 +8,7 @@ import {
   existeIdNotificacionEnFecha,
   actualizarRegistroPorId,
   obtenerEstadisticas,
+  obtenerTodasLasCargasDeUnDia,
 } from '../services/notificaciones'
 import {
   agregarOperacionPendiente,
@@ -42,6 +43,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const [mensajes, setMensajes] = useState([])
   const [estadisticas, setEstadisticas] = useState({ puntos: 0, rurales: 0, urbanas: 0 })
   const [cargaActivaId, setCargaActivaId] = useState('')
+  const [numeroCarga, setNumeroCarga] = useState(0)
   const [cargaFinalizada, setCargaFinalizada] = useState(false)
   const [pendientesSync, setPendientesSync] = useState(0)
   const [sincronizandoPendientes, setSincronizandoPendientes] = useState(false)
@@ -327,6 +329,29 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       cancelled = true
     }
   }, [fechaCertificacion])
+
+  // Calcular número de carga cuando se asigna cargaActivaId
+  useEffect(() => {
+    if (!cargaActivaId) {
+      setNumeroCarga(0)
+      return
+    }
+
+    const calcularNumero = async () => {
+      try {
+        const cargas = await obtenerTodasLasCargasDeUnDia(fechaCertificacion)
+        const indice = cargas.findIndex((c) => c.id === cargaActivaId)
+        if (indice >= 0) {
+          setNumeroCarga(indice + 1)
+        }
+      } catch (error) {
+        // Si hay error, simplemente no actualizar el número
+        console.error('Error calculando número de carga:', error)
+      }
+    }
+
+    calcularNumero()
+  }, [cargaActivaId, fechaCertificacion])
 
   useEffect(() => {
     return () => {
@@ -964,6 +989,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     errorMsg,
     estadisticas,
     cargaActivaId,
+    numeroCarga,
     pendientesSync,
     sincronizandoPendientes,
     pendientesDetalle,
