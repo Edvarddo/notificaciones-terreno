@@ -203,12 +203,14 @@ function RegistroTable({
           >
             {cargaFinalizada ? 'Cerrando carga...' : 'Finalizar carga'}
           </button>
-          <button className="boton-mini" onClick={onDescargarCsv} type="button">
-            Descargar CSV
-          </button>
-          <button className="boton-mini" onClick={onRecargar} type="button">
-            Recargar
-          </button>
+          <div className="registros-header-acciones-grupo">
+            <button className="boton-mini" onClick={onDescargarCsv} type="button">
+              Descargar CSV
+            </button>
+            <button className="boton-mini" onClick={onRecargar} type="button">
+              Recargar
+            </button>
+          </div>
         </div>
       </div>
 
