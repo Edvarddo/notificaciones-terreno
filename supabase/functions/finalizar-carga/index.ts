@@ -384,7 +384,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const nuevaCarga = await crearCargaActiva(fecha)
+    // NO crear nueva carga automáticamente. Será creada lazy cuando el usuario guarde el próximo registro.
+    // Esto evita cargas vacías en la BD.
 
     const resendBody: any = {
       from: ACCESS_CODE_FROM_EMAIL,
@@ -411,7 +412,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    return new Response(JSON.stringify({ ok: true, id: resendJson?.id || null, nueva_carga: nuevaCarga }), {
+    return new Response(JSON.stringify({ ok: true, id: resendJson?.id || null }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {

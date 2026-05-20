@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import IconQr from './IconQr'
 import IconList from './IconList'
 import IconTribunal from './IconTribunal'
@@ -44,12 +44,20 @@ function RegistroForm({
   onA1Valor1Change,
   onA1Valor2Change,
 }) {
+  const qrContainerRef = useRef(null)
+
   useEffect(() => {
-    if (escaneando) {
-      const contenedor = document.querySelector('.qr-inline:not(.qr-inline-oculto)')
-      if (contenedor) {
-        contenedor.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
-      }
+    if (escaneando && qrContainerRef.current) {
+      // Usa requestAnimationFrame para asegurar que el DOM está listo
+      requestAnimationFrame(() => {
+        if (qrContainerRef.current) {
+          qrContainerRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest',
+          })
+        }
+      })
     }
   }, [escaneando])
 
@@ -134,7 +142,10 @@ function RegistroForm({
         </div>
       )}
 
-      <div className={`qr-inline ${escaneando ? '' : 'qr-inline-oculto'}`}>
+      <div 
+        ref={qrContainerRef}
+        className={`qr-inline ${escaneando ? '' : 'qr-inline-oculto'}`}
+      >
         <div id="qr-reader"></div>
         {escaneando ? (
           <div className="qr-zoom-bar">

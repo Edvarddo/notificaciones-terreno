@@ -930,16 +930,14 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       return { ok: false, error: msg }
     }
 
-    const nuevaCargaId = String(envio?.nueva_carga?.id || envio?.carga_activa?.id || '')
-
-    if (nuevaCargaId) {
-      setCargaActivaId(nuevaCargaId)
-      await cargar(nuevaCargaId)
-    }
+    // NO asignar una nueva carga automáticamente.
+    // Será creada lazy cuando el usuario guarde el primer registro del siguiente ciclo.
+    // Esto evita cargas vacías acumulándose en la BD.
+    setCargaActivaId('')
 
     setCargaFinalizada(false)
-    setMensaje('Carga finalizada y nueva carga iniciada')
-    agregarMensajeVisual('Se envió el reporte por correo y la siguiente carga quedó habilitada.', 'sincronizado')
+    setMensaje('Carga finalizada. La siguiente se creará cuando guardes el próximo registro.')
+    agregarMensajeVisual('Se envió el reporte por correo. Próxima carga lista cuando guardes.', 'sincronizado')
     return { ok: true, resumen: construirResumenCarga(registrosDia, statsDia) }
   }
 
