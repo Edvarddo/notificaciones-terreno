@@ -560,7 +560,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     setCargando(false)
     setMensaje('Guardado')
-    await cargar()
+    // Pasar cargaId explícitamente para evitar desync con setCargaActivaId asincrónico
+    await cargar(cargaId)
     enfocarId?.()
     return { ok: true }
   }
@@ -605,6 +606,14 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     const bloqueo = bloquearSiCargaFinalizada()
     if (bloqueo) return bloqueo
+
+    const cargaId = await asegurarCargaActiva()
+    if (!cargaId) {
+      const msg = 'Todavía no se pudo resolver la carga activa'
+      setErrorMsg(msg)
+      await onBeforeError?.()
+      return { ok: false, error: msg }
+    }
 
     const modoTribunal = Boolean(mostraTribunalLote)
 
@@ -809,7 +818,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     setGuardandoLote(false)
     setMensaje(`Lote guardado: ${cantidadFilas} registro(s)`)
     await onSuccess?.()
-    await cargar()
+    // Pasar cargaId explícitamente para evitar desync con setCargaActivaId asincrónico
+    await cargar(cargaId)
     return { ok: true }
   }
 
