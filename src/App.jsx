@@ -342,6 +342,11 @@ function App() {
     URL.revokeObjectURL(url)
   }
 
+  const recargarRegistros = () => {
+    // Pasar cargaActivaId explícitamente para evitar desync con state asincrónico
+    notificaciones.cargar(notificaciones.cargaActivaId)
+  }
+
   return (
     <div className="pagina">
       <button
@@ -541,7 +546,7 @@ function App() {
 
         <RegistroTable
           registros={notificaciones.registros}
-          onRecargar={notificaciones.cargar}
+          onRecargar={recargarRegistros}
           onFinalizarCarga={finalizarCarga}
           onActualizarRegistro={notificaciones.actualizarRegistro}
           onDescargarCsv={descargarCsv}
