@@ -377,7 +377,6 @@ function App() {
         <div className="header-box">
           <div className="header-top">
             <div>
-              <h1 className="titulo-header">Poder Judicial</h1>
               <p className="subtitulo-header">Registro de notificaciones en terreno</p>
             </div>
           </div>

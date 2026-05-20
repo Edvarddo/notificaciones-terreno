@@ -295,7 +295,6 @@ Deno.serve(async (req) => {
       <!-- Header Band -->
       <div style="background: linear-gradient(135deg, #0b3c5d 0%, #1f6f8b 100%); color: #fff; padding: 40px 32px;">
         <div style="max-width: 900px; margin: 0 auto;">
-          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85; margin-bottom: 12px;">Poder Judicial</div>
           <h1 style="margin: 0 0 8px; font-size: 32px; font-weight: 700;">Reporte de Cierre</h1>
           <div style="font-size: 15px; opacity: 0.9;">Fecha: <strong>${escapeHtml(fecha)}</strong></div>
           <div style="font-size: 13px; opacity: 0.8; margin-top: 6px;">Grupo: <strong>${escapeHtml(etiquetaCarga)}</strong></div>
