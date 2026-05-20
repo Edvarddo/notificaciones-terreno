@@ -935,6 +935,10 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     // Esto evita cargas vacías acumulándose en la BD.
     setCargaActivaId('')
 
+    // Limpiar registros e estadísticas para reflejar que no hay carga activa
+    setRegistros([])
+    setEstadisticas({ puntos: 0, rurales: 0, urbanas: 0 })
+
     setCargaFinalizada(false)
     setMensaje('Carga finalizada. La siguiente se creará cuando guardes el próximo registro.')
     agregarMensajeVisual('Se envió el reporte por correo. Próxima carga lista cuando guardes.', 'sincronizado')
