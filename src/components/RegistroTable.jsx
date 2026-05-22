@@ -10,9 +10,7 @@ const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B5'])
 function RegistroTable({
   registros,
   onRecargar,
-  onFinalizarCarga,
   onActualizarRegistro,
-  onDescargarCsv,
   cargaFinalizada = false,
   cargaTotal = 0,
   puntos = 0,
@@ -195,18 +193,7 @@ function RegistroTable({
       <div className="registros-header">
         <h2 className="titulo-seccion">Notificaciones registradas</h2>
         <div className="registros-header-acciones">
-          <button
-            className="boton-mini boton-finalizar-carga"
-            onClick={onFinalizarCarga}
-            type="button"
-            disabled={cargaFinalizada}
-          >
-            {cargaFinalizada ? 'Cerrando carga...' : 'Finalizar carga'}
-          </button>
           <div className="registros-header-acciones-grupo">
-            <button className="boton-mini" onClick={onDescargarCsv} type="button">
-              Descargar CSV
-            </button>
             <button className="boton-mini" onClick={onRecargar} type="button">
               Recargar
             </button>

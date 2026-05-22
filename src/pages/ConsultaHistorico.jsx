@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import ConsultaMapa from '../components/ConsultaMapa'
-import { obtenerRegistros } from '../services/notificaciones'
+import { obtenerRegistros, obtenerTodasLasCargasDeUnDia } from '../services/notificaciones'
 import { escaparValorCsv } from '../utils/csv'
 
 const CODIGOS_EXITOSOS = new Set(['D2', 'D4', 'E1'])
@@ -22,10 +22,73 @@ export default function ConsultaHistorico({ onVolver }) {
   const [error, setError] = useState('')
   const [fechaDesde, setFechaDesde] = useState(hoy)
   const [fechaHasta, setFechaHasta] = useState(hoy)
+  const [cargas, setCargas] = useState([])
+  const [cargaId, setCargaId] = useState('')
 
   useEffect(() => {
     void cargarHistorico()
   }, [])
+
+  // Derivar las cargas disponibles a partir de los registros ya cargados
+  useEffect(() => {
+    let cancelled = false
+
+    const calcularCargas = async () => {
+      const registrosDelDia = registros.filter((r) => (r.fecha_certificacion || '') === fechaDesde)
+      const idsUnicos = Array.from(new Set(registrosDelDia.map((r) => r.carga_id).filter(Boolean)))
+
+      try {
+        // Intentar obtener las cargas con timestamps (para numerarlas cronológicamente)
+        const listaTodas = await obtenerTodasLasCargasDeUnDia(fechaDesde)
+        if (cancelled) return
+
+        // Asegurar orden explícita por fecha de creación (ascendente)
+        const todasOrdenadas = (listaTodas || []).slice().sort((a, b) => {
+          const ta = a?.creada_en ? new Date(a.creada_en).getTime() : 0
+          const tb = b?.creada_en ? new Date(b.creada_en).getTime() : 0
+          return ta - tb
+        })
+
+        // Filtrar por las cargas que realmente tienen registros y mantener el orden por creada_en
+        const listaFiltrada = todasOrdenadas.filter((c) => idsUnicos.includes(c.id))
+
+        if (listaFiltrada.length) {
+          setCargas(listaFiltrada)
+          setCargaId((prev) => (prev && listaFiltrada.some((c) => String(c.id) === String(prev)) ? prev : ''))
+          return
+        }
+      } catch (err) {
+        // si falla la consulta (RLS/CORS), seguimos con el método derivado
+      }
+
+      // Fallback: derivar a partir de registros si no obtuvimos la lista de cargas
+      // Ordenar las cargas por el primer registro asociado (aprox. a creada_en)
+      const primerRegistroPorCarga = {}
+      for (const id of idsUnicos) {
+        const regs = registrosDelDia.filter((r) => String(r.carga_id || '') === String(id))
+        // calcular timestamp aproximado usando fecha + hora (hora en formato HHMM o similar)
+        const times = regs.map((r) => {
+          const horaTexto = String(r.hora || '0000').padStart(4, '0')
+          const hh = horaTexto.slice(0, 2)
+          const mm = horaTexto.slice(2, 4)
+          const d = new Date(`${fechaDesde}T${hh}:${mm}:00`).getTime()
+          return Number.isFinite(d) ? d : Infinity
+        })
+        primerRegistroPorCarga[id] = times.length ? Math.min(...times) : Infinity
+      }
+
+      const idsOrdenados = idsUnicos.slice().sort((a, b) => (primerRegistroPorCarga[a] || Infinity) - (primerRegistroPorCarga[b] || Infinity))
+      const lista = idsOrdenados.map((id) => ({ id }))
+      setCargas(lista)
+      setCargaId((prev) => (prev && lista.some((c) => String(c.id) === String(prev)) ? prev : ''))
+    }
+
+    void calcularCargas()
+
+    return () => {
+      cancelled = true
+    }
+  }, [fechaDesde, registros])
 
   const cargarHistorico = async () => {
     setCargando(true)
@@ -80,9 +143,10 @@ export default function ConsultaHistorico({ onVolver }) {
       const fechaRegistro = reg.fecha_certificacion || ''
       const coincideDesde = !fechaDesde || fechaRegistro >= fechaDesde
       const coincideHasta = !fechaHasta || fechaRegistro <= fechaHasta
-      return coincideDesde && coincideHasta
+      const coincideCarga = !cargaId || String(reg.carga_id || '') === String(cargaId)
+      return coincideDesde && coincideHasta && coincideCarga
     })
-  }, [fechaDesde, fechaHasta, registros])
+  }, [fechaDesde, fechaHasta, registros, cargaId])
 
   const registrosOrdenados = useMemo(() => {
     return [...registrosFiltrados].sort((a, b) => {
@@ -157,7 +221,8 @@ export default function ConsultaHistorico({ onVolver }) {
 
     const enlace = document.createElement('a')
     enlace.href = url
-    enlace.download = `consulta_historico_${fechaDesde || hoy}.csv`
+    const cargaLabel = cargaId ? `carga_${(cargas.findIndex((c) => c.id === cargaId) + 1) || cargaId}` : 'todas_cargas'
+    enlace.download = `consulta_historico_${fechaDesde || hoy}_${cargaLabel}.csv`
     document.body.appendChild(enlace)
     enlace.click()
     document.body.removeChild(enlace)
@@ -250,6 +315,45 @@ export default function ConsultaHistorico({ onVolver }) {
                 )}
               </select>
             </label>
+              <label className="consulta-filtro-fecha">
+                <span className="consulta-filtro-label">Carga</span>
+                <select
+                  className="input-busqueda input-busqueda-ancha consulta-filtro-select"
+                  value={cargaId}
+                  onChange={(e) => setCargaId(e.target.value)}
+                  aria-label="Filtrar por carga"
+                  disabled={cargas.length === 0}
+                >
+                  <option value="">Todas las cargas</option>
+                  {cargas.map((carga, idx) => {
+                    const created = carga?.creada_en ? new Date(carga.creada_en) : null
+                    let createdText = ''
+                    if (created) {
+                      createdText = `${created.toLocaleDateString()} ${created.toLocaleTimeString()}`
+                    } else {
+                      // fallback: buscar el primer registro asociado para aproximar la hora
+                      const primerRegistro = registros.find(
+                        (r) => String(r.carga_id || '') === String(carga.id) && (r.fecha_certificacion || '') === fechaDesde
+                      )
+                      if (primerRegistro) {
+                        const horaTexto = String(primerRegistro.hora || '0000').padStart(4, '0')
+                        const hh = horaTexto.slice(0, 2)
+                        const mm = horaTexto.slice(2, 4)
+                        createdText = `${fechaDesde} ${hh}:${mm}`
+                      }
+                    }
+
+                    const idTail = carga.id ? `(${String(carga.id).slice(0, 8)})` : ''
+
+                    return (
+                      <option key={carga.id} value={carga.id}>
+                        {`Carga ${idx + 1}${createdText ? ' — ' + createdText : ''}${idTail ? ' ' + idTail : ''}`}
+                      </option>
+                    )
+                  })}
+                </select>
+              </label>
+              {/* Carga selector populated from registros */}
           </div>
         </div>
 
@@ -275,6 +379,7 @@ export default function ConsultaHistorico({ onVolver }) {
               <thead>
                 <tr>
                   <th>Fecha</th>
+                  <th>Hora</th>
                   <th>ID Notificación</th>
                   <th>Código</th>
                   <th>Observación</th>
@@ -285,6 +390,7 @@ export default function ConsultaHistorico({ onVolver }) {
                 {registrosOrdenados.map((reg) => (
                   <tr key={reg.id}>
                     <td>{reg.fecha_certificacion}</td>
+                    <td>{String(reg.hora || '').trim() || '--'}</td>
                     <td className="id-cell">{reg.id_notificacion}</td>
                     <td>{reg.codigo}</td>
                     <td>{reg.observacion}</td>

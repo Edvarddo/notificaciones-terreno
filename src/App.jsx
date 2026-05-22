@@ -15,7 +15,6 @@ import useNotificaciones from './hooks/useNotificaciones'
 import useLoteForm from './hooks/useLoteForm'
 import useRegistroForm from './hooks/useRegistroForm'
 import { extraerIdDesdeQr } from './utils/qr'
-import { escaparValorCsv } from './utils/csv'
 import { validarIdNotificacion } from './utils/validation'
 import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
@@ -27,6 +26,10 @@ function App() {
   const [dialogoEliminarAbierto, setDialogoEliminarAbierto] = useState(false)
   const [confirmFinalizarAbierto, setConfirmFinalizarAbierto] = useState(false)
   const [confirmEliminarAbierto, setConfirmEliminarAbierto] = useState(false)
+  const finalizarEnProcesoRef = useRef(false)
+  const eliminarEnProcesoRef = useRef(false)
+  const [finalizarEnProceso, setFinalizarEnProceso] = useState(false)
+  const [eliminarEnProceso, setEliminarEnProceso] = useState(false)
 
   const inputIdRef = useRef(null)
   const [mostrarConsulta, setMostrarConsulta] = useState(false)
@@ -84,6 +87,7 @@ function App() {
 
   const irAFormulario = () => {
     setMostrarConsulta(false)
+    setMostrarCsv(false)
     setMostrarMonitoreo(false)
     setMenuAbierto(false)
   }
@@ -91,6 +95,7 @@ function App() {
   const irAMonitoreo = () => {
     setMostrarMonitoreo(true)
     setMostrarConsulta(false)
+    setMostrarCsv(false)
     setMenuAbierto(false)
   }
 
@@ -268,13 +273,23 @@ function App() {
   }
 
   const confirmarFinalizarCarga = async () => {
-    const resultado = await notificaciones.finalizarCarga()
-    if (resultado?.ok) {
-      await qrIndividual.detenerEscaneo().catch(() => {})
-      await qrLote.detenerEscaneo().catch(() => {})
-      setDialogoLoteAbierto(false)
+    if (finalizarEnProcesoRef.current) return
+
+    finalizarEnProcesoRef.current = true
+    setFinalizarEnProceso(true)
+
+    try {
+      const resultado = await notificaciones.finalizarCarga()
+      if (resultado?.ok) {
+        await qrIndividual.detenerEscaneo().catch(() => {})
+        await qrLote.detenerEscaneo().catch(() => {})
+        setDialogoLoteAbierto(false)
+      }
+      setConfirmFinalizarAbierto(false)
+    } finally {
+      finalizarEnProcesoRef.current = false
+      setFinalizarEnProceso(false)
     }
-    setConfirmFinalizarAbierto(false)
   }
 
   const cancelarFinalizarCarga = () => {
@@ -294,52 +309,23 @@ function App() {
   }
 
   const confirmarEliminarUltimo = async () => {
-    await notificaciones.eliminarUltimoRegistro()
-    setConfirmEliminarAbierto(false)
-    setDialogoEliminarAbierto(false)
+    if (eliminarEnProcesoRef.current) return
+
+    eliminarEnProcesoRef.current = true
+    setEliminarEnProceso(true)
+
+    try {
+      await notificaciones.eliminarUltimoRegistro()
+      setConfirmEliminarAbierto(false)
+      setDialogoEliminarAbierto(false)
+    } finally {
+      eliminarEnProcesoRef.current = false
+      setEliminarEnProceso(false)
+    }
   }
 
   const cancelarEliminarUltimo = () => {
     setConfirmEliminarAbierto(false)
-  }
-
-  const descargarCsv = () => {
-    // Filtrar solo registros que NO están rebajados
-    const registrosFiltrados = notificaciones.registros.filter((r) => !r.es_rebajada)
-
-    const filas = registrosFiltrados.map((r) => ({
-      id_notificacion: r.id_notificacion ?? '',
-      codigo: r.codigo ?? '',
-      hora: r.hora ?? '',
-      observacion: r.observacion ?? '',
-      urbana: r.es_no_urbana ? 'No urbana' : 'Urbana',
-    }))
-
-    const encabezado = ['id_notificacion', 'codigo', 'hora', 'observacion', 'urbana']
-    const lineas = [
-      encabezado.join(','),
-      ...filas.map((fila) =>
-        [
-          escaparValorCsv(fila.id_notificacion),
-          escaparValorCsv(fila.codigo),
-          escaparValorCsv(fila.hora),
-          escaparValorCsv(fila.observacion),
-          escaparValorCsv(fila.urbana),
-        ].join(',')
-      ),
-    ]
-
-    const contenido = '\uFEFF' + lineas.join('\n')
-    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `notificaciones_${fechaCertificacion}.csv`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
   }
 
   const recargarRegistros = () => {
@@ -423,7 +409,7 @@ function App() {
 
         <div className="fecha-box">
           <div className="fecha-box-principal">
-            <div className="fecha-item">
+            <div className="fecha-item fecha-item-principal">
               <span className="fecha-label">Fecha</span>
               <span className="fecha-valor">{fechaCertificacion}</span>
             </div>
@@ -524,6 +510,8 @@ function App() {
           onAbrirLote={abrirDialogoLote}
           dialogoLoteAbierto={dialogoLoteAbierto}
           cargaFinalizada={notificaciones.cargaFinalizada}
+          finalizandoEnProceso={finalizarEnProceso}
+          eliminandoEnProceso={eliminarEnProceso}
         />
 
         {notificaciones.mensaje ? (
@@ -549,15 +537,32 @@ function App() {
         <RegistroTable
           registros={notificaciones.registros}
           onRecargar={recargarRegistros}
-          onFinalizarCarga={finalizarCarga}
           onActualizarRegistro={notificaciones.actualizarRegistro}
-          onDescargarCsv={descargarCsv}
           cargaFinalizada={notificaciones.cargaFinalizada}
           cargaTotal={notificaciones.estadisticas.cargaTotal}
           puntos={notificaciones.estadisticas.puntos}
           urbanas={notificaciones.estadisticas.urbanas}
           rurales={notificaciones.estadisticas.rurales}
         />
+
+        <div className="acciones-cierre-panel">
+          <div className="acciones-cierre-texto">
+            <span className="acciones-cierre-kicker">Cierre de carga</span>
+            <h3>Finalizar la carga actual</h3>
+            <p>Esta acción conviene tomarla al final, después de revisar los registros cargados.</p>
+          </div>
+
+          <button
+            type="button"
+            className="boton-peligro boton-cierre-carga"
+            onClick={finalizarCarga}
+            disabled={notificaciones.cargaFinalizada || finalizarEnProceso}
+          >
+            {notificaciones.cargaFinalizada || finalizarEnProceso
+              ? 'Cerrando carga...'
+              : 'Finalizar carga'}
+          </button>
+        </div>
 
         <ConfirmDialog
           abierto={confirmFinalizarAbierto}
@@ -568,7 +573,7 @@ function App() {
           colorConfirmar="rojo"
           onConfirmar={confirmarFinalizarCarga}
           onCancelar={cancelarFinalizarCarga}
-          cargando={notificaciones.cargaFinalizada}
+          cargando={notificaciones.cargaFinalizada || finalizarEnProceso}
         />
 
         <ConfirmDialog
@@ -580,7 +585,7 @@ function App() {
           colorConfirmar="naranja"
           onConfirmar={confirmarEliminarUltimo}
           onCancelar={cancelarEliminarUltimo}
-          cargando={notificaciones.cargando}
+          cargando={notificaciones.cargando || eliminarEnProceso}
         />
 
         <CodigoDialog

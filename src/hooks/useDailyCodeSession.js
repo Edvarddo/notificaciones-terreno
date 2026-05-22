@@ -49,9 +49,7 @@ export default function useDailyCodeSession() {
       const check = await validateAccessSession()
       if (!cancelled) {
         if (check?.ok && check?.session_expires_at) {
-          setSessionExpiresAt(new Date(check.session_expires_at))
-          setModalOpen(false)
-          setError('')
+          setSession(new Date(check.session_expires_at))
         } else {
           clearSession()
           setError('')
@@ -75,7 +73,8 @@ export default function useDailyCodeSession() {
   }, [sessionExpiresAt, hasValidSession])
 
   const setSession = (expiresAt) => {
-    setSessionExpiresAt(new Date(expiresAt))
+    const nextExpiresAt = new Date(expiresAt)
+    setSessionExpiresAt(nextExpiresAt)
     setModalOpen(false)
     setError('')
   }

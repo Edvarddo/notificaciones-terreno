@@ -1,4 +1,12 @@
-function MenuLateral({ abierto, vistaConsulta, onCerrar, onIrConsulta, onIrFormulario, onIrMonitoreo, vistaMonitoreo }) {
+function MenuLateral({
+  abierto,
+  vistaConsulta,
+  onCerrar,
+  onIrConsulta,
+  onIrFormulario,
+  onIrMonitoreo,
+  vistaMonitoreo,
+}) {
   if (!abierto) return null
 
   return (
@@ -27,6 +35,8 @@ function MenuLateral({ abierto, vistaConsulta, onCerrar, onIrConsulta, onIrFormu
         >
           Consulta de notificaciones
         </button>
+
+        {/* Removed: Descarga CSV por fecha - moved into ConsultaHistorico */}
 
         <button
           type="button"

@@ -193,4 +193,3 @@ export async function obtenerTodasLasCargasDeUnDia(fechaCertificacion) {
   if (error) throw error
   return data || []
 }
-}

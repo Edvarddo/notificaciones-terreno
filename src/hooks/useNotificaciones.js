@@ -31,6 +31,9 @@ const generarCargaId = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+const TIEMPO_MAXIMO_CLASIFICACION_GEO_MS = 5000
+const TIEMPO_MAXIMO_CARGA_ACTIVA_MS = 10000
+
 function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const timersMensajesRef = useRef(new Map())
   const mensajeTimerRef = useRef(null)
@@ -263,8 +266,18 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   }
 
   const resolverClasificacionTerreno = async (esNoUrbanaManual) => {
+    // Si el usuario ya marcó rural, no hace falta esperar GPS para guardar.
+    if (esNoUrbanaManual === true) {
+      return clasificarPorFallbackManual(true)
+    }
+
+    const clasificacionGps = determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual)
+    const tiempoMaximo = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Tiempo de geolocalización agotado')), TIEMPO_MAXIMO_CLASIFICACION_GEO_MS)
+    })
+
     try {
-      return await determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual)
+      return await Promise.race([clasificacionGps, tiempoMaximo])
     } catch (error) {
       return clasificarPorFallbackManual(esNoUrbanaManual)
     }
@@ -291,13 +304,23 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       return cargaActivaId
     }
 
-    const carga = await obtenerOCrearCargaActiva(fechaCertificacion)
-    const cargaId = carga?.id ? String(carga.id) : ''
-    if (cargaId) {
-      setCargaActivaId(cargaId)
-    }
+    try {
+      const carga = await Promise.race([
+        obtenerOCrearCargaActiva(fechaCertificacion),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Tiempo de espera para la carga activa agotado')), TIEMPO_MAXIMO_CARGA_ACTIVA_MS)
+        }),
+      ])
+      const cargaId = carga?.id ? String(carga.id) : ''
+      if (cargaId) {
+        setCargaActivaId(cargaId)
+      }
 
-    return cargaId
+      return cargaId
+    } catch (error) {
+      console.warn('[carga-activa] no se pudo resolver o crear la carga activa; se continuará sin carga_id', error)
+      return ''
+    }
   }
 
   useEffect(() => {
@@ -319,7 +342,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         if (cancelled) return
 
         setCargaActivaId('')
-        setErrorMsg(`No se pudo preparar la carga activa: ${error.message}`)
+        console.warn('[carga-activa] no se pudo preparar la carga activa al montar; se continuará sin carga_id', error)
       }
     }
 
@@ -343,10 +366,17 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         const indice = cargas.findIndex((c) => c.id === cargaActivaId)
         if (indice >= 0) {
           setNumeroCarga(indice + 1)
+          return
         }
+
+        if (cargas.length > 0) {
+          setNumeroCarga(cargas.length)
+          return
+        }
+
+        setNumeroCarga(1)
       } catch (error) {
-        // Si hay error, simplemente no actualizar el número
-        console.error('Error calculando número de carga:', error)
+        setNumeroCarga(1)
       }
     }
 
@@ -409,15 +439,12 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   }) => {
     limpiarMensajes()
 
+    const clasificacionTerrenoPromise = resolverClasificacionTerreno(esNoUrbana)
+
     const bloqueo = bloquearSiCargaFinalizada()
     if (bloqueo) return bloqueo
 
     const cargaId = await asegurarCargaActiva()
-    if (!cargaId) {
-      const msg = 'Todavía no se pudo resolver la carga activa'
-      setErrorMsg(msg)
-      return { ok: false, error: msg }
-    }
 
     const validacionId = validarIdNotificacion(idNotificacion)
     const idLimpio = validacionId.valor
@@ -426,8 +453,6 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     const comentariosLimpios = comentarios.trim() || ''
     const ritLimpio = rit?.trim() || ''
     const conTribunal = ritLimpio && año
-    const clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbana)
-
     // Validar que tenga ID DE NOTIFICACIÓN o RIT + AÑO (pero no ambos nulos)
     if (!idLimpio && !conTribunal) {
       const msg = 'Ingresa ID de notificación o activa Tribunal (RIT + Año)'
@@ -451,6 +476,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
 
     const codigoLote = generarCodigoLote()
+    const clasificacionTerreno = await clasificacionTerrenoPromise
 
     try {
       // Solo validar duplicado si tiene ID de notificación
@@ -520,7 +546,6 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       })
       .replace(':', '')
 
-
     try {
       await insertarRegistro({
         id_notificacion: idLimpio || null,
@@ -538,9 +563,17 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         rit: ritLimpio || null,
         año: año || null,
       })
-    } catch (error) {
-      setCargando(false)
 
+      setMensaje('Guardado')
+      // Pasar cargaId explícitamente para evitar desync con setCargaActivaId asincrónico
+      try {
+        await cargar(cargaId)
+      } catch (refreshError) {
+        console.warn('[guardarRegistro] no se pudo refrescar luego de guardar', refreshError)
+      }
+      enfocarId?.()
+      return { ok: true }
+    } catch (error) {
       if (esErrorDeRed(error)) {
         try {
           await agregarOperacionPendiente({
@@ -581,14 +614,9 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
       setErrorMsg(msg)
       return { ok: false, error: msg }
+    } finally {
+      setCargando(false)
     }
-
-    setCargando(false)
-    setMensaje('Guardado')
-    // Pasar cargaId explícitamente para evitar desync con setCargaActivaId asincrónico
-    await cargar(cargaId)
-    enfocarId?.()
-    return { ok: true }
   }
 
   const eliminarUltimoRegistro = async () => {
@@ -633,12 +661,6 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     if (bloqueo) return bloqueo
 
     const cargaId = await asegurarCargaActiva()
-    if (!cargaId) {
-      const msg = 'Todavía no se pudo resolver la carga activa'
-      setErrorMsg(msg)
-      await onBeforeError?.()
-      return { ok: false, error: msg }
-    }
 
     const modoTribunal = Boolean(mostraTribunalLote)
 
@@ -688,7 +710,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       return { ok: false, error: msg }
     }
 
-    const clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbanaLote)
+    const clasificacionTerrenoPromise = resolverClasificacionTerreno(esNoUrbanaLote)
     const tribunalesNormalizados = (Array.isArray(tribunalesLote) ? tribunalesLote : []).map((item) => ({
       rit: String(item?.rit ?? '').trim(),
       año: String(item?.año ?? '').trim(),
@@ -712,6 +734,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
 
     const observacionNormalizada = observacionLote.trim() || '.'
+    const clasificacionTerreno = await clasificacionTerrenoPromise
 
     // Generar UUID único para este lote (cada lote escaneado tiene un codigo_lote diferente)
     const idLoteUnico = crypto.randomUUID()
@@ -801,9 +824,16 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     try {
       await insertarLote(filas)
+      setMensaje(`Lote guardado: ${cantidadFilas} registro(s)`)
+      await onSuccess?.()
+      try {
+        // Pasar cargaId explícitamente para evitar desync con setCargaActivaId asincrónico
+        await cargar(cargaId)
+      } catch (refreshError) {
+        console.warn('[guardarLoteRegistros] no se pudo refrescar luego de guardar', refreshError)
+      }
+      return { ok: true }
     } catch (error) {
-      setGuardandoLote(false)
-
       if (esErrorDeRed(error)) {
         try {
           await agregarOperacionPendiente({
@@ -838,14 +868,9 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       setErrorMsg(msg)
       await onBeforeError?.()
       return { ok: false, error: msg }
+    } finally {
+      setGuardandoLote(false)
     }
-
-    setGuardandoLote(false)
-    setMensaje(`Lote guardado: ${cantidadFilas} registro(s)`)
-    await onSuccess?.()
-    // Pasar cargaId explícitamente para evitar desync con setCargaActivaId asincrónico
-    await cargar(cargaId)
-    return { ok: true }
   }
 
   const actualizarRegistro = async ({ id, codigo, hora, es_no_urbana, observacion, comentarios, codigo_lote }) => {

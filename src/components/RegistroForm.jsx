@@ -293,18 +293,9 @@ function RegistroForm({
         <span>No urbana / rural</span>
       </label>
 
-      <div className="acciones">
+      <div className="acciones acciones-secundarias">
         <button type="submit" className="boton-principal" disabled={cargando || cargaFinalizada}>
           {cargaFinalizada ? 'Cerrando carga...' : cargando ? 'Guardando...' : 'Guardar'}
-        </button>
-
-        <button
-          type="button"
-          className="boton-secundario"
-          onClick={onEliminarUltimo}
-          disabled={cargando || cargaFinalizada}
-        >
-          Eliminar ultimo
         </button>
 
         <button
@@ -314,6 +305,17 @@ function RegistroForm({
           disabled={cargando || escaneando || cargaFinalizada}
         >
           Escaneo multiple
+        </button>
+      </div>
+
+      <div className="acciones acciones-criticas">
+        <button
+          type="button"
+          className="boton-peligro boton-critico"
+          onClick={onEliminarUltimo}
+          disabled={cargando || cargaFinalizada}
+        >
+          Eliminar ultimo
         </button>
       </div>
 
