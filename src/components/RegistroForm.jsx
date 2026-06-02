@@ -235,10 +235,10 @@ function RegistroForm({
         />
       </label>
        
-        <label className="check-row">
+        {/* <label className="check-row">
         <input type="checkbox" checked={esNoUrbana} onChange={(e) => onEsNoUrbanaChange(e.target.checked)} />
         <span>No urbana / rural</span>
-      </label>
+      </label> */}
      
       
 

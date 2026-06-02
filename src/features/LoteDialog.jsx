@@ -391,14 +391,14 @@ function LoteDialog({
               />
             </label>
 
-            <label className="check-row">
+            {/* <label className="check-row">
               <input
                 type="checkbox"
                 checked={esNoUrbanaLote}
                 onChange={(e) => onEsNoUrbanaLoteChange(e.target.checked)}
               />
               <span>No urbana / rural</span>
-            </label>
+            </label> */}
 
             <div className="tabla-wrapper tabla-wrapper-lote">
               <table className="tabla-registros">
