@@ -14,6 +14,21 @@ export async function obtenerCargaActiva(fechaCertificacion) {
   return data || null
 }
 
+export async function obtenerUltimaCargaFinalizada(fechaCertificacion) {
+  const { data, error } = await supabase
+    .from('cargas_terreno')
+    .select('id, creada_en, cerrada_en, estado, fecha_certificacion')
+    .eq('fecha_certificacion', fechaCertificacion)
+    .eq('estado', 'finalizada')
+    .order('cerrada_en', { ascending: false, nullsFirst: false })
+    .order('creada_en', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  return data || null
+}
+
 export async function crearCargaActiva(fechaCertificacion) {
   // Use Edge Function to create the carga with service role (avoids RLS issues)
   try {
@@ -186,7 +201,7 @@ export async function obtenerEstadisticas(fechaCertificacion, cargaId = null) {
 export async function obtenerTodasLasCargasDeUnDia(fechaCertificacion) {
   const { data, error } = await supabase
     .from('cargas_terreno')
-    .select('id, creada_en')
+    .select('id, creada_en, cerrada_en, numero_carga')
     .eq('fecha_certificacion', fechaCertificacion)
     .order('creada_en', { ascending: true })
 

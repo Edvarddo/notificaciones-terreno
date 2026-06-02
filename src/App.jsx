@@ -6,11 +6,10 @@ import RegistroForm from './components/RegistroForm'
 import RegistroTable from './components/RegistroTable'
 import IconTrash from './components/IconTrash'
 import MenuLateral from './components/MenuLateral'
-import Modal from './components/Modal'
 import ConfirmDialog from './components/ConfirmDialog'
 import CodigoDialog from './features/CodigoDialog'
 import LoteDialog from './features/LoteDialog'
-import useQrScanner from './hooks/useQrScanner'
+import QrScannerModal from './components/QrScannerModal'
 import useNotificaciones from './hooks/useNotificaciones'
 import useLoteForm from './hooks/useLoteForm'
 import useRegistroForm from './hooks/useRegistroForm'
@@ -26,6 +25,8 @@ function App() {
   const [dialogoEliminarAbierto, setDialogoEliminarAbierto] = useState(false)
   const [confirmFinalizarAbierto, setConfirmFinalizarAbierto] = useState(false)
   const [confirmEliminarAbierto, setConfirmEliminarAbierto] = useState(false)
+  const [scannerIndividualAbierto, setScannerIndividualAbierto] = useState(false)
+  const [scannerLoteAbierto, setScannerLoteAbierto] = useState(false)
   const finalizarEnProcesoRef = useRef(false)
   const eliminarEnProcesoRef = useRef(false)
   const [finalizarEnProceso, setFinalizarEnProceso] = useState(false)
@@ -42,7 +43,9 @@ function App() {
     dialogoCodigoLoteAbierto ||
     dialogoEliminarAbierto ||
     confirmFinalizarAbierto ||
-    confirmEliminarAbierto
+    confirmEliminarAbierto ||
+    scannerIndividualAbierto ||
+    scannerLoteAbierto
 
   const [fechaCertificacion] = useState(() => {
     const hoy = new Date()
@@ -83,6 +86,8 @@ function App() {
     setMostrarConsulta(true)
     setMostrarMonitoreo(false)
     setMenuAbierto(false)
+    setScannerIndividualAbierto(false)
+    setScannerLoteAbierto(false)
   }
 
   const irAFormulario = () => {
@@ -90,6 +95,8 @@ function App() {
     setMostrarCsv(false)
     setMostrarMonitoreo(false)
     setMenuAbierto(false)
+    setScannerIndividualAbierto(false)
+    setScannerLoteAbierto(false)
   }
 
   const irAMonitoreo = () => {
@@ -97,6 +104,8 @@ function App() {
     setMostrarConsulta(false)
     setMostrarCsv(false)
     setMenuAbierto(false)
+    setScannerIndividualAbierto(false)
+    setScannerLoteAbierto(false)
   }
 
   useEffect(() => {
@@ -116,66 +125,82 @@ function App() {
     }
   }, [hayModalAbierto])
 
-  const qrIndividual = useQrScanner({
-    qrRegionId: 'qr-reader',
-    onError: notificaciones.setErrorMsg,
-    onDetected: async (decodedText) => {
-      if (notificaciones.cargaFinalizada) {
-        notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
-        return
+  const toggleQrIndividual = () => {
+    if (notificaciones.cargaFinalizada) {
+      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
+      return
+    }
+
+    notificaciones.limpiarMensajes()
+    setScannerIndividualAbierto((prev) => !prev)
+  }
+
+  const manejarQrIndividualDetectado = async (decodedText) => {
+    if (notificaciones.cargaFinalizada) {
+      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
+      return
+    }
+
+    const idExtraido = extraerIdDesdeQr(decodedText)
+    const validacion = validarIdNotificacion(idExtraido)
+    if (!validacion.ok) {
+      notificaciones.setErrorMsg('QR inválido: la ID debe tener 8 o 9 dígitos numéricos')
+      return
+    }
+
+    registro.setIdNotificacion(validacion.valor)
+    notificaciones.setMensaje(`Escaneado ${validacion.valor} con éxito`)
+    setScannerIndividualAbierto(false)
+    enfocarId()
+  }
+
+  const toggleQrLote = () => {
+    if (notificaciones.cargaFinalizada) {
+      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
+      return
+    }
+
+    notificaciones.limpiarMensajes()
+    if (!lote.horaLote) {
+      lote.setHoraLote(obtenerHoraActual())
+    }
+    setDialogoLoteAbierto(true)
+    setScannerLoteAbierto((prev) => !prev)
+  }
+
+  const manejarQrLoteDetectado = async (decodedText) => {
+    if (notificaciones.cargaFinalizada) {
+      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
+      return
+    }
+
+    const idExtraido = extraerIdDesdeQr(decodedText)
+    const validacion = validarIdNotificacion(idExtraido)
+    if (!validacion.ok) {
+      notificaciones.setErrorMsg('QR inválido: la ID debe tener 8 o 9 dígitos numéricos')
+      return
+    }
+
+    const resultado = lote.agregarIdTemporal(validacion.valor, (idDuplicado) => {
+      notificaciones.setMensaje(`ID repetido omitido: ${idDuplicado}`)
+    })
+
+    if (resultado.agregado) {
+      notificaciones.setMensaje(`Escaneado ${resultado.id} con éxito`)
+      setUltimoIdAgregadoLote(validacion.valor)
+
+      if (ultimoIdAgregadoLoteTimer.current) {
+        clearTimeout(ultimoIdAgregadoLoteTimer.current)
       }
 
-      const idExtraido = extraerIdDesdeQr(decodedText)
-      const validacion = validarIdNotificacion(idExtraido)
-      if (!validacion.ok) {
-        notificaciones.setErrorMsg('QR inválido: la ID debe tener 8 o 9 dígitos numéricos')
-        return
-      }
-
-      registro.setIdNotificacion(validacion.valor)
-      notificaciones.setMensaje(`Escaneado ${validacion.valor} con éxito`)
-      await qrIndividual.detenerEscaneo()
-      enfocarId()
-    },
-  })
-
-  const qrLote = useQrScanner({
-    qrRegionId: 'qr-reader-lote',
-    onError: notificaciones.setErrorMsg,
-    onDetected: async (decodedText) => {
-      if (notificaciones.cargaFinalizada) {
-        notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
-        return
-      }
-
-      const idExtraido = extraerIdDesdeQr(decodedText)
-      const validacion = validarIdNotificacion(idExtraido)
-      if (!validacion.ok) {
-        notificaciones.setErrorMsg('QR inválido: la ID debe tener 8 o 9 dígitos numéricos')
-        return
-      }
-
-      const resultado = lote.agregarIdTemporal(validacion.valor, (idDuplicado) => {
-        notificaciones.setMensaje(`ID repetido omitido: ${idDuplicado}`)
-      })
-
-      if (resultado.agregado) {
-        notificaciones.setMensaje(`Escaneado ${resultado.id} con éxito`)
-        setUltimoIdAgregadoLote(validacion.valor)
-
-        if (ultimoIdAgregadoLoteTimer.current) {
-          clearTimeout(ultimoIdAgregadoLoteTimer.current)
-        }
-
-        ultimoIdAgregadoLoteTimer.current = setTimeout(() => {
-          setUltimoIdAgregadoLote('')
-          ultimoIdAgregadoLoteTimer.current = null
-        }, 2200)
-      } else {
-        notificaciones.setErrorMsg(`La ID ${resultado.id} ya estaba escaneada`)
-      }
-    },
-  })
+      ultimoIdAgregadoLoteTimer.current = setTimeout(() => {
+        setUltimoIdAgregadoLote('')
+        ultimoIdAgregadoLoteTimer.current = null
+      }, 2200)
+    } else {
+      notificaciones.setErrorMsg(`La ID ${resultado.id} ya estaba escaneada`)
+    }
+  }
 
   const abrirDialogoLote = () => {
     if (notificaciones.cargaFinalizada) {
@@ -188,11 +213,12 @@ function App() {
       lote.setHoraLote(obtenerHoraActual())
     }
     setDialogoLoteAbierto(true)
+    setScannerLoteAbierto(false)
   }
 
   const cerrarDialogoLote = () => {
-    qrLote.detenerEscaneo().catch(() => {})
     setDialogoLoteAbierto(false)
+    setScannerLoteAbierto(false)
   }
 
   const seleccionarCodigo = (codigoElegido) => {
@@ -203,19 +229,6 @@ function App() {
   const seleccionarCodigoLote = (codigoElegido) => {
     lote.setCodigoLote(codigoElegido)
     setDialogoCodigoLoteAbierto(false)
-  }
-
-  const toggleQrIndividual = async () => {
-    if (notificaciones.cargaFinalizada) {
-      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
-      return
-    }
-
-    if (qrIndividual.escaneando) {
-      await qrIndividual.detenerEscaneo()
-    } else {
-      await qrIndividual.iniciarEscaneo()
-    }
   }
 
   const toggleTribunal = async () => {
@@ -281,9 +294,9 @@ function App() {
     try {
       const resultado = await notificaciones.finalizarCarga()
       if (resultado?.ok) {
-        await qrIndividual.detenerEscaneo().catch(() => {})
-        await qrLote.detenerEscaneo().catch(() => {})
         setDialogoLoteAbierto(false)
+        setScannerIndividualAbierto(false)
+        setScannerLoteAbierto(false)
       }
       setConfirmFinalizarAbierto(false)
     } finally {
@@ -464,6 +477,26 @@ function App() {
           </div>
         ) : null}
 
+        <QrScannerModal
+          abierto={scannerIndividualAbierto}
+          titulo="Escanear QR"
+          descripcion="Escanea la notificación individual dentro de este modal."
+          qrRegionId="qr-reader-individual"
+          onClose={() => setScannerIndividualAbierto(false)}
+          onDetected={manejarQrIndividualDetectado}
+          onError={notificaciones.setErrorMsg}
+        />
+
+        <QrScannerModal
+          abierto={scannerLoteAbierto}
+          titulo="Escaneo multiple"
+          descripcion="Escanea los IDs del lote dentro de este modal. Puedes seguir agregando varios códigos."
+          qrRegionId="qr-reader-lote"
+          onClose={() => setScannerLoteAbierto(false)}
+          onDetected={manejarQrLoteDetectado}
+          onError={notificaciones.setErrorMsg}
+        />
+
         {mostrarMonitoreo ? (
           <MonitoreoLive fechaCertificacion={fechaCertificacion} cargaId={notificaciones.cargaActivaId} />
         ) : mostrarConsulta ? (
@@ -474,12 +507,12 @@ function App() {
           inputIdRef={inputIdRef}
           idNotificacion={registro.idNotificacion}
           onIdChange={registro.setIdNotificacion}
-          escaneando={qrIndividual.escaneando}
+          escaneando={scannerIndividualAbierto}
           onToggleEscaneo={toggleQrIndividual}
-          onZoomOut={qrIndividual.zoomOut}
-          onZoomIn={qrIndividual.zoomIn}
-          onResetZoom={qrIndividual.resetZoom}
-          zoom={qrIndividual.zoom}
+          onZoomOut={() => {}}
+          onZoomIn={() => {}}
+          onResetZoom={() => {}}
+          zoom={1}
           codigo={registro.codigo}
           onCodigoChange={registro.handleCodigoManualChange}
           onAbrirCodigos={() => setDialogoCodigoAbierto(true)}
@@ -494,6 +527,9 @@ function App() {
           onA1CasoChange={registro.handleA1CasoChange}
           onA1Valor1Change={registro.handleA1Valor1Change}
           onA1Valor2Change={registro.handleA1Valor2Change}
+          a3Caso={registro.a3Caso}
+          a3Casos={registro.a3Casos}
+          onA3CasoChange={registro.handleA3CasoChange}
           comentarios={registro.comentarios}
           onComentariosChange={registro.setComentarios}
           esNoUrbana={registro.esNoUrbana}
@@ -608,16 +644,12 @@ function App() {
         <LoteDialog
           abierto={dialogoLoteAbierto}
           onClose={cerrarDialogoLote}
-          escaneandoLote={qrLote.escaneando}
-          onToggleEscaneo={
-            qrLote.escaneando
-              ? qrLote.detenerEscaneo
-              : qrLote.iniciarEscaneo
-          }
-          onZoomOut={qrLote.zoomOut}
-          onZoomIn={qrLote.zoomIn}
-          onResetZoom={qrLote.resetZoom}
-          zoom={qrLote.zoom}
+          escaneandoLote={scannerLoteAbierto}
+          onToggleEscaneo={toggleQrLote}
+          onZoomOut={() => {}}
+          onZoomIn={() => {}}
+          onResetZoom={() => {}}
+          zoom={1}
           guardandoLote={notificaciones.guardandoLote}
           cargaFinalizada={notificaciones.cargaFinalizada}
           onLimpiarLote={lote.limpiarLote}
@@ -653,6 +685,9 @@ function App() {
           onA1CasoChange={lote.handleA1CasoChange}
           onA1Valor1Change={lote.handleA1Valor1Change}
           onA1Valor2Change={lote.handleA1Valor2Change}
+          a3Caso={lote.a3Caso}
+          a3Casos={lote.a3Casos}
+          onA3CasoChange={lote.handleA3CasoChange}
           ultimoIdAgregadoLote={ultimoIdAgregadoLote}
           onGuardarLote={guardarLote}
         />

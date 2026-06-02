@@ -11,6 +11,11 @@ import {
   obtenerTodasLasCargasDeUnDia,
 } from '../services/notificaciones'
 import {
+  CODIGOS_BUSQUEDA,
+  CODIGOS_EXITOSOS,
+  CODIGOS_NEGATIVOS,
+} from '../constants/codigos'
+import {
   agregarOperacionPendiente,
   obtenerOperacionesPendientes,
   eliminarOperacionPendiente,
@@ -920,9 +925,9 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         const codigo = String(registro?.codigo ?? '').trim().toUpperCase()
         acc.total += 1
 
-        if (['D2', 'D4', 'E1'].includes(codigo)) acc.exitosas += 1
-        else if (['B3', 'B7', 'B10'].includes(codigo)) acc.busqueda += 1
-        else if (['A1', 'A2', 'A3', 'B5'].includes(codigo)) acc.negativas += 1
+        if (CODIGOS_EXITOSOS.has(codigo)) acc.exitosas += 1
+        else if (CODIGOS_BUSQUEDA.has(codigo)) acc.busqueda += 1
+        else if (CODIGOS_NEGATIVOS.has(codigo)) acc.negativas += 1
         else acc.otros += 1
 
         return acc

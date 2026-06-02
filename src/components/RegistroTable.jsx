@@ -2,10 +2,11 @@ import { useState } from 'react'
 import IdHighlight from './IdHighlight'
 import CodigoDialog from '../features/CodigoDialog'
 import Modal from './Modal'
-
-const CODIGOS_EXITOSOS = new Set(['D2', 'D4', 'E1'])
-const CODIGOS_BUSQUEDA = new Set(['B3', 'B7', 'B10'])
-const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B5'])
+import {
+  CODIGOS_BUSQUEDA,
+  CODIGOS_EXITOSOS,
+  CODIGOS_NEGATIVOS,
+} from '../constants/codigos'
 
 function RegistroTable({
   registros,
@@ -33,6 +34,7 @@ function RegistroTable({
   const [seleccionados, setSeleccionados] = useState(new Set())
   const [codigoLoteGlobal, setCodigoLoteGlobal] = useState('')
   const [asignandoGlobal, setAsignandoGlobal] = useState(false)
+
 
   const iniciarEdicion = (registro) => {
     setEditandoId(registro.id)

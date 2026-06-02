@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import ConsultaMapa from '../components/ConsultaMapa'
 import { obtenerRegistros, obtenerTodasLasCargasDeUnDia } from '../services/notificaciones'
 import { escaparValorCsv } from '../utils/csv'
+import {
+  CODIGOS_BUSQUEDA,
+  CODIGOS_EXITOSOS,
+  CODIGOS_NEGATIVOS,
+} from '../constants/codigos'
 
-const CODIGOS_EXITOSOS = new Set(['D2', 'D4', 'E1'])
-const CODIGOS_BUSQUEDA = new Set(['B3', 'B7', 'B10'])
-const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'B5'])
+const esCoordenadaValida = (valor) => Number.isFinite(valor) && Math.abs(valor) > 0
 
 const obtenerHoyIso = () => {
   const d = new Date()
@@ -154,6 +157,79 @@ export default function ConsultaHistorico({ onVolver }) {
       const fechaB = `${b.fecha_certificacion || ''}T${String(b.hora || '0000').padStart(4, '0')}`
       return fechaB.localeCompare(fechaA)
     })
+  }, [registrosFiltrados])
+
+  const secuenciaPorId = useMemo(() => {
+    const normalizados = registrosFiltrados
+      .filter((registro) => esCoordenadaValida(Number(registro.latitud)) && esCoordenadaValida(Number(registro.longitud)))
+      .map((registro, idx) => ({
+        id: registro.id,
+        fecha: String(registro.fecha_certificacion || '').trim(),
+        hora: String(registro.hora || '0000').trim(),
+        codigoLote: String(registro.codigo_lote || '').trim().toUpperCase(),
+        indiceOriginal: idx,
+      }))
+      .map((registro) => {
+        const horaTexto = String(registro.hora || '0000').padStart(4, '0')
+        const hh = horaTexto.slice(0, 2)
+        const mm = horaTexto.slice(2, 4)
+        const marcaTemporal = new Date(`${registro.fecha}T${hh}:${mm}:00`).getTime()
+        return {
+          ...registro,
+          marcaTemporal: Number.isFinite(marcaTemporal) ? marcaTemporal : Number.POSITIVE_INFINITY,
+        }
+      })
+
+    const conteoLotes = normalizados.reduce((acc, registro) => {
+      if (!registro.codigoLote) return acc
+      acc.set(registro.codigoLote, (acc.get(registro.codigoLote) || 0) + 1)
+      return acc
+    }, new Map())
+
+    const grupos = new Map()
+    const individuales = []
+
+    normalizados.forEach((registro) => {
+      const esLoteAgrupado = registro.codigoLote && (conteoLotes.get(registro.codigoLote) || 0) > 1
+      if (esLoteAgrupado) {
+        const actual = grupos.get(registro.codigoLote) || []
+        actual.push(registro)
+        grupos.set(registro.codigoLote, actual)
+      } else {
+        individuales.push(registro)
+      }
+    })
+
+    const unidades = [
+      ...Array.from(grupos.entries()).map(([codigoLote, items]) => ({
+        tipo: 'lote',
+        codigoLote,
+        items: items.slice().sort((a, b) => a.marcaTemporal - b.marcaTemporal),
+        marcaTemporal: items.reduce((min, item) => Math.min(min, item.marcaTemporal), Number.POSITIVE_INFINITY),
+      })),
+      ...individuales.map((item) => ({
+        tipo: 'individual',
+        items: [item],
+        marcaTemporal: item.marcaTemporal,
+      })),
+    ].sort((a, b) => a.marcaTemporal - b.marcaTemporal)
+
+    const mapa = new Map()
+    let secuencia = 1
+
+    unidades.forEach((unidad) => {
+      unidad.items.forEach((item, index) => {
+        mapa.set(item.id, {
+          secuencia,
+          interno: index + 1,
+          totalInterno: unidad.items.length,
+          esLote: unidad.tipo === 'lote',
+        })
+      })
+      secuencia += 1
+    })
+
+    return mapa
   }, [registrosFiltrados])
 
   const resumen = useMemo(() => {
@@ -326,6 +402,7 @@ export default function ConsultaHistorico({ onVolver }) {
                 >
                   <option value="">Todas las cargas</option>
                   {cargas.map((carga, idx) => {
+                    const numeroCarga = Number.isFinite(Number(carga?.numero_carga)) ? Number(carga.numero_carga) : idx + 1
                     const created = carga?.creada_en ? new Date(carga.creada_en) : null
                     let createdText = ''
                     if (created) {
@@ -347,7 +424,7 @@ export default function ConsultaHistorico({ onVolver }) {
 
                     return (
                       <option key={carga.id} value={carga.id}>
-                        {`Carga ${idx + 1}${createdText ? ' — ' + createdText : ''}${idTail ? ' ' + idTail : ''}`}
+                        {`Carga ${numeroCarga}${createdText ? ' — ' + createdText : ''}${idTail ? ' ' + idTail : ''}`}
                       </option>
                     )
                   })}
@@ -378,6 +455,7 @@ export default function ConsultaHistorico({ onVolver }) {
             <table className="tabla-historico">
               <thead>
                 <tr>
+                  <th>Secuencia</th>
                   <th>Fecha</th>
                   <th>Hora</th>
                   <th>ID Notificación</th>
@@ -387,8 +465,19 @@ export default function ConsultaHistorico({ onVolver }) {
                 </tr>
               </thead>
               <tbody>
-                {registrosOrdenados.map((reg) => (
+                {registrosOrdenados.map((reg) => {
+                  const secuenciaInfo = secuenciaPorId.get(reg.id) || { secuencia: '--', interno: 1, totalInterno: 1, esLote: false }
+
+                  return (
                   <tr key={reg.id}>
+                    <td>
+                      <div className="secuencia-celda">
+                        <strong>{secuenciaInfo.secuencia}</strong>
+                        {secuenciaInfo.esLote ? (
+                          <span className="secuencia-subtexto">{secuenciaInfo.interno}/{secuenciaInfo.totalInterno}</span>
+                        ) : null}
+                      </div>
+                    </td>
                     <td>{reg.fecha_certificacion}</td>
                     <td>{String(reg.hora || '').trim() || '--'}</td>
                     <td className="id-cell">{reg.id_notificacion}</td>
@@ -400,7 +489,8 @@ export default function ConsultaHistorico({ onVolver }) {
                       </span>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

@@ -9,12 +9,28 @@ const ACCESS_CODE_RECIPIENT_EMAILS = Deno.env.get('ACCESS_CODE_RECIPIENT_EMAILS'
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
 async function crearCargaActiva(fecha: string) {
+  const { data: ultimaCarga, error: errorUltimaCarga } = await supabase
+    .from('cargas_terreno')
+    .select('numero_carga')
+    .eq('fecha_certificacion', fecha)
+    .order('numero_carga', { ascending: false, nullsFirst: false })
+    .order('creada_en', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (errorUltimaCarga) {
+    throw errorUltimaCarga
+  }
+
+  const siguienteNumero = Number(ultimaCarga?.numero_carga || 0) + 1
+
   const { data, error } = await supabase
     .from('cargas_terreno')
     .insert([
       {
         fecha_certificacion: fecha,
         estado: 'activa',
+        numero_carga: siguienteNumero,
       },
     ])
     .select('*')
@@ -111,15 +127,19 @@ const escapeHtml = (value: unknown) =>
 
 const formatNumber = (value: unknown) => Number(value ?? 0).toLocaleString('es-CL')
 
+const CODIGOS_EXITOSOS = new Set(['D1', 'D2', 'D3', 'D4', 'E1'])
+const CODIGOS_BUSQUEDA = new Set(['B1', 'B3', 'B4', 'B7', 'B8', 'B10', 'B10p'])
+const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'A4', 'A5', 'B2', 'B5', 'B6', 'F4'])
+
 const calcularResumen = (registros: RegistroTerreno[], fecha: string): ResumenCarga => {
   const resumenPorCodigo = registros.reduce(
     (acc, registro) => {
       const codigo = String(registro?.codigo ?? '').trim().toUpperCase()
       acc.total += 1
 
-      if (['D2', 'D4', 'E1'].includes(codigo)) acc.exitosas += 1
-      else if (['B3', 'B7', 'B10'].includes(codigo)) acc.busqueda += 1
-      else if (['A1', 'A2', 'A3', 'B5'].includes(codigo)) acc.negativas += 1
+      if (CODIGOS_EXITOSOS.has(codigo)) acc.exitosas += 1
+      else if (CODIGOS_BUSQUEDA.has(codigo)) acc.busqueda += 1
+      else if (CODIGOS_NEGATIVOS.has(codigo)) acc.negativas += 1
       else acc.otros += 1
 
       return acc

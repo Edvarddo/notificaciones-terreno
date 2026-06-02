@@ -127,17 +127,17 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
   }
 
   const iniciarEscaneo = () => {
-    if (escaneando || startingRef.current) return
+    if (escaneando || startingRef.current) return Promise.resolve()
 
     const contenedor = document.getElementById(qrRegionId)
     if (!contenedor) {
       onError?.(`No se encontró el lector QR: ${qrRegionId}`)
-      return
+      return Promise.resolve()
     }
 
     if (typeof window !== 'undefined' && !window.isSecureContext) {
       onError?.('La cámara requiere una conexión segura (HTTPS). Abre la app por HTTPS en el dispositivo para usar el QR.')
-      return
+      return Promise.resolve()
     }
 
     startingRef.current = true
@@ -160,7 +160,7 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
       }
     }
 
-    iniciar().catch(() => {
+    return iniciar().catch(() => {
       startingRef.current = false
       setEscaneando(false)
     })

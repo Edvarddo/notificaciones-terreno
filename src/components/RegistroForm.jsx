@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import IconQr from './IconQr'
 import IconList from './IconList'
 import IconTribunal from './IconTribunal'
@@ -9,10 +8,6 @@ function RegistroForm({
   onIdChange,
   escaneando,
   onToggleEscaneo,
-  onZoomOut,
-  onZoomIn,
-  onResetZoom,
-  zoom,
   codigo,
   onCodigoChange,
   onAbrirCodigos,
@@ -43,24 +38,14 @@ function RegistroForm({
   onA1CasoChange,
   onA1Valor1Change,
   onA1Valor2Change,
+  a3Caso,
+  a3Casos,
+  onA3CasoChange,
 }) {
-  const qrContainerRef = useRef(null)
-
-  useEffect(() => {
-    if (escaneando && qrContainerRef.current) {
-      // Usa requestAnimationFrame para asegurar que el DOM está listo
-      requestAnimationFrame(() => {
-        if (qrContainerRef.current) {
-          qrContainerRef.current.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'nearest',
-          })
-        }
-      })
-    }
-  }, [escaneando])
-
+  const casoDefA1 = a1Casos?.[a1Caso] || null
+  const requiereA1 = casoDefA1?.requiere ?? 0
+  const placeholderA1_1 = a1Caso === 'TERMINA' ? 'YYYY (final)' : (a1Caso === 'COMIENZA' ? 'XXXX (inicio)' : (a1Caso === 'ENTRE' || a1Caso === 'SALTO' ? 'Dirección inicial (XXXX)' : 'Valor'))
+  const placeholderA1_2 = a1Caso === 'ENTRE' || a1Caso === 'SALTO' ? 'Dirección final (YYYY)' : 'Valor final'
   return (
     <form
       onSubmit={(e) => {
@@ -82,9 +67,7 @@ function RegistroForm({
               maxLength={9}
               placeholder="Ej: 18099912"
               value={idNotificacion}
-              onChange={(e) =>
-                onIdChange(e.target.value.replace(/\D/g, '').slice(0, 9))
-              }
+              onChange={(e) => onIdChange(e.target.value.replace(/\D/g, '').slice(0, 9))}
             />
             <button
               type="button"
@@ -142,27 +125,6 @@ function RegistroForm({
         </div>
       )}
 
-      <div 
-        ref={qrContainerRef}
-        className={`qr-inline ${escaneando ? '' : 'qr-inline-oculto'}`}
-      >
-        <div id="qr-reader"></div>
-        {escaneando ? (
-          <div className="qr-zoom-bar">
-            <button type="button" className="boton-mini" onClick={onZoomOut} aria-label="Alejar cámara">
-              -
-            </button>
-            <span className="qr-zoom-valor">Zoom {Math.round((zoom || 1) * 100)}%</span>
-            <button type="button" className="boton-mini" onClick={onZoomIn} aria-label="Acercar cámara">
-              +
-            </button>
-            <button type="button" className="boton-mini" onClick={onResetZoom} aria-label="Restablecer zoom">
-              Reset
-            </button>
-          </div>
-        ) : null}
-      </div>
-
       <label className="campo-label">
         Codigo
         <div className="input-icon-row">
@@ -202,11 +164,7 @@ function RegistroForm({
       {codigoLimpioVista === 'A1' && (
         <div className="a1-opciones-box">
           <label className="campo-label">A1 — tipo de caso</label>
-          <select
-            className="input-base"
-            value={a1Caso}
-            onChange={(e) => onA1CasoChange(e.target.value)}
-          >
+          <select className="input-base" value={a1Caso} onChange={(e) => onA1CasoChange(e.target.value)}>
             <option value="">Seleccione un caso</option>
             {Object.entries(a1Casos).map(([key, caso]) => (
               <option key={key} value={key}>
@@ -215,50 +173,45 @@ function RegistroForm({
             ))}
           </select>
 
-          {a1Caso === 'SALTO' && (
-            <div className="a1-range-inline">
-              <input
-                className="input-base"
-                placeholder="Dirección inicial"
-                value={a1Valor1}
-                onChange={(e) => onA1Valor1Change(e.target.value)}
-              />
-              <input
-                className="input-base"
-                placeholder="Dirección final"
-                value={a1Valor2}
-                onChange={(e) => onA1Valor2Change(e.target.value)}
-              />
-            </div>
-          )}
+          {a1Caso && (
+            requiereA1 === 0 ? (
+              <div className="a1-ayuda-caso">{casoDefA1?.etiqueta}</div>
+            ) : (
+              <div className={requiereA1 === 2 ? 'a1-range-inline' : ''}>
+                {requiereA1 >= 1 && (
+                  <input
+                    className="input-base"
+                    placeholder={placeholderA1_1}
+                    value={a1Valor1}
+                    onChange={(e) => onA1Valor1Change(e.target.value)}
+                  />
+                )}
 
-          {a1Caso === 'INFERIOR' && (
-            <div>
-              <input
-                className="input-base"
-                placeholder="Numeración de referencia"
-                value={a1Valor1}
-                onChange={(e) => onA1Valor1Change(e.target.value)}
-              />
-            </div>
+                {requiereA1 === 2 && (
+                  <input
+                    className="input-base"
+                    placeholder={placeholderA1_2}
+                    value={a1Valor2}
+                    onChange={(e) => onA1Valor2Change(e.target.value)}
+                  />
+                )}
+              </div>
+            )
           )}
+        </div>
+      )}
 
-          {a1Caso === 'SUPERIOR' && (
-            <div>
-              <input
-                className="input-base"
-                placeholder="Numeración de referencia"
-                value={a1Valor1}
-                onChange={(e) => onA1Valor1Change(e.target.value)}
-              />
-            </div>
-          )}
-
-          {a1Caso === 'SIN_ORDEN' && (
-            <div className="a1-ayuda-caso">
-              Caso sin numeración ingresable. Se generará un comentario formal común.
-            </div>
-          )}
+      {codigoLimpioVista === 'A3' && (
+        <div className="a3-opciones-box">
+          <label className="campo-label">A3 — tipo de falta</label>
+          <select className="input-base" value={a3Caso} onChange={(e) => onA3CasoChange(e.target.value)}>
+            <option value="">Seleccione un caso</option>
+            {Object.entries(a3Casos).map(([key, caso]) => (
+              <option key={key} value={key}>
+                {caso.etiqueta}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -282,14 +235,8 @@ function RegistroForm({
         />
       </label>
 
-
-
       <label className="check-row">
-        <input
-          type="checkbox"
-          checked={esNoUrbana}
-          onChange={(e) => onEsNoUrbanaChange(e.target.checked)}
-        />
+        <input type="checkbox" checked={esNoUrbana} onChange={(e) => onEsNoUrbanaChange(e.target.checked)} />
         <span>No urbana / rural</span>
       </label>
 

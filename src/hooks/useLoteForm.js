@@ -14,6 +14,7 @@ function useLoteForm() {
   const [a1Caso, setA1Caso] = useState('')
   const [a1Valor1, setA1Valor1] = useState('')
   const [a1Valor2, setA1Valor2] = useState('')
+  const [a3Caso, setA3Caso] = useState('')
 
   const A1_CASOS = {
     SALTO: {
@@ -25,24 +26,23 @@ function useLoteForm() {
         return 'Se constata salto de numeración.'
       },
     },
-    INFERIOR: {
-      etiqueta: 'Numeración inferior a XXXX',
+    COMIENZA: {
+      etiqueta: 'La numeración comienza en XXXX',
       requiere: 1,
-      build: (valor1) => {
-        if (valor1) {
-          return `Se constata numeración de referencia ${valor1}; se busca una numeración inferior a esa.`
-        }
-        return 'Se constata numeración de referencia para búsqueda inferior.'
-      },
+      build: (v1) => (v1 ? `Se constata que la numeración comienza en ${v1}.` : 'Se constata que la numeración comienza en un valor determinado.'),
     },
-    SUPERIOR: {
-      etiqueta: 'Numeración superior a XXXX',
+    TERMINA: {
+      etiqueta: 'La numeración termina en YYYY',
       requiere: 1,
-      build: (valor1) => {
-        if (valor1) {
-          return `Se constata numeración de referencia ${valor1}; se busca una numeración superior a esa.`
-        }
-        return 'Se constata numeración de referencia para búsqueda superior.'
+      build: (v1) => (v1 ? `Se constata que la numeración termina en ${v1}.` : 'Se constata que la numeración termina en un valor determinado.'),
+    },
+    ENTRE: {
+      etiqueta: 'La numeración está entre XXXX y YYYY',
+      requiere: 2,
+      build: (v1, v2) => {
+        if (v1 && v2) return `Se constata numeración entre ${v1} y ${v2}.`
+        if (v1) return `Se constata numeración a partir de ${v1}.`
+        return 'Se constata numeración en un rango no especificado.'
       },
     },
     SIN_ORDEN: {
@@ -50,6 +50,48 @@ function useLoteForm() {
       requiere: 0,
       build: () =>
         'Se constata que la numeración no se encuentra y no existe un orden definido en el área.',
+    },
+    COMIENZA: {
+      etiqueta: 'La numeración comienza en XXXX',
+      requiere: 1,
+      build: (v1) => (v1 ? `Se constata que la numeración comienza en ${v1}.` : 'Se constata que la numeración comienza en un valor determinado.'),
+    },
+    TERMINA: {
+      etiqueta: 'La numeración termina en YYYY',
+      requiere: 1,
+      build: (v1) => (v1 ? `Se constata que la numeración termina en ${v1}.` : 'Se constata que la numeración termina en un valor determinado.'),
+    },
+    ENTRE: {
+      etiqueta: 'La numeración está entre XXXX y YYYY',
+      requiere: 2,
+      build: (v1, v2) => {
+        if (v1 && v2) return `Se constata numeración entre ${v1} y ${v2}.`
+        if (v1) return `Se constata numeración a partir de ${v1}.`
+        return 'Se constata numeración en un rango no especificado.'
+      },
+    },
+    SECTOR_TOMAS: {
+      etiqueta: 'Sector tomas, sin nombre ni numeración a la vista',
+      requiere: 0,
+      build: () => 'Sector de tomas detectado; no hay nombre de calle ni numeración visible.',
+    },
+    SECTOR_INDUSTRIAL: {
+      etiqueta: 'Sector industrial sin nombre ni numeración a la vista',
+      requiere: 0,
+      build: () => 'Sector industrial sin identificación ni numeración visible.',
+    },
+  }
+
+  const A3_CASOS = {
+    FALTA_NUMERO_CASA: {
+      etiqueta: 'Falta número de casa',
+      requiere: 0,
+      build: () => 'Falta número de casa en la dirección proporcionada.',
+    },
+    FALTA_DPTO_BLOCK: {
+      etiqueta: 'Falta número de departamento y block',
+      requiere: 0,
+      build: () => 'Falta número de departamento y block en la dirección proporcionada.',
     },
   }
 
@@ -59,6 +101,7 @@ function useLoteForm() {
     B3: 'Se deja aviso',
     B7: 'Se deja aviso',
     A1: Object.values(A1_CASOS).map((caso) => caso.etiqueta),
+    A3: Object.values(A3_CASOS).map((caso) => caso.etiqueta),
   }
 
   const obtenerObservacionSugerida = (codigoValue) => {
@@ -75,14 +118,26 @@ function useLoteForm() {
 
     if (sugerenciaNueva) {
       if (Array.isArray(sugerenciaNueva)) {
-        const casoInicial = 'SALTO'
-        const textoInicial = A1_CASOS[casoInicial].build('', '')
-        if (!observacionLote.trim() || observacionLote === sugerenciaActualNorm) {
-          setObservacionLote(textoInicial)
+        if (codigoLimpio === 'A1') {
+          const casoInicial = 'SALTO'
+          const textoInicial = A1_CASOS[casoInicial].build('', '')
+          if (!observacionLote.trim() || observacionLote === sugerenciaActualNorm) {
+            setObservacionLote(textoInicial)
+          }
+          setA1Caso(casoInicial)
+          setA1Valor1('')
+          setA1Valor2('')
+        } else if (codigoLimpio === 'A3') {
+          const casoInicial = 'FALTA_NUMERO_CASA'
+          const textoInicial = A3_CASOS[casoInicial].build()
+          if (!observacionLote.trim() || observacionLote === sugerenciaActualNorm) {
+            setObservacionLote(textoInicial)
+          }
+          setA3Caso(casoInicial)
+        } else {
+          const primer = sugerenciaNueva[0]
+          if (!observacionLote.trim() || observacionLote === sugerenciaActualNorm) setObservacionLote(primer)
         }
-        setA1Caso(casoInicial)
-        setA1Valor1('')
-        setA1Valor2('')
       } else {
         if (!observacionLote.trim() || observacionLote === sugerenciaActualNorm) {
           setObservacionLote(sugerenciaNueva)
@@ -90,6 +145,7 @@ function useLoteForm() {
         setA1Caso('')
         setA1Valor1('')
         setA1Valor2('')
+        setA3Caso('')
       }
     } else if (observacionLote.trim() && observacionLote === sugerenciaActualNorm) {
       setObservacionLote('')
@@ -102,10 +158,25 @@ function useLoteForm() {
     return casoActual.build(valor1, valor2)
   }
 
+  const construirObservacionA3 = (caso) => {
+    const casoActual = A3_CASOS[caso]
+    if (!casoActual) return ''
+    return casoActual.build()
+  }
+
   const handleA1CasoChange = (caso) => {
     const anterior = construirObservacionA1(a1Caso, a1Valor1, a1Valor2)
     setA1Caso(caso)
     const nueva = construirObservacionA1(caso, '', '')
+    if (!observacionLote.trim() || observacionLote === anterior) {
+      setObservacionLote(nueva)
+    }
+  }
+
+  const handleA3CasoChange = (caso) => {
+    const anterior = construirObservacionA3(a3Caso)
+    setA3Caso(caso)
+    const nueva = construirObservacionA3(caso)
     if (!observacionLote.trim() || observacionLote === anterior) {
       setObservacionLote(nueva)
     }
@@ -263,6 +334,9 @@ function useLoteForm() {
     a1Caso,
     a1Valor1,
     a1Valor2,
+    a3Caso,
+    a3Casos: A3_CASOS,
+    handleA3CasoChange,
     a1Casos: A1_CASOS,
     handleA1CasoChange,
     handleA1Valor1Change,
