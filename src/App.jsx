@@ -17,7 +17,7 @@ import { extraerIdDesdeQr } from './utils/qr'
 import { validarIdNotificacion } from './utils/validation'
 import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
-
+import { determinarSiEsNoUrbanaDesdeGPS } from './utils/geolocalizacion'
 function App() {
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
   const [dialogoLoteAbierto, setDialogoLoteAbierto] = useState(false)
@@ -345,9 +345,35 @@ function App() {
     // Pasar cargaActivaId explícitamente para evitar desync con state asincrónico
     notificaciones.cargar(notificaciones.cargaActivaId)
   }
+  const [estadoZona, setEstadoZona] = useState('desconocido')
+
+useEffect(() => {
+  const verificarZona = async () => {
+    const resultado = await determinarSiEsNoUrbanaDesdeGPS()
+
+    setEstadoZona(
+      resultado.es_no_urbana
+        ? 'rural'
+        : 'urbano'
+    )
+  }
+
+  verificarZona()
+
+  const intervalo = setInterval(
+    verificarZona,
+    30000
+  )
+
+  return () => clearInterval(intervalo)
+}, [])
 
   return (
-    <div className="pagina">
+    // bg red-50
+    <div 
+  className={`pagina fondo-zona-${estadoZona}`}
+
+      >
       <button
         type="button"
         className="menu-flotante"
@@ -369,9 +395,8 @@ function App() {
       />
 
       <div
-        className={`contenedor ${mostrarMonitoreo ? 'contenedor-monitoreo' : ''} ${
-          mostrarConsulta ? 'contenedor-consulta' : ''
-        }`}
+        className={`contenedor ${mostrarMonitoreo ? 'contenedor-monitoreo' : ''} ${mostrarConsulta ? 'contenedor-consulta' : ''
+          }`}
       >
         {dialogoEliminarAbierto ? (
           <div className="dialogo-overlay top" onClick={() => setDialogoEliminarAbierto(false)}>
@@ -420,8 +445,8 @@ function App() {
           </div>
         ) : null}
 
-        <div className="fecha-box">
-          <div className="fecha-box-principal">
+        <div className={`cabecera-carga cabecera-zona-${estadoZona} fecha-box`}>
+          <div className={`fecha-box-principal`}>
             <div className="fecha-item fecha-item-principal">
               <span className="fecha-label">Fecha</span>
               <span className="fecha-valor">{fechaCertificacion}</span>
@@ -503,194 +528,194 @@ function App() {
           <ConsultaHistorico onVolver={irAFormulario} />
         ) : (
           <>
-        <RegistroForm
-          inputIdRef={inputIdRef}
-          idNotificacion={registro.idNotificacion}
-          onIdChange={registro.setIdNotificacion}
-          escaneando={scannerIndividualAbierto}
-          onToggleEscaneo={toggleQrIndividual}
-          onZoomOut={() => {}}
-          onZoomIn={() => {}}
-          onResetZoom={() => {}}
-          zoom={1}
-          codigo={registro.codigo}
-          onCodigoChange={registro.handleCodigoManualChange}
-          onAbrirCodigos={() => setDialogoCodigoAbierto(true)}
-          descripcionCodigo={descripcionCodigo}
-          codigoLimpioVista={codigoLimpioVista}
-          observacion={registro.observacion}
-          onObservacionChange={registro.setObservacion}
-          a1Caso={registro.a1Caso}
-          a1Valor1={registro.a1Valor1}
-          a1Valor2={registro.a1Valor2}
-          a1Casos={registro.a1Casos}
-          onA1CasoChange={registro.handleA1CasoChange}
-          onA1Valor1Change={registro.handleA1Valor1Change}
-          onA1Valor2Change={registro.handleA1Valor2Change}
-          a3Caso={registro.a3Caso}
-          a3Casos={registro.a3Casos}
-          onA3CasoChange={registro.handleA3CasoChange}
-          comentarios={registro.comentarios}
-          onComentariosChange={registro.setComentarios}
-          esNoUrbana={registro.esNoUrbana}
-          onEsNoUrbanaChange={registro.setEsNoUrbana}
-          mostraTribunal={registro.mostraTribunal}
-          onMostraTribunal={toggleTribunal}
-          rit={registro.rit}
-          onRitChange={registro.setRit}
-          año={registro.año}
-          onAñoChange={registro.setAño}
-          cargando={notificaciones.cargando}
-          onGuardar={guardar}
-          onEliminarUltimo={abrirDialogoEliminarUltimo}
-          onAbrirLote={abrirDialogoLote}
-          dialogoLoteAbierto={dialogoLoteAbierto}
-          cargaFinalizada={notificaciones.cargaFinalizada}
-          finalizandoEnProceso={finalizarEnProceso}
-          eliminandoEnProceso={eliminarEnProceso}
-        />
+            <RegistroForm
+              inputIdRef={inputIdRef}
+              idNotificacion={registro.idNotificacion}
+              onIdChange={registro.setIdNotificacion}
+              escaneando={scannerIndividualAbierto}
+              onToggleEscaneo={toggleQrIndividual}
+              onZoomOut={() => { }}
+              onZoomIn={() => { }}
+              onResetZoom={() => { }}
+              zoom={1}
+              codigo={registro.codigo}
+              onCodigoChange={registro.handleCodigoManualChange}
+              onAbrirCodigos={() => setDialogoCodigoAbierto(true)}
+              descripcionCodigo={descripcionCodigo}
+              codigoLimpioVista={codigoLimpioVista}
+              observacion={registro.observacion}
+              onObservacionChange={registro.setObservacion}
+              a1Caso={registro.a1Caso}
+              a1Valor1={registro.a1Valor1}
+              a1Valor2={registro.a1Valor2}
+              a1Casos={registro.a1Casos}
+              onA1CasoChange={registro.handleA1CasoChange}
+              onA1Valor1Change={registro.handleA1Valor1Change}
+              onA1Valor2Change={registro.handleA1Valor2Change}
+              a3Caso={registro.a3Caso}
+              a3Casos={registro.a3Casos}
+              onA3CasoChange={registro.handleA3CasoChange}
+              comentarios={registro.comentarios}
+              onComentariosChange={registro.setComentarios}
+              esNoUrbana={registro.esNoUrbana}
+              onEsNoUrbanaChange={registro.setEsNoUrbana}
+              mostraTribunal={registro.mostraTribunal}
+              onMostraTribunal={toggleTribunal}
+              rit={registro.rit}
+              onRitChange={registro.setRit}
+              año={registro.año}
+              onAñoChange={registro.setAño}
+              cargando={notificaciones.cargando}
+              onGuardar={guardar}
+              onEliminarUltimo={abrirDialogoEliminarUltimo}
+              onAbrirLote={abrirDialogoLote}
+              dialogoLoteAbierto={dialogoLoteAbierto}
+              cargaFinalizada={notificaciones.cargaFinalizada}
+              finalizandoEnProceso={finalizarEnProceso}
+              eliminandoEnProceso={eliminarEnProceso}
+            />
 
-        {notificaciones.mensaje ? (
-          <div className="mensaje-ok">{notificaciones.mensaje}</div>
-        ) : null}
+            {notificaciones.mensaje ? (
+              <div className="mensaje-ok">{notificaciones.mensaje}</div>
+            ) : null}
 
-        {notificaciones.errorMsg ? (
-          <div className="mensaje-error">{notificaciones.errorMsg}</div>
-        ) : null}
+            {notificaciones.errorMsg ? (
+              <div className="mensaje-error">{notificaciones.errorMsg}</div>
+            ) : null}
 
-        <div className="mensajes-apilables">
-          {notificaciones.mensajes.map((msg, index) => (
-            <div
-              key={msg.id}
-              className={`mensaje-apilable mensaje-apilable-${msg.tipo}`}
-              style={{ bottom: `${20 + index * 80}px` }}
-            >
-              {msg.texto}
+            <div className="mensajes-apilables">
+              {notificaciones.mensajes.map((msg, index) => (
+                <div
+                  key={msg.id}
+                  className={`mensaje-apilable mensaje-apilable-${msg.tipo}`}
+                  style={{ bottom: `${20 + index * 80}px` }}
+                >
+                  {msg.texto}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <RegistroTable
-          registros={notificaciones.registros}
-          onRecargar={recargarRegistros}
-          onActualizarRegistro={notificaciones.actualizarRegistro}
-          cargaFinalizada={notificaciones.cargaFinalizada}
-          cargaTotal={notificaciones.estadisticas.cargaTotal}
-          puntos={notificaciones.estadisticas.puntos}
-          urbanas={notificaciones.estadisticas.urbanas}
-          rurales={notificaciones.estadisticas.rurales}
-        />
+            <RegistroTable
+              registros={notificaciones.registros}
+              onRecargar={recargarRegistros}
+              onActualizarRegistro={notificaciones.actualizarRegistro}
+              cargaFinalizada={notificaciones.cargaFinalizada}
+              cargaTotal={notificaciones.estadisticas.cargaTotal}
+              puntos={notificaciones.estadisticas.puntos}
+              urbanas={notificaciones.estadisticas.urbanas}
+              rurales={notificaciones.estadisticas.rurales}
+            />
 
-        <div className="acciones-cierre-panel">
-          <div className="acciones-cierre-texto">
-            <span className="acciones-cierre-kicker">Cierre de carga</span>
-            <h3>Finalizar la carga actual</h3>
-            <p>Esta acción conviene tomarla al final, después de revisar los registros cargados.</p>
-          </div>
+            <div className="acciones-cierre-panel">
+              <div className="acciones-cierre-texto">
+                <span className="acciones-cierre-kicker">Cierre de carga</span>
+                <h3>Finalizar la carga actual</h3>
+                <p>Esta acción conviene tomarla al final, después de revisar los registros cargados.</p>
+              </div>
 
-          <button
-            type="button"
-            className="boton-peligro boton-cierre-carga"
-            onClick={finalizarCarga}
-            disabled={notificaciones.cargaFinalizada || finalizarEnProceso}
-          >
-            {notificaciones.cargaFinalizada || finalizarEnProceso
-              ? 'Cerrando carga...'
-              : 'Finalizar carga'}
-          </button>
-        </div>
+              <button
+                type="button"
+                className="boton-peligro boton-cierre-carga"
+                onClick={finalizarCarga}
+                disabled={notificaciones.cargaFinalizada || finalizarEnProceso}
+              >
+                {notificaciones.cargaFinalizada || finalizarEnProceso
+                  ? 'Cerrando carga...'
+                  : 'Finalizar carga'}
+              </button>
+            </div>
 
-        <ConfirmDialog
-          abierto={confirmFinalizarAbierto}
-          titulo="Finalizar carga del día"
-          mensaje="¿Finalizar la carga actual? Se cerrará el grupo de notificaciones de hoy y se enviará un resumen por correo. No podrás agregar nuevos registros a esta carga."
-          textoConfirmar="Finalizar"
-          textoCancel="Cancelar"
-          colorConfirmar="rojo"
-          onConfirmar={confirmarFinalizarCarga}
-          onCancelar={cancelarFinalizarCarga}
-          cargando={notificaciones.cargaFinalizada || finalizarEnProceso}
-        />
+            <ConfirmDialog
+              abierto={confirmFinalizarAbierto}
+              titulo="Finalizar carga del día"
+              mensaje="¿Finalizar la carga actual? Se cerrará el grupo de notificaciones de hoy y se enviará un resumen por correo. No podrás agregar nuevos registros a esta carga."
+              textoConfirmar="Finalizar"
+              textoCancel="Cancelar"
+              colorConfirmar="rojo"
+              onConfirmar={confirmarFinalizarCarga}
+              onCancelar={cancelarFinalizarCarga}
+              cargando={notificaciones.cargaFinalizada || finalizarEnProceso}
+            />
 
-        <ConfirmDialog
-          abierto={confirmEliminarAbierto}
-          titulo="Eliminar último registro"
-          mensaje="¿Eliminar el último registro de la lista? Esta acción no se puede deshacer."
-          textoConfirmar="Eliminar"
-          textoCancel="Cancelar"
-          colorConfirmar="naranja"
-          onConfirmar={confirmarEliminarUltimo}
-          onCancelar={cancelarEliminarUltimo}
-          cargando={notificaciones.cargando || eliminarEnProceso}
-        />
+            <ConfirmDialog
+              abierto={confirmEliminarAbierto}
+              titulo="Eliminar último registro"
+              mensaje="¿Eliminar el último registro de la lista? Esta acción no se puede deshacer."
+              textoConfirmar="Eliminar"
+              textoCancel="Cancelar"
+              colorConfirmar="naranja"
+              onConfirmar={confirmarEliminarUltimo}
+              onCancelar={cancelarEliminarUltimo}
+              cargando={notificaciones.cargando || eliminarEnProceso}
+            />
 
-        <CodigoDialog
-          abierto={dialogoCodigoAbierto}
-          titulo="Codigos frecuentes"
-          valorActual={codigoLimpioVista}
-          onClose={() => setDialogoCodigoAbierto(false)}
-          onSelect={seleccionarCodigo}
-        />
+            <CodigoDialog
+              abierto={dialogoCodigoAbierto}
+              titulo="Codigos frecuentes"
+              valorActual={codigoLimpioVista}
+              onClose={() => setDialogoCodigoAbierto(false)}
+              onSelect={seleccionarCodigo}
+            />
 
-        <CodigoDialog
-          abierto={dialogoCodigoLoteAbierto}
-          titulo="Codigos frecuentes del lote"
-          valorActual={codigoLoteVista}
-          onClose={() => setDialogoCodigoLoteAbierto(false)}
-          onSelect={seleccionarCodigoLote}
-          top
-        />
+            <CodigoDialog
+              abierto={dialogoCodigoLoteAbierto}
+              titulo="Codigos frecuentes del lote"
+              valorActual={codigoLoteVista}
+              onClose={() => setDialogoCodigoLoteAbierto(false)}
+              onSelect={seleccionarCodigoLote}
+              top
+            />
 
-        <LoteDialog
-          abierto={dialogoLoteAbierto}
-          onClose={cerrarDialogoLote}
-          escaneandoLote={scannerLoteAbierto}
-          onToggleEscaneo={toggleQrLote}
-          onZoomOut={() => {}}
-          onZoomIn={() => {}}
-          onResetZoom={() => {}}
-          zoom={1}
-          guardandoLote={notificaciones.guardandoLote}
-          cargaFinalizada={notificaciones.cargaFinalizada}
-          onLimpiarLote={lote.limpiarLote}
-          idsTemporales={lote.idsTemporales}
-          onQuitarId={lote.quitarIdTemporal}
-          horaLote={lote.horaLote}
-          onHoraChange={lote.handleHoraLoteChange}
-          codigoLote={lote.codigoLote}
-          onCodigoChange={lote.handleCodigoLoteManualChange}
-          onAbrirCodigos={() => setDialogoCodigoLoteAbierto(true)}
-          codigoPorId={lote.codigoPorId}
-          onSetCodigoParaId={lote.setCodigoParaId}
-          observacionPorId={lote.observacionPorId}
-          onSetObservacionParaId={lote.setObservacionParaId}
-          obtenerObservacionSugerida={lote.obtenerObservacionSugerida}
-          codigoLoteVista={codigoLoteVista}
-          descripcionCodigoLote={descripcionCodigoLote}
-          observacionLote={lote.observacionLote}
-          onObservacionChange={lote.setObservacionLote}
-          esNoUrbanaLote={lote.esNoUrbanaLote}
-          onEsNoUrbanaLoteChange={lote.setEsNoUrbanaLote}
-          mostraTribunalLote={lote.mostraTribunalLote}
-          onMostraTribunalLote={() => lote.setMostraTribunalLote((prev) => !prev)}
-          tribunalesLote={lote.tribunalesLote}
-          onAgregarTribunalLote={lote.agregarTribunalLote}
-          onCopiarUltimoTribunalLote={lote.copiarUltimoTribunalLote}
-          onQuitarTribunalLote={lote.quitarTribunalLote}
-          onActualizarTribunalLote={lote.actualizarTribunalLote}
-          a1Caso={lote.a1Caso}
-          a1Valor1={lote.a1Valor1}
-          a1Valor2={lote.a1Valor2}
-          a1Casos={lote.a1Casos}
-          onA1CasoChange={lote.handleA1CasoChange}
-          onA1Valor1Change={lote.handleA1Valor1Change}
-          onA1Valor2Change={lote.handleA1Valor2Change}
-          a3Caso={lote.a3Caso}
-          a3Casos={lote.a3Casos}
-          onA3CasoChange={lote.handleA3CasoChange}
-          ultimoIdAgregadoLote={ultimoIdAgregadoLote}
-          onGuardarLote={guardarLote}
-        />
+            <LoteDialog
+              abierto={dialogoLoteAbierto}
+              onClose={cerrarDialogoLote}
+              escaneandoLote={scannerLoteAbierto}
+              onToggleEscaneo={toggleQrLote}
+              onZoomOut={() => { }}
+              onZoomIn={() => { }}
+              onResetZoom={() => { }}
+              zoom={1}
+              guardandoLote={notificaciones.guardandoLote}
+              cargaFinalizada={notificaciones.cargaFinalizada}
+              onLimpiarLote={lote.limpiarLote}
+              idsTemporales={lote.idsTemporales}
+              onQuitarId={lote.quitarIdTemporal}
+              horaLote={lote.horaLote}
+              onHoraChange={lote.handleHoraLoteChange}
+              codigoLote={lote.codigoLote}
+              onCodigoChange={lote.handleCodigoLoteManualChange}
+              onAbrirCodigos={() => setDialogoCodigoLoteAbierto(true)}
+              codigoPorId={lote.codigoPorId}
+              onSetCodigoParaId={lote.setCodigoParaId}
+              observacionPorId={lote.observacionPorId}
+              onSetObservacionParaId={lote.setObservacionParaId}
+              obtenerObservacionSugerida={lote.obtenerObservacionSugerida}
+              codigoLoteVista={codigoLoteVista}
+              descripcionCodigoLote={descripcionCodigoLote}
+              observacionLote={lote.observacionLote}
+              onObservacionChange={lote.setObservacionLote}
+              esNoUrbanaLote={lote.esNoUrbanaLote}
+              onEsNoUrbanaLoteChange={lote.setEsNoUrbanaLote}
+              mostraTribunalLote={lote.mostraTribunalLote}
+              onMostraTribunalLote={() => lote.setMostraTribunalLote((prev) => !prev)}
+              tribunalesLote={lote.tribunalesLote}
+              onAgregarTribunalLote={lote.agregarTribunalLote}
+              onCopiarUltimoTribunalLote={lote.copiarUltimoTribunalLote}
+              onQuitarTribunalLote={lote.quitarTribunalLote}
+              onActualizarTribunalLote={lote.actualizarTribunalLote}
+              a1Caso={lote.a1Caso}
+              a1Valor1={lote.a1Valor1}
+              a1Valor2={lote.a1Valor2}
+              a1Casos={lote.a1Casos}
+              onA1CasoChange={lote.handleA1CasoChange}
+              onA1Valor1Change={lote.handleA1Valor1Change}
+              onA1Valor2Change={lote.handleA1Valor2Change}
+              a3Caso={lote.a3Caso}
+              a3Casos={lote.a3Casos}
+              onA3CasoChange={lote.handleA3CasoChange}
+              ultimoIdAgregadoLote={ultimoIdAgregadoLote}
+              onGuardarLote={guardarLote}
+            />
           </>
         )}
       </div>

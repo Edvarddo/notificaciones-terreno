@@ -126,6 +126,7 @@ const UMBRAL_PRECISION_BAJA_METROS = 30
 const ULTIMA_POSICION_KEY = 'notificaciones-terreno-ultima-posicion-gps'
 const ULTIMA_POSICION_TTL_MS = 30 * 60 * 1000
 
+
 const obtenerPoligonoConMargen = (margenMetros) => {
   try {
     return buffer(polygon([POLIGONO_URBANO]), margenMetros / 1000, {
