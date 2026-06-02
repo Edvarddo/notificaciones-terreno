@@ -203,6 +203,54 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
     return { titulo: `Carga ${numero}`, clase }
   }
 
+  const crearUrlMapaPoligono = (latitud, longitud) => {
+    const lat = Number(latitud)
+    const lng = Number(longitud)
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null
+    }
+
+    return `https://www.google.com/maps/d/u/0/edit?mid=1IpkPA0M1XRX52_P042vszJz2rmoi0zg&ll=${lat}%2C${lng}&z=18`
+  }
+
+  const obtenerTextoCoordenadas = (latitud, longitud) => {
+    const lat = Number(latitud)
+    const lng = Number(longitud)
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return ''
+    }
+
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+  }
+
+  const renderCeldaMapa = (registro) => {
+    const urlMapa = crearUrlMapaPoligono(registro.latitud, registro.longitud)
+    const textoCoordenadas = obtenerTextoCoordenadas(registro.latitud, registro.longitud)
+
+    return (
+      <td>
+        {urlMapa ? (
+          <div className="acciones-tabla">
+            <a
+              href={urlMapa}
+              target="_blank"
+              rel="noreferrer"
+              className="boton-tabla editar"
+              title={textoCoordenadas ? `Ver en mapa: ${textoCoordenadas}` : 'Ver en mapa'}
+            >
+              Mapa
+            </a>
+            <span className="lote-codigo">{textoCoordenadas}</span>
+          </div>
+        ) : (
+          <span className="sin-id">Sin GPS</span>
+        )}
+      </td>
+    )
+  }
+
   async function refetch() {
     try {
       const data = await obtenerRegistros(fechaCertificacion, cargaId)
@@ -503,6 +551,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                       <th>Observación</th>
                       <th>Código Lote</th>
                       <th>No Urbana</th>
+                      <th>Coordenadas / Mapa</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -539,6 +588,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                               {r.es_no_urbana ? 'No urbana' : 'Urbana'}
                             </span>
                           </td>
+                          {renderCeldaMapa(r)}
                         </tr>
                       )
                     })}
@@ -561,6 +611,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                 <th>Observacion</th>
                 <th>Codigo Lote</th>
                 <th>No Urbana</th>
+                <th>Coordenadas / Mapa</th>
                 {!soloLectura ? <th>ACCIÓN</th> : null}
               </tr>
             </thead>
