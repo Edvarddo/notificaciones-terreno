@@ -258,46 +258,46 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
   }
 
-useEffect(() => {
-  refrescarPendientesSync().catch(() => {})
+  useEffect(() => {
+    refrescarPendientesSync().catch(() => { })
 
-  const intentarSincronizar = () => {
-    sincronizarPendientes().catch(() => {})
-  }
+    const intentarSincronizar = () => {
+      sincronizarPendientes().catch(() => { })
+    }
 
-  const manejarOnline = () => {
-    setTimeout(intentarSincronizar, 1500)
-  }
+    const manejarOnline = () => {
+      setTimeout(intentarSincronizar, 1500)
+    }
 
-  const manejarFocus = () => {
-    intentarSincronizar()
-  }
-
-  const manejarVisibilityChange = () => {
-    if (document.visibilityState === 'visible') {
+    const manejarFocus = () => {
       intentarSincronizar()
     }
-  }
 
-  const intervalo = setInterval(async () => {
-    const pendientes = await obtenerOperacionesPendientes().catch(() => [])
-
-    if (pendientes.length > 0 && navigator.onLine) {
-      intentarSincronizar()
+    const manejarVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        intentarSincronizar()
+      }
     }
-  }, 30000)
 
-  window.addEventListener('online', manejarOnline)
-  window.addEventListener('focus', manejarFocus)
-  document.addEventListener('visibilitychange', manejarVisibilityChange)
+    const intervalo = setInterval(async () => {
+      const pendientes = await obtenerOperacionesPendientes().catch(() => [])
 
-  return () => {
-    window.removeEventListener('online', manejarOnline)
-    window.removeEventListener('focus', manejarFocus)
-    document.removeEventListener('visibilitychange', manejarVisibilityChange)
-    clearInterval(intervalo)
-  }
-}, [])
+      if (pendientes.length > 0 && navigator.onLine) {
+        intentarSincronizar()
+      }
+    }, 30000)
+
+    window.addEventListener('online', manejarOnline)
+    window.addEventListener('focus', manejarFocus)
+    document.addEventListener('visibilitychange', manejarVisibilityChange)
+
+    return () => {
+      window.removeEventListener('online', manejarOnline)
+      window.removeEventListener('focus', manejarFocus)
+      document.removeEventListener('visibilitychange', manejarVisibilityChange)
+      clearInterval(intervalo)
+    }
+  }, [])
 
   const generarCodigoLote = () => {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -573,7 +573,7 @@ useEffect(() => {
       const msg = `No se pudo validar la ID: ${error.message}`
       setErrorMsg(msg)
       return { ok: false, error: msg }
-    } finally{
+    } finally {
       setCargando(false)
     }
 
