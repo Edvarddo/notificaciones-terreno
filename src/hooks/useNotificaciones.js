@@ -60,6 +60,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     guardarRegistro: 0,
     guardarLote: 0,
   })
+  const sincronizandoPendientesRef = useRef(false)
   const quitarMensajeVisual = (id) => {
     const timer = timersMensajesRef.current.get(id)
     if (timer) {
@@ -180,90 +181,96 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   }
 
   const sincronizarPendientes = async () => {
-    if (!navigator.onLine) return
+    if (!navigator.onLine || sincronizandoPendientesRef.current) return
 
+    sincronizandoPendientesRef.current = true
     setSincronizandoPendientes(true)
 
-    const pendientes = await refrescarPendientesSync()
-    if (!pendientes.length) {
-      setSincronizandoPendientes(false)
-      return
-    }
+    try {
+      const pendientes = await refrescarPendientesSync()
 
-    let sincronizados = 0
-    let errores = 0
+      if (!pendientes.length) return
 
-    for (const pendiente of pendientes) {
-      if (pendiente.tipo !== 'guardarRegistro' && pendiente.tipo !== 'guardarLote') continue
+      let sincronizados = 0
+      let errores = 0
 
-      try {
-        if (pendiente.tipo === 'guardarRegistro') {
-          await ejecutarConReintentos(() => insertarRegistro(pendiente.payload))
-        } else {
-          await ejecutarConReintentos(() => insertarLote(pendiente.payload.filas || []))
-        }
+      for (const pendiente of pendientes) {
+        if (pendiente.tipo !== 'guardarRegistro' && pendiente.tipo !== 'guardarLote') continue
 
-        await eliminarOperacionPendiente(pendiente.id)
-        sincronizados += 1
-      } catch (error) {
-        const mensajeError = String(error?.message || '')
-        const esConflicto = /duplicate|unique/i.test(mensajeError)
+        try {
+          if (pendiente.tipo === 'guardarRegistro') {
+            await ejecutarConReintentos(() => insertarRegistro(pendiente.payload))
+          } else {
+            await ejecutarConReintentos(() => insertarLote(pendiente.payload.filas || []))
+          }
 
-        if (esConflicto) {
           await eliminarOperacionPendiente(pendiente.id)
           sincronizados += 1
-        } else {
-          errores += 1
-          await actualizarOperacionPendiente(pendiente.id, {
-            attempts: Number(pendiente.attempts || 0) + 1,
-            lastTriedAt: Date.now(),
-            lastError: mensajeError || 'Error de sincronizacion',
-          }).catch(() => {})
+        } catch (error) {
+          const mensajeError = String(error?.message || '')
+          const esConflicto = /duplicate|unique/i.test(mensajeError)
+
+          if (esConflicto) {
+            await eliminarOperacionPendiente(pendiente.id)
+            sincronizados += 1
+          } else {
+            errores += 1
+            await actualizarOperacionPendiente(pendiente.id, {
+              attempts: Number(pendiente.attempts || 0) + 1,
+              lastTriedAt: Date.now(),
+              lastError: mensajeError || 'Error de sincronizacion',
+            }).catch(() => { })
+          }
         }
       }
+
+      await refrescarPendientesSync().catch(() => { })
+
+      if (sincronizados > 0) {
+        setMensaje(`Sincronizados ${sincronizados} registro(s) pendientes`)
+        agregarMensajeVisual(
+          sincronizados === 1
+            ? '1 notificación pendiente fue sincronizada'
+            : `${sincronizados} notificaciones pendientes fueron sincronizadas`,
+          'sincronizado'
+        )
+      }
+
+      if (errores > 0) {
+        agregarMensajeVisual(
+          errores === 1
+            ? '1 operación pendiente aún no pudo sincronizarse'
+            : `${errores} operaciones pendientes aún no pudieron sincronizarse`,
+          'error'
+        )
+      }
+
+      await refrescarPendientesSync().catch(() => { })
+    } finally {
+      sincronizandoPendientesRef.current = false
+      setSincronizandoPendientes(false)
+
     }
-
-    await refrescarPendientesSync()
-
-    if (sincronizados > 0) {
-      setMensaje(`Sincronizados ${sincronizados} registro(s) pendientes`)
-      agregarMensajeVisual(
-        sincronizados === 1
-          ? '1 notificación pendiente fue sincronizada'
-          : `${sincronizados} notificaciones pendientes fueron sincronizadas`,
-        'sincronizado'
-      )
-    }
-
-    if (errores > 0) {
-      agregarMensajeVisual(
-        errores === 1
-          ? '1 operación pendiente aún no pudo sincronizarse'
-          : `${errores} operaciones pendientes aún no pudieron sincronizarse`,
-        'error'
-      )
-    }
-
-    await cargar()
-
-    setSincronizandoPendientes(false)
-    await refrescarPendientesSync().catch(() => {})
   }
 
   useEffect(() => {
-    refrescarPendientesSync().catch(() => {})
-    sincronizarPendientes().catch(() => {
-      setSincronizandoPendientes(false)
-    })
+    refrescarPendientesSync().catch(() => { })
+    sincronizarPendientes().catch(() => { })
 
     const manejarOnline = () => {
-      sincronizarPendientes().catch(() => {
-        setSincronizandoPendientes(false)
-      })
+      sincronizarPendientes().catch(() => { })
     }
 
+    const intervalo = setInterval(() => {
+      sincronizarPendientes().catch(() => { })
+    }, 15000)
+
     window.addEventListener('online', manejarOnline)
-    return () => window.removeEventListener('online', manejarOnline)
+
+    return () => {
+      window.removeEventListener('online', manejarOnline)
+      clearInterval(intervalo)
+    }
   }, [])
 
   const generarCodigoLote = () => {
@@ -397,7 +404,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
   }, [])
 
-    const cargar = async (cargaId = cargaActivaId) => {
+  const cargar = async (cargaId = cargaActivaId) => {
     // Si no hay cargaId, intentar cargar por fecha (fallback) — útil mientras se resuelve creación de cargas
     const usarFecha = !cargaId
 
@@ -424,14 +431,14 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
       return { data: [], stats: { puntos: 0, rurales: 0, urbanas: 0 } }
     }
-    }
+  }
 
-    const bloquearSiCargaFinalizada = () => {
-      if (!cargaFinalizada) return null
-      const msg = 'La carga se está cerrando. Espera un momento.'
-      setErrorMsg(msg)
-      return { ok: false, error: msg }
-    }
+  const bloquearSiCargaFinalizada = () => {
+    if (!cargaFinalizada) return null
+    const msg = 'La carga se está cerrando. Espera un momento.'
+    setErrorMsg(msg)
+    return { ok: false, error: msg }
+  }
 
   const guardarRegistro = async ({
     idNotificacion,
@@ -530,7 +537,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
         setMensaje('Sin conexion: registro pendiente de sincronizacion')
         agregarMensajeVisual('Guardado sin internet. Quedo pendiente de sincronizacion.', 'pendiente')
-        await refrescarPendientesSync().catch(() => {})
+        await refrescarPendientesSync().catch(() => { })
         enfocarId?.()
         return { ok: true, offline: true }
       }
@@ -608,7 +615,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
         setMensaje('Sin conexion: registro pendiente de sincronizacion')
         agregarMensajeVisual('Guardado sin internet. Quedo pendiente de sincronizacion.', 'pendiente')
-        await refrescarPendientesSync().catch(() => {})
+        await refrescarPendientesSync().catch(() => { })
         enfocarId?.()
         return { ok: true, offline: true }
       }
@@ -746,27 +753,11 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     const filas = modoTribunal
       ? tribunalesNormalizados.flatMap((item) =>
-          [{
-            id_notificacion: null,
-            fecha_certificacion: fechaCertificacion,
-            hora: horaLote,
-            codigo: codigoNormalizado,
-            observacion: observacionNormalizada,
-            es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
-            geolocalizacion_fuente: clasificacionTerreno.fuente || 'manual',
-            latitud: clasificacionTerreno.latitud,
-            longitud: clasificacionTerreno.longitud,
-            codigo_lote: idLoteUnico,
-            carga_id: cargaId,
-            rit: item.rit,
-            año: Number(item.año),
-          }]
-        )
-      : (idsNormalizados.length > 0 ? idsNormalizados : [null]).map((id) => ({
-          id_notificacion: id,
+        [{
+          id_notificacion: null,
           fecha_certificacion: fechaCertificacion,
           hora: horaLote,
-          codigo: (codigoPorId && codigoPorId[String(id)]) ? String(codigoPorId[String(id)]).trim().toUpperCase() : codigoNormalizado,
+          codigo: codigoNormalizado,
           observacion: observacionNormalizada,
           es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
           geolocalizacion_fuente: clasificacionTerreno.fuente || 'manual',
@@ -774,9 +765,25 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
           longitud: clasificacionTerreno.longitud,
           codigo_lote: idLoteUnico,
           carga_id: cargaId,
-          rit: null,
-          año: null,
-        }))
+          rit: item.rit,
+          año: Number(item.año),
+        }]
+      )
+      : (idsNormalizados.length > 0 ? idsNormalizados : [null]).map((id) => ({
+        id_notificacion: id,
+        fecha_certificacion: fechaCertificacion,
+        hora: horaLote,
+        codigo: (codigoPorId && codigoPorId[String(id)]) ? String(codigoPorId[String(id)]).trim().toUpperCase() : codigoNormalizado,
+        observacion: observacionNormalizada,
+        es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
+        geolocalizacion_fuente: clasificacionTerreno.fuente || 'manual',
+        latitud: clasificacionTerreno.latitud,
+        longitud: clasificacionTerreno.longitud,
+        codigo_lote: idLoteUnico,
+        carga_id: cargaId,
+        rit: null,
+        año: null,
+      }))
     const cantidadFilas = filas.length
 
     if (!navigator.onLine) {
@@ -801,7 +808,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
           : `${cantidadFilas} notificaciones del lote quedaron pendientes sin internet.`,
         'pendiente'
       )
-      await refrescarPendientesSync().catch(() => {})
+      await refrescarPendientesSync().catch(() => { })
       await onSuccess?.()
       return { ok: true, offline: true }
     }
@@ -861,7 +868,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
             : `${cantidadFilas} notificaciones del lote quedaron pendientes sin internet.`,
           'pendiente'
         )
-        await refrescarPendientesSync().catch(() => {})
+        await refrescarPendientesSync().catch(() => { })
         await onSuccess?.()
         return { ok: true, offline: true }
       }

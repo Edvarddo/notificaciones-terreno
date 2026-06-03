@@ -22,15 +22,13 @@ export default function DailyCodePage({
     inputRefs.current[0]?.focus()
   }, [])
 
-  useEffect(() => {
-    if (!verifying) {
-      submittedRef.current = false
-    }
-  }, [verifying])
+
+
+  const lastSubmittedCodeRef = useRef('')
 
   useEffect(() => {
-    if (isComplete && !verifying && !submittedRef.current) {
-      submittedRef.current = true
+    if (isComplete && !verifying && code !== lastSubmittedCodeRef.current) {
+      lastSubmittedCodeRef.current = code
       onSubmit(code)
     }
   }, [code, isComplete, verifying, onSubmit])
@@ -124,6 +122,7 @@ export default function DailyCodePage({
   const handleClear = () => {
     setDigits(Array(CODE_LENGTH).fill(''))
     submittedRef.current = false
+    lastSubmittedCodeRef.current = ''
     requestAnimationFrame(() => focusIndex(0))
   }
 

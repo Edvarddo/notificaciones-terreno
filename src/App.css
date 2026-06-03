@@ -3894,3 +3894,49 @@ body.modal-abierto {
     left: 150%;
   }
 }
+
+.boton-debug-recargar {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+
+  color: #f8fafc;
+
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+
+  transition: all .25s ease;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.18),
+    inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.boton-debug-recargar:hover {
+  transform: translateY(-1px);
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.boton-debug-recargar .boton-con-icono {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.boton-debug-recargar svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2.4;
+  flex-shrink: 0;
+}

@@ -18,6 +18,7 @@ import { validarIdNotificacion } from './utils/validation'
 import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
 import { determinarSiEsNoUrbanaDesdeGPS } from './utils/geolocalizacion'
+import  IconReload from './components/IconReload'
 function App() {
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
   const [dialogoLoteAbierto, setDialogoLoteAbierto] = useState(false)
@@ -347,33 +348,34 @@ function App() {
   }
   const [estadoZona, setEstadoZona] = useState('desconocido')
 
-useEffect(() => {
-  const verificarZona = async () => {
-    const resultado = await determinarSiEsNoUrbanaDesdeGPS()
+  useEffect(() => {
+    const verificarZona = async () => {
+      const resultado = await determinarSiEsNoUrbanaDesdeGPS()
 
-    setEstadoZona(
-      resultado.es_no_urbana
-        ? 'rural'
-        : 'urbano'
+      setEstadoZona(
+        resultado.es_no_urbana
+          ? 'rural'
+          : 'urbano'
+      )
+    }
+
+    verificarZona()
+
+    const intervalo = setInterval(
+      verificarZona,
+      30000
     )
-  }
 
-  verificarZona()
-
-  const intervalo = setInterval(
-    verificarZona,
-    30000
-  )
-
-  return () => clearInterval(intervalo)
-}, [])
+    return () => clearInterval(intervalo)
+  }, [])
 
   return (
     // bg red-50
-    <div 
-  className={`pagina fondo-zona-${estadoZona}`}
+    <div
+      className={`pagina fondo-zona-${estadoZona}`}
 
-      >
+    >
+
       <button
         type="button"
         className="menu-flotante"
@@ -444,7 +446,23 @@ useEffect(() => {
             </div>
           </div>
         ) : null}
+        <button
+          type="button"
+          className="boton-debug-recargar"
+          onClick={() => {
+            // alert(
+            //   localStorage.getItem('daily_session_expires_at') ||
+            //   'NO HAY SESION'
+            // )
 
+            window.location.reload()
+          }}
+        >
+          <span className="boton-con-icono">
+            <IconReload />
+            Recargar
+          </span>
+        </button>
         <div className={`cabecera-carga cabecera-zona-${estadoZona} fecha-box`}>
           <div className={`fecha-box-principal`}>
             <div className="fecha-item fecha-item-principal">
@@ -459,6 +477,7 @@ useEffect(() => {
             )}
           </div>
         </div>
+        
 
         {notificaciones.sincronizandoPendientes || notificaciones.pendientesSync > 0 ? (
           <div className="pendientes-panel pendientes-panel-activo">
