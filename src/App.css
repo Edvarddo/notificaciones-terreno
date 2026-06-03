@@ -3940,3 +3940,30 @@ body.modal-abierto {
   stroke-width: 2.4;
   flex-shrink: 0;
 }
+
+.boton-principal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.boton-guardando {
+  opacity: 0.9;
+  cursor: wait;
+}
+
+.spinner-guardar {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spinGuardar 0.75s linear infinite;
+}
+
+@keyframes spinGuardar {
+  to {
+    transform: rotate(360deg);
+  }
+}

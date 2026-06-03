@@ -234,20 +234,33 @@ function RegistroForm({
           onChange={(e) => onComentariosChange(e.target.value)}
         />
       </label>
-       
-        {/* <label className="check-row">
+
+      {/* <label className="check-row">
         <input type="checkbox" checked={esNoUrbana} onChange={(e) => onEsNoUrbanaChange(e.target.checked)} />
         <span>No urbana / rural</span>
       </label> */}
-     
-      
+
+
 
 
 
 
       <div className="acciones acciones-secundarias">
-        <button type="submit" className="boton-principal" disabled={cargando || cargaFinalizada}>
-          {cargaFinalizada ? 'Cerrando carga...' : cargando ? 'Guardando...' : 'Guardar'}
+        <button
+          type="submit"
+          className={`boton-principal ${cargando ? 'boton-guardando' : ''}`}
+          disabled={cargando || cargaFinalizada}
+        >
+          {cargaFinalizada ? (
+            'Cerrando carga...'
+          ) : cargando ? (
+            <>
+              <span className="spinner-guardar" />
+              Guardando...
+            </>
+          ) : (
+            'Guardar'
+          )}
         </button>
 
         <button

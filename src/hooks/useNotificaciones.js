@@ -183,9 +183,14 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   const sincronizarPendientes = async () => {
     if (!navigator.onLine || sincronizandoPendientesRef.current) return
 
+    const pendientes = await obtenerOperacionesPendientes().catch(() => [])
+
+    if (!pendientes.length) {
+      return
+    }
+
     sincronizandoPendientesRef.current = true
     setSincronizandoPendientes(true)
-
     try {
       const pendientes = await refrescarPendientesSync()
 
@@ -253,25 +258,46 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     }
   }
 
-  useEffect(() => {
-    refrescarPendientesSync().catch(() => { })
-    sincronizarPendientes().catch(() => { })
+useEffect(() => {
+  refrescarPendientesSync().catch(() => {})
 
-    const manejarOnline = () => {
-      sincronizarPendientes().catch(() => { })
+  const intentarSincronizar = () => {
+    sincronizarPendientes().catch(() => {})
+  }
+
+  const manejarOnline = () => {
+    setTimeout(intentarSincronizar, 1500)
+  }
+
+  const manejarFocus = () => {
+    intentarSincronizar()
+  }
+
+  const manejarVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      intentarSincronizar()
     }
+  }
 
-    const intervalo = setInterval(() => {
-      sincronizarPendientes().catch(() => { })
-    }, 15000)
+  const intervalo = setInterval(async () => {
+    const pendientes = await obtenerOperacionesPendientes().catch(() => [])
 
-    window.addEventListener('online', manejarOnline)
-
-    return () => {
-      window.removeEventListener('online', manejarOnline)
-      clearInterval(intervalo)
+    if (pendientes.length > 0 && navigator.onLine) {
+      intentarSincronizar()
     }
-  }, [])
+  }, 30000)
+
+  window.addEventListener('online', manejarOnline)
+  window.addEventListener('focus', manejarFocus)
+  document.addEventListener('visibilitychange', manejarVisibilityChange)
+
+  return () => {
+    window.removeEventListener('online', manejarOnline)
+    window.removeEventListener('focus', manejarFocus)
+    document.removeEventListener('visibilitychange', manejarVisibilityChange)
+    clearInterval(intervalo)
+  }
+}, [])
 
   const generarCodigoLote = () => {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -450,6 +476,8 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     año,
   }) => {
     limpiarMensajes()
+    setCargando(true)
+    setMensaje('Procesando registro...')
 
     const clasificacionTerrenoPromise = resolverClasificacionTerreno(esNoUrbana)
 
@@ -545,9 +573,11 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       const msg = `No se pudo validar la ID: ${error.message}`
       setErrorMsg(msg)
       return { ok: false, error: msg }
+    } finally{
+      setCargando(false)
     }
 
-    setCargando(true)
+    // setCargando(true)
 
     const ahora = new Date()
     const hora = ahora

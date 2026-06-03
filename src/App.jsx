@@ -18,7 +18,7 @@ import { validarIdNotificacion } from './utils/validation'
 import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
 import { determinarSiEsNoUrbanaDesdeGPS } from './utils/geolocalizacion'
-import  IconReload from './components/IconReload'
+import IconReload from './components/IconReload'
 function App() {
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
   const [dialogoLoteAbierto, setDialogoLoteAbierto] = useState(false)
@@ -346,33 +346,48 @@ function App() {
     // Pasar cargaActivaId explícitamente para evitar desync con state asincrónico
     notificaciones.cargar(notificaciones.cargaActivaId)
   }
-  const [estadoZona, setEstadoZona] = useState('desconocido')
+  
+  const paginaRef = useRef(null)
+  const cabeceraZonaRef = useRef(null)
+  const estadoZonaRef = useRef('desconocido')
 
   useEffect(() => {
+    let activo = true
+
+    const aplicarZona = (zona) => {
+      if (estadoZonaRef.current === zona) return
+
+      const anterior = estadoZonaRef.current
+      estadoZonaRef.current = zona
+
+      paginaRef.current?.classList.remove(`fondo-zona-${anterior}`)
+      paginaRef.current?.classList.add(`fondo-zona-${zona}`)
+
+      cabeceraZonaRef.current?.classList.remove(`cabecera-zona-${anterior}`)
+      cabeceraZonaRef.current?.classList.add(`cabecera-zona-${zona}`)
+    }
+
     const verificarZona = async () => {
       const resultado = await determinarSiEsNoUrbanaDesdeGPS()
+      if (!activo) return
 
-      setEstadoZona(
-        resultado.es_no_urbana
-          ? 'rural'
-          : 'urbano'
-      )
+      aplicarZona(resultado.es_no_urbana ? 'rural' : 'urbano')
     }
 
     verificarZona()
 
-    const intervalo = setInterval(
-      verificarZona,
-      30000
-    )
+    const intervalo = setInterval(verificarZona, 30000)
 
-    return () => clearInterval(intervalo)
+    return () => {
+      activo = false
+      clearInterval(intervalo)
+    }
   }, [])
 
   return (
     // bg red-50
     <div
-      className={`pagina fondo-zona-${estadoZona}`}
+      ref={paginaRef} className="pagina fondo-zona-desconocido"
 
     >
 
@@ -463,7 +478,10 @@ function App() {
             Recargar
           </span>
         </button>
-        <div className={`cabecera-carga cabecera-zona-${estadoZona} fecha-box`}>
+        <div
+          ref={cabeceraZonaRef}
+          className="cabecera-carga cabecera-zona-desconocido fecha-box"
+        >
           <div className={`fecha-box-principal`}>
             <div className="fecha-item fecha-item-principal">
               <span className="fecha-label">Fecha</span>
@@ -477,7 +495,7 @@ function App() {
             )}
           </div>
         </div>
-        
+
 
         {notificaciones.sincronizandoPendientes || notificaciones.pendientesSync > 0 ? (
           <div className="pendientes-panel pendientes-panel-activo">
