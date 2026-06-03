@@ -498,6 +498,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       const msg = 'Ingresa ID de notificación o activa Tribunal (RIT + Año)'
       setErrorMsg(msg)
       enfocarId?.()
+      setCargando(false)
       return { ok: false, error: msg }
     }
 
@@ -506,12 +507,14 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       const msg = validacionId.error || 'La ID de notificacion debe contener 8 o 9 digitos'
       setErrorMsg(msg)
       enfocarId?.()
+      setCargando(false)
       return { ok: false, error: msg }
     }
 
     if (!codigoLimpio) {
       const msg = 'Ingresa o selecciona el codigo'
       setErrorMsg(msg)
+      setCargando(false)
       return { ok: false, error: msg }
     }
 
@@ -526,6 +529,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
           const msg = 'Ya existe un registro con esa ID de notificacion'
           setErrorMsg(msg)
           enfocarId?.()
+          setCargando(false)
           return { ok: false, error: msg }
         }
       }
@@ -737,12 +741,16 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
       }
     }
 
-    if (horaLote.length !== 4) {
-      const msg = 'La hora del lote debe tener 4 digitos, por ejemplo 1435'
-      setErrorMsg(msg)
-      await onBeforeError?.()
-      return { ok: false, error: msg }
-    }
+    const horaFinal =
+      horaLote?.trim()?.length === 4
+        ? horaLote.trim()
+        : new Date()
+          .toLocaleTimeString('es-CL', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          })
+          .replace(':', '')
 
     const codigoNormalizado = codigoLote.trim().toUpperCase()
     if (!codigoNormalizado) {
@@ -781,12 +789,38 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     // Generar UUID único para este lote (cada lote escaneado tiene un codigo_lote diferente)
     const idLoteUnico = crypto.randomUUID()
 
-    const filas = modoTribunal
-      ? tribunalesNormalizados.flatMap((item) =>
-        [{
+    const filas = []
+
+    // Registros con QR
+    if (idsNormalizados.length > 0) {
+      filas.push(
+        ...idsNormalizados.map((id) => ({
+          id_notificacion: id,
+          fecha_certificacion: fechaCertificacion,
+          hora: horaFinal,
+          codigo: (codigoPorId && codigoPorId[String(id)])
+            ? String(codigoPorId[String(id)]).trim().toUpperCase()
+            : codigoNormalizado,
+          observacion: observacionNormalizada,
+          es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
+          geolocalizacion_fuente: clasificacionTerreno.fuente || 'manual',
+          latitud: clasificacionTerreno.latitud,
+          longitud: clasificacionTerreno.longitud,
+          codigo_lote: idLoteUnico,
+          carga_id: cargaId,
+          rit: null,
+          año: null,
+        }))
+      )
+    }
+
+    // Registros sin QR / Tribunal
+    if (modoTribunal && tribunalesNormalizados.length > 0) {
+      filas.push(
+        ...tribunalesNormalizados.map((item) => ({
           id_notificacion: null,
           fecha_certificacion: fechaCertificacion,
-          hora: horaLote,
+          hora: horaFinal,
           codigo: codigoNormalizado,
           observacion: observacionNormalizada,
           es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
@@ -797,23 +831,10 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
           carga_id: cargaId,
           rit: item.rit,
           año: Number(item.año),
-        }]
+        }))
       )
-      : (idsNormalizados.length > 0 ? idsNormalizados : [null]).map((id) => ({
-        id_notificacion: id,
-        fecha_certificacion: fechaCertificacion,
-        hora: horaLote,
-        codigo: (codigoPorId && codigoPorId[String(id)]) ? String(codigoPorId[String(id)]).trim().toUpperCase() : codigoNormalizado,
-        observacion: observacionNormalizada,
-        es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
-        geolocalizacion_fuente: clasificacionTerreno.fuente || 'manual',
-        latitud: clasificacionTerreno.latitud,
-        longitud: clasificacionTerreno.longitud,
-        codigo_lote: idLoteUnico,
-        carga_id: cargaId,
-        rit: null,
-        año: null,
-      }))
+    }
+
     const cantidadFilas = filas.length
 
     if (!navigator.onLine) {

@@ -50,6 +50,9 @@ function RegistroForm({
     <form
       onSubmit={(e) => {
         e.preventDefault()
+
+        if (cargando || cargaFinalizada) return
+
         onGuardar()
       }}
       className="formulario"
@@ -97,19 +100,22 @@ function RegistroForm({
             <input
               className="input-base"
               type="text"
-              placeholder="Ej: 12-2024-00123"
+              inputMode='numeric'
+              placeholder="Ej: 2490"
               value={rit}
+              maxLength={5}
               onChange={(e) => onRitChange(e.target.value)}
             />
           </label>
           <label className="campo-label">
-            Año
+            AÑO
             <input
               className="input-base"
-              type="number"
+              type="text"
               inputMode="numeric"
               placeholder="Ej: 2024"
               value={año}
+              maxLength={4}
               onChange={(e) => onAñoChange(parseInt(e.target.value) || '')}
             />
           </label>

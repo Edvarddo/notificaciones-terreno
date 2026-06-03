@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import IdHighlight from '../components/IdHighlight'
 import IconList from '../components/IconList'
 import CodigoDialog from './CodigoDialog'
@@ -54,8 +54,15 @@ function LoteDialog({
   onA3CasoChange,
 }) {
   const [codigoDialogAbierto, setCodigoDialogAbierto] = useState(false)
-  const [codigoDialogId, setCodigoDialogId] = useState(null)
-
+  const [codigoDialogFila, setCodigoDialogFila] = useState(null)
+  const [horaManual, setHoraManual] = useState(false)
+  const [confirmarLimpiarAbierto, setConfirmarLimpiarAbierto] = useState(false)
+  const obtenerHoraActualHHMM = () => {
+    const ahora = new Date()
+    const hh = String(ahora.getHours()).padStart(2, '0')
+    const mm = String(ahora.getMinutes()).padStart(2, '0')
+    return `${hh}${mm}`
+  }
   useEffect(() => {
     if (abierto && escaneandoLote) {
       const contenedor = document.querySelector('.qr-inline-lote:not(.qr-inline-oculto)')
@@ -65,32 +72,115 @@ function LoteDialog({
     }
   }, [abierto, escaneandoLote])
 
+  useEffect(() => {
+    if (!abierto || horaManual || guardandoLote || cargaFinalizada) return
+
+    const obtenerHoraActualHHMM = () => {
+      const ahora = new Date()
+      return `${String(ahora.getHours()).padStart(2, '0')}${String(ahora.getMinutes()).padStart(2, '0')}`
+    }
+
+    const actualizarHora = () => {
+      onHoraChange(obtenerHoraActualHHMM())
+    }
+
+    actualizarHora()
+
+    const intervalo = setInterval(actualizarHora, 30000)
+
+    return () => clearInterval(intervalo)
+  }, [abierto, horaManual, guardandoLote, cargaFinalizada])
+
+  const filasLote = useMemo(() => {
+    const filasQr = (idsTemporales || []).map((id, index) => ({
+      tipo: 'QR',
+      key: `qr-${id}-${index}`,
+      id,
+      label: id,
+      indexOriginal: index,
+      tribunal: null,
+    }))
+
+    const filasTribunal = (tribunalesLote || [])
+      .map((tribunal, index) => ({
+        tipo: 'TRIBUNAL',
+        key: `tribunal-${index}`,
+        id: `TRIBUNAL-${index + 1}`,
+        label: `${tribunal.rit || '-'} / ${tribunal.año || '-'}`,
+        indexOriginal: index,
+        tribunal,
+      }))
+      .filter((fila) => fila.tribunal?.rit || fila.tribunal?.año)
+
+    return [...filasQr, ...filasTribunal]
+  }, [idsTemporales, tribunalesLote])
+
   if (!abierto) return null
 
-  const abrirCodigoParaId = (id) => {
-    setCodigoDialogId(id)
+  const normalizarCodigo = (valor) => (valor || '').toString().trim().toUpperCase()
+
+  const obtenerCodigoFila = (fila) => {
+    if (fila.tipo === 'TRIBUNAL') {
+      return normalizarCodigo(fila.tribunal?.codigo || codigoLote)
+    }
+
+    return normalizarCodigo((codigoPorId && codigoPorId[fila.id]) || codigoLote)
+  }
+
+  const obtenerObservacionFila = (fila) => {
+    if (fila.tipo === 'TRIBUNAL') {
+      return fila.tribunal?.observacion || observacionLote || ''
+    }
+
+    return (observacionPorId && observacionPorId[fila.id]) || observacionLote || ''
+  }
+
+  const abrirCodigoParaFila = (fila) => {
+    setCodigoDialogFila(fila)
     setCodigoDialogAbierto(true)
   }
 
   const cerrarCodigoDialog = () => {
     setCodigoDialogAbierto(false)
-    setCodigoDialogId(null)
+    setCodigoDialogFila(null)
   }
 
   const manejarSeleccionCodigo = (codigoSeleccionado) => {
-    if (codigoDialogId && onSetCodigoParaId) {
-      onSetCodigoParaId(codigoDialogId, codigoSeleccionado)
+    if (!codigoDialogFila) {
+      cerrarCodigoDialog()
+      return
     }
+
+    if (codigoDialogFila.tipo === 'TRIBUNAL') {
+      onActualizarTribunalLote(codigoDialogFila.indexOriginal, 'codigo', codigoSeleccionado)
+    } else if (onSetCodigoParaId) {
+      onSetCodigoParaId(codigoDialogFila.id, codigoSeleccionado)
+    }
+
     cerrarCodigoDialog()
   }
 
-  const editarObservacionParaId = (id) => {
-    const actual = (observacionPorId && observacionPorId[id]) || observacionLote || ''
-    const nuevo = window.prompt(`Observación para ${id}`, actual)
+  const editarObservacionParaFila = (fila) => {
+    const actual = obtenerObservacionFila(fila)
+    const titulo = fila.tipo === 'TRIBUNAL' ? `Observacion para ${fila.label}` : `Observacion para ${fila.id}`
+    const nuevo = window.prompt(titulo, actual)
 
-    if (nuevo !== null && onSetObservacionParaId) {
-      onSetObservacionParaId(id, nuevo)
+    if (nuevo === null) return
+
+    if (fila.tipo === 'TRIBUNAL') {
+      onActualizarTribunalLote(fila.indexOriginal, 'observacion', nuevo)
+    } else if (onSetObservacionParaId) {
+      onSetObservacionParaId(fila.id, nuevo)
     }
+  }
+
+  const quitarFila = (fila) => {
+    if (fila.tipo === 'TRIBUNAL') {
+      onQuitarTribunalLote(fila.indexOriginal)
+      return
+    }
+
+    onQuitarId(fila.indexOriginal)
   }
 
   const casoDefA1 = a1Casos?.[a1Caso] || null
@@ -102,12 +192,12 @@ function LoteDialog({
       : a1Caso === 'COMIENZA'
         ? 'XXXX (inicio)'
         : a1Caso === 'ENTRE' || a1Caso === 'SALTO'
-          ? 'Dirección inicial (XXXX)'
+          ? 'Direccion inicial (XXXX)'
           : 'Valor'
 
   const placeholderA1_2 =
     a1Caso === 'ENTRE' || a1Caso === 'SALTO'
-      ? 'Dirección final (YYYY)'
+      ? 'Direccion final (YYYY)'
       : 'Valor final'
 
   return (
@@ -149,7 +239,7 @@ function LoteDialog({
             <button
               type="button"
               className="boton-secundario"
-              onClick={onLimpiarLote}
+              onClick={() => setConfirmarLimpiarAbierto(true)}
               disabled={guardandoLote || cargaFinalizada}
             >
               {cargaFinalizada ? 'Cerrando carga...' : 'Limpiar lote'}
@@ -157,13 +247,13 @@ function LoteDialog({
 
             <button
               type="button"
-              className={`boton-icono boton-tribunal-toggle ${mostraTribunalLote ? 'tribunal-activo' : ''}`}
+              className={`boton-secundario boton-tribunal-toggle ${mostraTribunalLote ? 'tribunal-activo' : ''}`}
               onClick={onMostraTribunalLote}
               disabled={guardandoLote || cargaFinalizada}
               title="Tribunal en lote"
               aria-label="Tribunal en lote"
             >
-              ⚖
+              Tribunal
             </button>
           </div>
 
@@ -172,13 +262,13 @@ function LoteDialog({
 
             {escaneandoLote ? (
               <div className="qr-zoom-bar">
-                <button type="button" className="boton-mini" onClick={onZoomOut} aria-label="Alejar cámara">
+                <button type="button" className="boton-mini" onClick={onZoomOut} aria-label="Alejar camara">
                   -
                 </button>
 
                 <span className="qr-zoom-valor">Zoom {Math.round((zoom || 1) * 100)}%</span>
 
-                <button type="button" className="boton-mini" onClick={onZoomIn} aria-label="Acercar cámara">
+                <button type="button" className="boton-mini" onClick={onZoomIn} aria-label="Acercar camara">
                   +
                 </button>
 
@@ -198,85 +288,88 @@ function LoteDialog({
                 inputMode="numeric"
                 maxLength={4}
                 placeholder="Ej: 1435"
-                value={horaLote}
-                onChange={(e) => onHoraChange(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                value={horaLote || ''}
+                onChange={(e) => {
+                  const valor = e?.target?.value ?? ''
+                  setHoraManual(true)
+                  onHoraChange(valor.replace(/\D/g, '').slice(0, 4))
+                }}
               />
             </label>
 
             {mostraTribunalLote && (
-              <>
-                <div className="tribunal-ayuda-lote">
-                  Cada tarjeta es un caso de tribunal. Usa <strong>+ caso</strong> para agregar otro o <strong>Copiar último</strong> si solo cambia el RIT/Año.
+              <div className="tribunal-item-lote">
+                <div className="tribunal-item-cabecera">
+                  <span className="tribunal-item-titulo">Casos sin QR</span>
+
+                  <div className="tribunal-item-acciones">
+                    <button
+                      type="button"
+                      className="boton-mini"
+                      onClick={onAgregarTribunalLote}
+                      disabled={guardandoLote || cargaFinalizada}
+                    >
+                      + caso
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boton-mini"
+                      onClick={onCopiarUltimoTribunalLote}
+                      disabled={guardandoLote || cargaFinalizada}
+                    >
+                      Copiar ultimo
+                    </button>
+                  </div>
                 </div>
 
                 <div className="tribunal-lista-lote">
-                  {tribunalesLote.map((tribunal, index) => (
-                    <div className="tribunal-item-lote" key={`${index}-${tribunal.rit}-${tribunal.año}`}>
-                      <div className="tribunal-item-cabecera">
-                        <span className="tribunal-item-titulo">Caso {index + 1}</span>
+                  {(tribunalesLote || []).map((tribunal, index) => (
+                    <div className="tribunal-inline" key={`tribunal-edit-${index}`}>
+                      <label className="campo-label">
+                        RIT
+                        <input
+                          className="input-base"
+                          type="text"
+                          placeholder="Ej: 12-2024-00123"
+                          value={tribunal.rit || ''}
+                          maxLength={5}
+                          max={5}
+                          inputMode='numeric'
+                          onChange={(e) => onActualizarTribunalLote(index, 'rit', e.target.value)}
+                        />
+                      </label>
 
-                        <div className="tribunal-item-acciones">
-                          <button
-                            type="button"
-                            className="boton-mini"
-                            onClick={onAgregarTribunalLote}
-                            disabled={guardandoLote || cargaFinalizada}
-                          >
-                            + caso
-                          </button>
+                      <label className="campo-label">
+                        Año
+                        <input
+                          className="input-base"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Ej: 2024"
+                          value={tribunal.año || ''}
+                          maxLength={4}
+                          max={4}
+                          onChange={(e) => onActualizarTribunalLote(index, 'año', e.target.value)}
+                        />
+                      </label>
 
-                          <button
-                            type="button"
-                            className="boton-mini"
-                            onClick={onCopiarUltimoTribunalLote}
-                            disabled={guardandoLote || cargaFinalizada}
-                          >
-                            Copiar último
-                          </button>
-
-                          <button
-                            type="button"
-                            className="boton-mini"
-                            onClick={() => onQuitarTribunalLote(index)}
-                            disabled={guardandoLote || cargaFinalizada || tribunalesLote.length === 1}
-                          >
-                            -
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="tribunal-inline">
-                        <label className="campo-label">
-                          RIT
-                          <input
-                            className="input-base"
-                            type="text"
-                            placeholder="Ej: 12-2024-00123"
-                            value={tribunal.rit || ''}
-                            onChange={(e) => onActualizarTribunalLote(index, 'rit', e.target.value)}
-                          />
-                        </label>
-
-                        <label className="campo-label">
-                          Año
-                          <input
-                            className="input-base"
-                            type="number"
-                            inputMode="numeric"
-                            placeholder="Ej: 2024"
-                            value={tribunal.año || ''}
-                            onChange={(e) => onActualizarTribunalLote(index, 'año', parseInt(e.target.value) || '')}
-                          />
-                        </label>
-                      </div>
+                      <button
+                        type="button"
+                        className="boton-mini"
+                        onClick={() => onQuitarTribunalLote(index)}
+                        disabled={guardandoLote || cargaFinalizada || tribunalesLote.length === 1}
+                      >
+                        Quitar
+                      </button>
                     </div>
                   ))}
                 </div>
-              </>
+              </div>
             )}
 
             <label className="campo-label">
-              Codigo del lote
+              Codigo general del lote
               <div className="input-icon-row">
                 <input
                   className="input-base input-con-icono"
@@ -382,7 +475,7 @@ function LoteDialog({
             ) : null}
 
             <label className="campo-label">
-              Observacion del lote
+              Observacion general del lote
               <textarea
                 className="textarea-base"
                 placeholder="Ej: se deja aviso"
@@ -405,7 +498,8 @@ function LoteDialog({
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>ID NOTIFICACION</th>
+                    <th>ORIGEN</th>
+                    <th>CASO / ID</th>
                     <th>CODIGO</th>
                     <th>OBSERVACION</th>
                     <th>SUGERENCIAS</th>
@@ -414,16 +508,14 @@ function LoteDialog({
                 </thead>
 
                 <tbody>
-                  {idsTemporales.length === 0 ? (
+                  {filasLote.length === 0 ? (
                     <tr>
-                      <td colSpan="6">No hay IDs cargados en el lote.</td>
+                      <td colSpan="7">No hay casos cargados en el lote.</td>
                     </tr>
                   ) : (
-                    idsTemporales.map((id, index) => {
-                      const codigoEfectivo = ((codigoPorId && codigoPorId[id]) || codigoLote || '')
-                        .toString()
-                        .trim()
-                        .toUpperCase()
+                    filasLote.map((fila, index) => {
+                      const codigoEfectivo = obtenerCodigoFila(fila)
+                      const observacionEfectiva = obtenerObservacionFila(fila)
 
                       let sugerencia = ''
 
@@ -440,18 +532,22 @@ function LoteDialog({
                       }
 
                       return (
-                        <tr key={`${id}-${index}`}>
+                        <tr key={fila.key}>
                           <td>{index + 1}</td>
 
+                          <td>{fila.tipo === 'TRIBUNAL' ? 'Tribunal' : 'QR'}</td>
+
                           <td>
-                            <IdHighlight value={id} />
+                            {fila.tipo === 'QR' ? (
+                              <IdHighlight value={fila.label} />
+                            ) : (
+                              <strong>{fila.label}</strong>
+                            )}
                           </td>
 
                           <td>{codigoEfectivo || '-'}</td>
 
-                          <td>
-                            {(observacionPorId && observacionPorId[id]) || observacionLote || '-'}
-                          </td>
+                          <td>{observacionEfectiva || '-'}</td>
 
                           <td>{sugerencia || '-'}</td>
 
@@ -459,27 +555,27 @@ function LoteDialog({
                             <button
                               type="button"
                               className="boton-secundario"
-                              onClick={() => abrirCodigoParaId(id)}
-                              title="Cambiar código"
+                              onClick={() => abrirCodigoParaFila(fila)}
+                              title="Cambiar codigo"
                               disabled={guardandoLote || cargaFinalizada}
                             >
-                              Cambiar código
+                              Cambiar codigo
                             </button>
 
                             <button
                               type="button"
                               className="boton-secundario"
-                              onClick={() => editarObservacionParaId(id)}
-                              title="Editar observación"
+                              onClick={() => editarObservacionParaFila(fila)}
+                              title="Editar observacion"
                               disabled={guardandoLote || cargaFinalizada}
                             >
-                              Editar observación
+                              Editar observacion
                             </button>
 
                             <button
                               type="button"
                               className="boton-quitar-fila"
-                              onClick={() => onQuitarId(index)}
+                              onClick={() => quitarFila(fila)}
                               disabled={guardandoLote || cargaFinalizada}
                             >
                               Quitar
@@ -492,11 +588,43 @@ function LoteDialog({
                 </tbody>
               </table>
             </div>
+            {confirmarLimpiarAbierto && (
+              <div className="confirmacion-overlay" onClick={() => setConfirmarLimpiarAbierto(false)}>
+                <div className="confirmacion-modal" onClick={(e) => e.stopPropagation()}>
+                  <h3>Limpiar lote</h3>
+
+                  <p>
+                    Se eliminarán los IDs QR y casos de tribunal cargados temporalmente.
+                  </p>
+
+                  <div className="confirmacion-acciones">
+                    <button
+                      type="button"
+                      className="boton-secundario"
+                      onClick={() => setConfirmarLimpiarAbierto(false)}
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boton-peligro"
+                      onClick={() => {
+                        onLimpiarLote()
+                        setConfirmarLimpiarAbierto(false)
+                      }}
+                    >
+                      Sí, limpiar lote
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <CodigoDialog
               abierto={codigoDialogAbierto}
-              titulo={codigoDialogId ? `Codigo para ${codigoDialogId}` : 'Codigos'}
-              valorActual={codigoDialogId ? (codigoPorId && codigoPorId[codigoDialogId]) || codigoLote : codigoLote}
+              titulo={codigoDialogFila ? `Codigo para ${codigoDialogFila.label}` : 'Codigos'}
+              valorActual={codigoDialogFila ? obtenerCodigoFila(codigoDialogFila) : codigoLote}
               onClose={cerrarCodigoDialog}
               onSelect={manejarSeleccionCodigo}
             />

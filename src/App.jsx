@@ -236,24 +236,42 @@ function App() {
     registro.setMostraTribunal(!registro.mostraTribunal)
   }
 
+  const guardandoRef = useRef(false)
+
   const guardar = async () => {
-    if (notificaciones.cargaFinalizada) {
-      notificaciones.setErrorMsg('La carga se está cerrando. Espera un momento.')
+    if (guardandoRef.current) {
+      console.log('[guardar] intento bloqueado')
+      return
+    }
+    if (guardandoRef.current) {
       return
     }
 
-    const ok = await notificaciones.guardarRegistro({
-      idNotificacion: registro.idNotificacion,
-      codigo: registro.codigo,
-      observacion: registro.observacion,
-      comentarios: registro.comentarios,
-      esNoUrbana: registro.esNoUrbana,
-      rit: registro.rit,
-      año: registro.año,
-    })
+    guardandoRef.current = true
 
-    if (ok?.ok) {
-      registro.limpiarFormulario()
+    try {
+      if (notificaciones.cargaFinalizada) {
+        notificaciones.setErrorMsg(
+          'La carga se está cerrando. Espera un momento.'
+        )
+        return
+      }
+
+      const ok = await notificaciones.guardarRegistro({
+        idNotificacion: registro.idNotificacion,
+        codigo: registro.codigo,
+        observacion: registro.observacion,
+        comentarios: registro.comentarios,
+        esNoUrbana: registro.esNoUrbana,
+        rit: registro.rit,
+        año: registro.año,
+      })
+
+      if (ok?.ok) {
+        registro.limpiarFormulario()
+      }
+    } finally {
+      guardandoRef.current = false
     }
   }
 
@@ -346,7 +364,7 @@ function App() {
     // Pasar cargaActivaId explícitamente para evitar desync con state asincrónico
     notificaciones.cargar(notificaciones.cargaActivaId)
   }
-  
+
   const paginaRef = useRef(null)
   const cabeceraZonaRef = useRef(null)
   const estadoZonaRef = useRef('desconocido')

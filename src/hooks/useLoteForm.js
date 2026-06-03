@@ -267,10 +267,16 @@ function useLoteForm() {
     return String(codigoPorId[id] ?? '')
   }
 
-  const handleHoraLoteChange = (e) => {
-    const soloNumeros = e.target.value.replace(/\D/g, '').slice(0, 4)
-    setHoraLote(soloNumeros)
-  }
+const handleHoraLoteChange = (valorOEvento) => {
+  const valor =
+    typeof valorOEvento === 'string'
+      ? valorOEvento
+      : valorOEvento?.target?.value ?? ''
+
+  const soloNumeros = valor.replace(/\D/g, '').slice(0, 4)
+
+  setHoraLote(soloNumeros)
+}
 
   const handleCodigoLoteManualChange = (e) => {
     const limpio = e.target.value.replace(/[^a-zA-Z0-9]/g, '')
