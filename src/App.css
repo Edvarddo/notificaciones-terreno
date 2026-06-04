@@ -4437,3 +4437,8 @@ body.modal-abierto {
   font-weight: 500;
 }
 
+.auth-have-code {
+  width: 100%;
+  margin-top: 10px;
+  justify-content: center;
+}
