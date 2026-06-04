@@ -84,11 +84,11 @@ export default function useDailyCodeSession() {
     return localStorage.getItem('daily_access_user_id') || null
   })
 
-  const submitCode = async (code) => {
+  const submitCode = async (code,userId) => {
     setVerifying(true)
     setError('')
     try {
-      const json = await verifyDailyCode(code)
+      const json = await verifyDailyCode(code,userId)
       if (json?.ok && json?.session_expires_at) {
         setSession(json.session_expires_at)
 

@@ -38,13 +38,16 @@ function getValidLocalSession() {
   return expiresAt
 }
 
-export async function verifyDailyCode(code) {
+export async function verifyDailyCode(code, userId) {
   try {
     const res = await fetch(VERIFY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({
+        code,
+        user_id: userId,
+      }),
     })
 
     const json = await readJsonSafe(res)
@@ -79,8 +82,8 @@ export async function validateAccessSession() {
         'Content-Type': 'application/json',
         ...(token
           ? {
-              Authorization: `Bearer ${token}`,
-            }
+            Authorization: `Bearer ${token}`,
+          }
           : {}),
       },
       credentials: 'include',
