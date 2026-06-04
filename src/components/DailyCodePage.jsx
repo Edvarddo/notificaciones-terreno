@@ -3,6 +3,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 const CODE_LENGTH = 6
 
 export default function DailyCodePage({
+  users = [],
+  selectedUserId,
+  onSelectedUserIdChange,
   verifying,
   requestingCode,
   error,
@@ -12,19 +15,27 @@ export default function DailyCodePage({
   onRequestCode,
 }) {
   const [digits, setDigits] = useState(() => Array(CODE_LENGTH).fill(''))
+  const [showUsers, setShowUsers] = useState(false)
+  const [codeRequested, setCodeRequested] = useState(false)
   const inputRefs = useRef([])
   const submittedRef = useRef(false)
+  const lastSubmittedCodeRef = useRef('')
+
+  const selectedUser = useMemo(
+    () => users.find((user) => user.id === selectedUserId),
+    [users, selectedUserId],
+  )
+
+  const selectedInitials = selectedUser?.initials || ''
 
   const code = useMemo(() => digits.join(''), [digits])
   const isComplete = code.length === CODE_LENGTH && /^[0-9]{6}$/.test(code)
 
   useEffect(() => {
-    inputRefs.current[0]?.focus()
-  }, [])
-
-
-
-  const lastSubmittedCodeRef = useRef('')
+    if (codeRequested) {
+      inputRefs.current[0]?.focus()
+    }
+  }, [codeRequested])
 
   useEffect(() => {
     if (isComplete && !verifying && code !== lastSubmittedCodeRef.current) {
@@ -49,37 +60,44 @@ export default function DailyCodePage({
 
   const handleChange = (index, value) => {
     const clean = value.replace(/\D/g, '')
+
     if (!clean) {
       setDigitAt(index, '')
       return
     }
 
     const chars = clean.slice(0, CODE_LENGTH - index).split('')
+
     setDigits((current) => {
       const nextDigits = [...current]
+
       chars.forEach((char, offset) => {
         nextDigits[index + offset] = char
       })
+
       return nextDigits
     })
 
-    const nextIndex = Math.min(CODE_LENGTH - 1, index + chars.length)
-    if (nextIndex < CODE_LENGTH - 1 || chars.length === 1) {
-      requestAnimationFrame(() => focusIndex(nextIndex + (chars.length === 1 ? 1 : 0)))
-    }
+    requestAnimationFrame(() => {
+      const targetIndex = Math.min(CODE_LENGTH - 1, index + chars.length)
+      focusIndex(targetIndex)
+    })
   }
 
   const handleKeyDown = (index, event) => {
     if (event.key === 'Backspace') {
       event.preventDefault()
+
       if (digits[index]) {
         setDigitAt(index, '')
         return
       }
+
       if (index > 0) {
         setDigitAt(index - 1, '')
         focusIndex(index - 1)
       }
+
       return
     }
 
@@ -96,7 +114,12 @@ export default function DailyCodePage({
 
   const handlePaste = (event) => {
     event.preventDefault()
-    const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, CODE_LENGTH)
+
+    const pasted = event.clipboardData
+      .getData('text')
+      .replace(/\D/g, '')
+      .slice(0, CODE_LENGTH)
+
     if (!pasted) return
 
     setDigits((current) => {
@@ -114,7 +137,9 @@ export default function DailyCodePage({
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+
     if (!isComplete || verifying) return
+
     submittedRef.current = true
     await onSubmit(code)
   }
@@ -123,12 +148,30 @@ export default function DailyCodePage({
     setDigits(Array(CODE_LENGTH).fill(''))
     submittedRef.current = false
     lastSubmittedCodeRef.current = ''
-    requestAnimationFrame(() => focusIndex(0))
+
+    if (codeRequested) {
+      requestAnimationFrame(() => focusIndex(0))
+    }
+  }
+
+  const handleSelectUser = (userId) => {
+    onSelectedUserIdChange(userId)
+    setShowUsers(false)
+    setCodeRequested(false)
+    handleClear()
   }
 
   const handleRequestCode = async () => {
+    if (!selectedUserId || requestingCode || verifying) return
+
     handleClear()
-    await onRequestCode?.()
+
+    const result = await onRequestCode?.(selectedUserId)
+
+    if (result?.ok) {
+      setCodeRequested(true)
+      requestAnimationFrame(() => focusIndex(0))
+    }
   }
 
   return (
@@ -137,55 +180,112 @@ export default function DailyCodePage({
         <form className="auth-card" onSubmit={handleSubmit} autoComplete="off">
           <div className="auth-card-header">
             <div>
-              <h2>Escribe el código</h2>
-              <p>Puedes escribirlo dígito por dígito o pegarlo completo.</p>
-            </div>
-            <div className="auth-header-actions">
-              <button type="button" className="auth-reset" onClick={handleClear} disabled={verifying || requestingCode}>
-                Limpiar
-              </button>
-              <button
-                type="button"
-                className="auth-request"
-                onClick={handleRequestCode}
-                disabled={verifying || requestingCode}
-              >
-                {requestingCode ? 'Solicitando...' : 'Solicitar código'}
-              </button>
+              <h2>Acceso a terreno</h2>
+              <p>Selecciona tu usuario, solicita el código y escríbelo para continuar.</p>
             </div>
           </div>
 
-          <div className="auth-code-grid" onPaste={handlePaste}>
-            {digits.map((digit, index) => (
-              <input
-                key={index}
-                ref={(node) => {
-                  inputRefs.current[index] = node
-                }}
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={1}
-                value={digit}
-                onChange={(event) => handleChange(index, event.target.value)}
-                onKeyDown={(event) => handleKeyDown(index, event)}
-                className="auth-code-slot"
-                aria-label={`Dígito ${index + 1}`}
-                disabled={verifying}
-              />
-            ))}
+          <div className="auth-user-box">
+            <p className="auth-user-label">Usuario</p>
+
+            <div className="auth-user-row">
+              <div className="auth-user-selector">
+                <button
+                  type="button"
+                  className="auth-user-current"
+                  onClick={() => setShowUsers((value) => !value)}
+                  disabled={verifying || requestingCode}
+                >
+                  <span className="auth-user-avatar">
+                    {selectedUser ? selectedUser.initials.slice(0, 2) : '?'}
+                  </span>
+
+                  <span className="auth-user-name">
+                    {selectedUser ? selectedUser.initials : 'Selecciona usuario'}
+                  </span>
+
+                  <span className="auth-user-arrow">▾</span>
+                </button>
+
+                {showUsers ? (
+                  <div className="auth-user-dropdown">
+                    {users.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        className="auth-user-item"
+                        onClick={() => handleSelectUser(user.id)}
+                        disabled={verifying || requestingCode}
+                      >
+                        <span className="auth-user-avatar">
+                          {user.initials.slice(0, 2)}
+                        </span>
+
+                        <span className="auth-user-name">{user.initials}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {selectedUserId ? (
+                <button
+                  type="button"
+                  className="auth-request auth-request-compact"
+                  onClick={handleRequestCode}
+                  disabled={verifying || requestingCode}
+                >
+                  {requestingCode ? 'Solicitando...' : codeRequested ? 'Reenviar' : 'Solicitar'}
+                </button>
+              ) : null}
+            </div>
           </div>
-
-          <button type="submit" className="auth-submit" disabled={!isComplete || verifying}>
-            {verifying ? 'Verificando...' : 'Ingresar'}
-          </button>
-
-          <p className="auth-help">Si pegas el código completo, se distribuye automáticamente en las 6 casillas.</p>
 
           {requestMessage ? <div className="auth-request-message">{requestMessage}</div> : null}
           {requestError ? <div className="mensaje-error auth-error">{requestError}</div> : null}
-
           {error ? <div className="mensaje-error auth-error">{error}</div> : null}
+
+          {selectedUserId && codeRequested ? (
+            <>
+              <div className="auth-code-grid" onPaste={handlePaste}>
+                {digits.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(node) => {
+                      inputRefs.current[index] = node
+                    }}
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(event) => handleChange(index, event.target.value)}
+                    onKeyDown={(event) => handleKeyDown(index, event)}
+                    className="auth-code-slot"
+                    aria-label={`Dígito ${index + 1}`}
+                    disabled={verifying}
+                  />
+                ))}
+              </div>
+
+              <button type="submit" className="auth-submit" disabled={!isComplete || verifying}>
+                {verifying ? 'Verificando...' : 'Ingresar'}
+              </button>
+
+              <button
+                type="button"
+                className="auth-reset"
+                onClick={handleClear}
+                disabled={verifying || requestingCode}
+              >
+                Limpiar código
+              </button>
+
+              <p className="auth-help">
+                Si pegas el código completo, se distribuye automáticamente en las 6 casillas.
+              </p>
+            </>
+          ) : null}
         </form>
       </section>
     </main>

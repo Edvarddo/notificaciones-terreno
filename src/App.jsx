@@ -19,7 +19,7 @@ import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
 import { determinarSiEsNoUrbanaDesdeGPS } from './utils/geolocalizacion'
 import IconReload from './components/IconReload'
-function App() {
+function App({ sessionUserId, sessionUserInitials,}) {
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
   const [dialogoLoteAbierto, setDialogoLoteAbierto] = useState(false)
   const [dialogoCodigoLoteAbierto, setDialogoCodigoLoteAbierto] = useState(false)
@@ -76,8 +76,9 @@ function App() {
   }
 
   const notificaciones = useNotificaciones({
-    fechaCertificacion,
-    enfocarId,
+  fechaCertificacion,
+  enfocarId,
+  sessionUserId,
   })
 
   const [ultimoIdAgregadoLote, setUltimoIdAgregadoLote] = useState('')
@@ -628,6 +629,7 @@ function App() {
               cargaFinalizada={notificaciones.cargaFinalizada}
               finalizandoEnProceso={finalizarEnProceso}
               eliminandoEnProceso={eliminarEnProceso}
+              sessionUserInitials={sessionUserInitials}
             />
 
             {notificaciones.mensaje ? (
@@ -659,6 +661,7 @@ function App() {
               puntos={notificaciones.estadisticas.puntos}
               urbanas={notificaciones.estadisticas.urbanas}
               rurales={notificaciones.estadisticas.rurales}
+              obtenerObservacionSugerida={lote.obtenerObservacionSugerida}
             />
 
             <div className="acciones-cierre-panel">

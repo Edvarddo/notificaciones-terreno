@@ -1,7 +1,13 @@
+import React from 'react'
+import { useEffect, useState } from 'react'
 import DailyCodePage from './DailyCodePage'
 import useDailyCodeSession from '../hooks/useDailyCodeSession'
+import { supabase } from '../lib/supabase'
 
 export default function AuthGate({ children }) {
+  const [users, setUsers] = useState([])
+  const [selectedUserId, setSelectedUserId] = useState('')
+
   const {
     hasValidSession,
     submitCode,
@@ -13,8 +19,25 @@ export default function AuthGate({ children }) {
     requestMessage,
     requestError,
     remainingLabel,
-  } =
-    useDailyCodeSession()
+    sessionUserId,
+  } = useDailyCodeSession()
+  const sessionUser = users.find(
+    (user) => user.id === sessionUserId,
+  )
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, initials')
+        .eq('active', true)
+        .order('initials', { ascending: true })
+
+      if (!error) setUsers(data || [])
+    }
+
+    loadUsers()
+  }, [])
 
   if (checkingSession) {
     return (
@@ -46,13 +69,20 @@ export default function AuthGate({ children }) {
         >
           Sesion activa · expira en {remainingLabel}
         </div>
-        {children}
+
+        {React.cloneElement(children, {
+          sessionUserId,
+          sessionUserInitials: sessionUser?.initials || '',
+        })}
       </>
     )
   }
 
   return (
     <DailyCodePage
+      users={users}
+      selectedUserId={selectedUserId}
+      onSelectedUserIdChange={setSelectedUserId}
       verifying={verifying}
       requestingCode={requestingCode}
       error={error}

@@ -41,6 +41,7 @@ function RegistroForm({
   a3Caso,
   a3Casos,
   onA3CasoChange,
+  sessionUserInitials,
 }) {
   const casoDefA1 = a1Casos?.[a1Caso] || null
   const requiereA1 = casoDefA1?.requiere ?? 0
@@ -57,6 +58,16 @@ function RegistroForm({
       }}
       className="formulario"
     >
+      {sessionUserInitials ? (
+        <div className="usuario-activo-chip">
+          <span className="usuario-activo-avatar">
+            {sessionUserInitials.slice(0, 2)}
+          </span>
+          <span>
+            Notificador <strong>{sessionUserInitials}</strong>
+          </span>
+        </div>
+      ) : null}
       {!mostraTribunal ? (
         <label className="campo-label">
           ID notificacion

@@ -1,10 +1,11 @@
 import { supabase } from '../lib/supabase'
 
-export async function obtenerCargaActiva(fechaCertificacion) {
+export async function obtenerCargaActiva(fechaCertificacion, userId) {
   const { data, error } = await supabase
     .from('cargas_terreno')
     .select('*')
     .eq('fecha_certificacion', fechaCertificacion)
+    .eq('user_id', userId)
     .eq('estado', 'activa')
     .order('creada_en', { ascending: false })
     .limit(1)
@@ -29,57 +30,56 @@ export async function obtenerUltimaCargaFinalizada(fechaCertificacion) {
   return data || null
 }
 
-export async function crearCargaActiva(fechaCertificacion) {
-  // Use Edge Function to create the carga with service role (avoids RLS issues)
-  try {
-    const res = await supabase.functions.invoke('finalizar-carga', {
-      body: JSON.stringify({ action: 'crear_carga', fecha: fechaCertificacion }),
-      method: 'POST',
-    })
+export async function crearCargaActiva(fechaCertificacion, userId) {
+  const res = await supabase.functions.invoke('finalizar-carga', {
+    body: JSON.stringify({
+      action: 'crear_carga',
+      fecha: fechaCertificacion,
+      user_id: userId,
+    }),
+    method: 'POST',
+  })
 
-    // supabase.functions.invoke may return a Fetch Response-like object or an object
-    // with { data, error }. Normalize both cases.
-    let json = null
+  let json = null
 
-    if (res && typeof res.json === 'function') {
-      json = await res.json()
-      if (!res.ok) throw new Error(json?.error || 'Error creando carga')
-    } else {
-      // supabase-js sometimes returns { data, error }
-      if (res?.error) throw res.error
-      const payload = res?.data ?? res
-      try {
-        if (payload instanceof Uint8Array) {
-          json = JSON.parse(new TextDecoder().decode(payload))
-        } else if (typeof payload === 'string') {
-          json = JSON.parse(payload)
-        } else {
-          json = payload
-        }
-      } catch (e) {
+  if (res && typeof res.json === 'function') {
+    json = await res.json()
+    if (!res.ok) throw new Error(json?.error || 'Error creando carga')
+  } else {
+    if (res?.error) throw res.error
+    const payload = res?.data ?? res
+
+    try {
+      if (payload instanceof Uint8Array) {
+        json = JSON.parse(new TextDecoder().decode(payload))
+      } else if (typeof payload === 'string') {
+        json = JSON.parse(payload)
+      } else {
         json = payload
       }
-      if (json?.error) throw new Error(json.error)
+    } catch (e) {
+      json = payload
     }
 
-    return json?.nueva_carga ?? json
-  } catch (err) {
-    throw err
+    if (json?.error) throw new Error(json.error)
   }
+
+  return json?.nueva_carga ?? json
 }
 
-export async function obtenerOCrearCargaActiva(fechaCertificacion) {
-  const activa = await obtenerCargaActiva(fechaCertificacion)
+export async function obtenerOCrearCargaActiva(fechaCertificacion, userId) {
+  const activa = await obtenerCargaActiva(fechaCertificacion, userId)
+
   if (activa) return activa
 
   try {
-    return await crearCargaActiva(fechaCertificacion)
+    return await crearCargaActiva(fechaCertificacion, userId)
   } catch (error) {
     const codigo = String(error?.code || '')
     const mensaje = String(error?.message || '')
 
     if (codigo === '23505' || /duplicate|unique/i.test(mensaje)) {
-      const existente = await obtenerCargaActiva(fechaCertificacion)
+      const existente = await obtenerCargaActiva(fechaCertificacion, userId)
       if (existente) return existente
     }
 
