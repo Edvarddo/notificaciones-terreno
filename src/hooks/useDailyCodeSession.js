@@ -38,6 +38,8 @@ export default function useDailyCodeSession() {
 
   const clearSession = () => {
     setSessionExpiresAt(null)
+    setSessionUserId(null)
+    localStorage.removeItem('daily_access_user_id')
     setModalOpen(true)
   }
 
@@ -78,6 +80,9 @@ export default function useDailyCodeSession() {
     setModalOpen(false)
     setError('')
   }
+  const [sessionUserId, setSessionUserId] = useState(() => {
+    return localStorage.getItem('daily_access_user_id') || null
+  })
 
   const submitCode = async (code) => {
     setVerifying(true)
@@ -86,7 +91,16 @@ export default function useDailyCodeSession() {
       const json = await verifyDailyCode(code)
       if (json?.ok && json?.session_expires_at) {
         setSession(json.session_expires_at)
-        return { ok: true }
+
+        if (json.user_id) {
+          localStorage.setItem('daily_access_user_id', json.user_id)
+          setSessionUserId(json.user_id)
+        }
+
+        return {
+          ok: true,
+          userId: json.user_id,
+        }
       }
       setError(json?.error || 'Codigo invalido')
       return { ok: false, error: json?.error }
@@ -98,18 +112,20 @@ export default function useDailyCodeSession() {
     }
   }
 
-  const requestCode = async () => {
+  const requestCode = async (userId) => {
     setRequestingCode(true)
     setRequestError('')
     setRequestMessage('')
+
     try {
-      const json = await requestDailyCode()
+      const json = await requestDailyCode(userId)
+
       if (json?.ok) {
-        setRequestMessage('Se envió un nuevo código al correo configurado.')
+        setRequestMessage(json?.message || 'Se envio un nuevo codigo al correo configurado.')
         return { ok: true }
       }
 
-      setRequestError(json?.error || 'No se pudo enviar el código')
+      setRequestError(json?.error || 'No se pudo enviar el codigo')
       return { ok: false, error: json?.error }
     } catch (err) {
       setRequestError(err?.message || 'Error de red')
@@ -118,6 +134,35 @@ export default function useDailyCodeSession() {
       setRequestingCode(false)
     }
   }
+  useEffect(() => {
+    if (!requestMessage) return
+
+    const timer = setTimeout(() => {
+      setRequestMessage('')
+    }, 4000)
+
+    return () => clearTimeout(timer)
+  }, [requestMessage])
+
+  useEffect(() => {
+    if (!requestError) return
+
+    const timer = setTimeout(() => {
+      setRequestError('')
+    }, 4000)
+
+    return () => clearTimeout(timer)
+  }, [requestError])
+
+  useEffect(() => {
+    if (!error) return
+
+    const timer = setTimeout(() => {
+      setError('')
+    }, 4000)
+
+    return () => clearTimeout(timer)
+  }, [error])
 
   return {
     modalOpen,
@@ -135,5 +180,7 @@ export default function useDailyCodeSession() {
     sessionExpiresAt,
     remainingMs,
     remainingLabel,
+    sessionUserId
+
   }
 }

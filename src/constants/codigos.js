@@ -60,10 +60,6 @@ export const CODIGOS = [
         codigo: 'B10',
         descripcion: 'Lugares de acceso cerrado',
       },
-      {
-        codigo: 'B10p',
-        descripcion: 'Lugares de acceso cerrado o con porteria restringida',
-      },
     ],
   },
   {
@@ -118,7 +114,7 @@ export const CODIGOS = [
 ]
 
 export const CODIGOS_EXITOSOS = new Set(['D1', 'D2', 'D3', 'D4', 'E1'])
-export const CODIGOS_BUSQUEDA = new Set(['B1', 'B3', 'B4', 'B7', 'B8', 'B10', 'B10p'])
+export const CODIGOS_BUSQUEDA = new Set(['B1', 'B3', 'B4', 'B7', 'B8', 'B10'])
 export const CODIGOS_NEGATIVOS = new Set(['A1', 'A2', 'A3', 'A4', 'A5', 'B2', 'B5', 'B6', 'F4'])
 
 export const MAPA_CODIGOS = CODIGOS.flatMap((grupo) => grupo.items).reduce(

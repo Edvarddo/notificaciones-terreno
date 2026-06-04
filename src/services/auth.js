@@ -127,7 +127,7 @@ export async function validateAccessSession() {
     return { ok: false, error: err?.message || 'Error de red' }
   }
 }
-export async function requestDailyCode() {
+export async function requestDailyCode(userId) {
   try {
     const res = await fetch(REQUEST_DAILY_CODE_URL, {
       method: 'POST',
@@ -135,17 +135,26 @@ export async function requestDailyCode() {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
+      body: JSON.stringify({
+        userId,
+      }),
     })
 
     const json = await readJsonSafe(res)
 
     if (!res.ok) {
-      return { ok: false, error: json?.error || `HTTP ${res.status}` }
+      return {
+        ok: false,
+        error: json?.error || `HTTP ${res.status}`,
+      }
     }
 
     return json
   } catch (err) {
-    return { ok: false, error: err?.message || 'Error de red' }
+    return {
+      ok: false,
+      error: err?.message || 'Error de red',
+    }
   }
 }
 

@@ -96,12 +96,28 @@ function useLoteForm() {
   }
 
   const OBSERVACIONES_SUGERIDAS = {
-    D2: '.',
-    E1: 'Se notifica personalmente en terreno',
-    B3: 'Se deja aviso',
-    B7: 'Se deja aviso',
     A1: Object.values(A1_CASOS).map((caso) => caso.etiqueta),
     A3: Object.values(A3_CASOS).map((caso) => caso.etiqueta),
+
+    D1: '.',
+    D2: '.',
+    D3: '.',
+    D4: '.',
+    E1: 'Se notifica personalmente en terreno',
+
+    A2: '.',
+    A4: '.',
+    A5: '.',
+    F4: '.',
+
+    B2: '.',
+    B3: 'Se deja aviso',
+    B5: '.',
+    B6: '.',
+    B7: 'Se deja aviso',
+    B8: '.',
+    B9: '.',
+    B10: '.',
   }
 
   const obtenerObservacionSugerida = (codigoValue) => {
@@ -267,16 +283,16 @@ function useLoteForm() {
     return String(codigoPorId[id] ?? '')
   }
 
-const handleHoraLoteChange = (valorOEvento) => {
-  const valor =
-    typeof valorOEvento === 'string'
-      ? valorOEvento
-      : valorOEvento?.target?.value ?? ''
+  const handleHoraLoteChange = (valorOEvento) => {
+    const valor =
+      typeof valorOEvento === 'string'
+        ? valorOEvento
+        : valorOEvento?.target?.value ?? ''
 
-  const soloNumeros = valor.replace(/\D/g, '').slice(0, 4)
+    const soloNumeros = valor.replace(/\D/g, '').slice(0, 4)
 
-  setHoraLote(soloNumeros)
-}
+    setHoraLote(soloNumeros)
+  }
 
   const handleCodigoLoteManualChange = (e) => {
     const limpio = e.target.value.replace(/[^a-zA-Z0-9]/g, '')

@@ -39,7 +39,11 @@ const generarCargaId = () => {
 const TIEMPO_MAXIMO_CLASIFICACION_GEO_MS = 5000
 const TIEMPO_MAXIMO_CARGA_ACTIVA_MS = 10000
 
-function useNotificaciones({ fechaCertificacion, enfocarId }) {
+function useNotificaciones({
+  fechaCertificacion,
+  enfocarId,
+  sessionUserId,
+}) {
   const timersMensajesRef = useRef(new Map())
   const mensajeTimerRef = useRef(null)
   const errorMsgTimerRef = useRef(null)
@@ -344,7 +348,10 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
 
     try {
       const carga = await Promise.race([
-        obtenerOCrearCargaActiva(fechaCertificacion),
+        obtenerOCrearCargaActiva(
+          fechaCertificacion,
+          sessionUserId
+        ),
         new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Tiempo de espera para la carga activa agotado')), TIEMPO_MAXIMO_CARGA_ACTIVA_MS)
         }),
@@ -362,14 +369,21 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
   }
 
   useEffect(() => {
+    if (!sessionUserId) return
+
     let cancelled = false
 
     const prepararCargaActiva = async () => {
       try {
-        const carga = await obtenerOCrearCargaActiva(fechaCertificacion)
+        const carga = await obtenerOCrearCargaActiva(
+          fechaCertificacion,
+          sessionUserId
+        )
+
         if (cancelled) return
 
         const cargaId = carga?.id ? String(carga.id) : ''
+
         setCargaActivaId(cargaId)
         setCargaFinalizada(false)
 
@@ -380,7 +394,11 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
         if (cancelled) return
 
         setCargaActivaId('')
-        console.warn('[carga-activa] no se pudo preparar la carga activa al montar; se continuará sin carga_id', error)
+
+        console.warn(
+          '[carga-activa] no se pudo preparar la carga activa al montar',
+          error
+        )
       }
     }
 
@@ -389,7 +407,7 @@ function useNotificaciones({ fechaCertificacion, enfocarId }) {
     return () => {
       cancelled = true
     }
-  }, [fechaCertificacion])
+  }, [fechaCertificacion, sessionUserId])
 
   // Calcular número de carga cuando se asigna cargaActivaId
   useEffect(() => {
