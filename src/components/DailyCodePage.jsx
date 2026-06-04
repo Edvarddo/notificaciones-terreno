@@ -40,7 +40,7 @@ export default function DailyCodePage({
   useEffect(() => {
     if (isComplete && !verifying && code !== lastSubmittedCodeRef.current) {
       lastSubmittedCodeRef.current = code
-      onSubmit(code)
+      onSubmit(code, selectedUserId)
     }
   }, [code, isComplete, verifying, onSubmit])
 
@@ -141,7 +141,7 @@ export default function DailyCodePage({
     if (!isComplete || verifying) return
 
     submittedRef.current = true
-    await onSubmit(code)
+    await onSubmit(code, selectedUserId)
   }
 
   const handleClear = () => {
