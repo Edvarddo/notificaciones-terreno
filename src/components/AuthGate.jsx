@@ -20,6 +20,8 @@ export default function AuthGate({ children }) {
     requestError,
     remainingLabel,
     sessionUserId,
+    
+    logout
   } = useDailyCodeSession()
   const sessionUser = users.find(
     (user) => user.id === sessionUserId,
@@ -59,20 +61,44 @@ export default function AuthGate({ children }) {
             right: 12,
             bottom: 12,
             zIndex: 1200,
-            background: '#0f3f63',
-            color: '#fff',
-            padding: '8px 10px',
-            borderRadius: 8,
-            fontSize: 12,
-            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'center',
           }}
         >
-          Sesion activa · expira en {remainingLabel}
+          <div
+            style={{
+              background: '#0f3f63',
+              color: '#fff',
+              padding: '8px 10px',
+              borderRadius: 8,
+              fontSize: 12,
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            Sesion activa · expira en {remainingLabel}
+          </div>
+
+          {/* <button
+            type="button"
+            onClick={logout}
+            style={{
+              background: '#dc2626',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '8px 10px',
+              cursor: 'pointer',
+              fontSize: 12,
+            }}
+          >
+            Salir
+          </button> */}
         </div>
 
         {React.cloneElement(children, {
           sessionUserId,
-          sessionUserInitials: sessionUser?.initials || '',
+          sessionUserInitials : sessionUser?.initials || '',
         })}
       </>
     )

@@ -80,15 +80,22 @@ export default function useDailyCodeSession() {
     setModalOpen(false)
     setError('')
   }
+  const logout = () => {
+    localStorage.removeItem('daily_access_token')
+    localStorage.removeItem('daily_access_user_id')
+
+    setSessionExpiresAt(null)
+    setModalOpen(true)
+  }
   const [sessionUserId, setSessionUserId] = useState(() => {
     return localStorage.getItem('daily_access_user_id') || null
   })
 
-  const submitCode = async (code,userId) => {
+  const submitCode = async (code, userId) => {
     setVerifying(true)
     setError('')
     try {
-      const json = await verifyDailyCode(code,userId)
+      const json = await verifyDailyCode(code, userId)
       if (json?.ok && json?.session_expires_at) {
         setSession(json.session_expires_at)
 
@@ -180,7 +187,8 @@ export default function useDailyCodeSession() {
     sessionExpiresAt,
     remainingMs,
     remainingLabel,
-    sessionUserId
+    sessionUserId,
+    logout
 
   }
 }

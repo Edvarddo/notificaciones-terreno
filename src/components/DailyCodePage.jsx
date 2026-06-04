@@ -42,7 +42,7 @@ export default function DailyCodePage({
       lastSubmittedCodeRef.current = code
       onSubmit(code, selectedUserId)
     }
-  }, [code, isComplete, verifying, onSubmit])
+  }, [code, isComplete, verifying, onSubmit, selectedUserId])
 
   const focusIndex = (index) => {
     const next = Math.max(0, Math.min(CODE_LENGTH - 1, index))
@@ -138,7 +138,7 @@ export default function DailyCodePage({
   const handleSubmit = async (event) => {
     event.preventDefault()
 
-    if (!isComplete || verifying) return
+    if (!isComplete || verifying || !selectedUserId) return
 
     submittedRef.current = true
     await onSubmit(code, selectedUserId)
@@ -172,6 +172,15 @@ export default function DailyCodePage({
       setCodeRequested(true)
       requestAnimationFrame(() => focusIndex(0))
     }
+  }
+
+  const handleAlreadyHaveCode = () => {
+    if (!selectedUserId || requestingCode || verifying) return
+
+    handleClear()
+    setCodeRequested(true)
+
+    requestAnimationFrame(() => focusIndex(0))
   }
 
   return (
@@ -239,6 +248,17 @@ export default function DailyCodePage({
                 </button>
               ) : null}
             </div>
+
+            {selectedUserId && !codeRequested ? (
+              <button
+                type="button"
+                className="auth-reset auth-have-code"
+                onClick={handleAlreadyHaveCode}
+                disabled={verifying || requestingCode}
+              >
+                Ya tengo código
+              </button>
+            ) : null}
           </div>
 
           {requestMessage ? <div className="auth-request-message">{requestMessage}</div> : null}
