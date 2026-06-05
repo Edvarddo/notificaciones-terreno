@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { requestDailyCode, validateAccessSession, verifyDailyCode } from '../services/auth'
 
 export default function useDailyCodeSession() {
+  const [sessionUserId, setSessionUserId] = useState(() => {
+    return localStorage.getItem('daily_access_user_id') || null
+  })
+
   const [sessionExpiresAt, setSessionExpiresAt] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [verifying, setVerifying] = useState(false)
@@ -12,51 +16,94 @@ export default function useDailyCodeSession() {
   const [requestError, setRequestError] = useState('')
   const [nowMs, setNowMs] = useState(() => Date.now())
 
-  const expiresAtMs = sessionExpiresAt ? new Date(sessionExpiresAt).getTime() : null
-  const remainingMs = expiresAtMs ? Math.max(0, expiresAtMs - nowMs) : 0
-  const hasValidSession = Boolean(expiresAtMs && remainingMs > 0)
+  const expiresAtMs = sessionExpiresAt
+    ? new Date(sessionExpiresAt).getTime()
+    : null
+
+  const remainingMs = expiresAtMs
+    ? Math.max(0, expiresAtMs - nowMs)
+    : 0
+
+  const hasValidSession = Boolean(
+    sessionUserId &&
+    expiresAtMs &&
+    remainingMs > 0
+  )
 
   const formatRemaining = (ms) => {
     const totalSeconds = Math.floor(ms / 1000)
     const h = Math.floor(totalSeconds / 3600)
     const m = Math.floor((totalSeconds % 3600) / 60)
     const s = totalSeconds % 60
+
     if (h > 0) {
       return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     }
+
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }
 
   const remainingLabel = formatRemaining(remainingMs)
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      setNowMs(Date.now())
-    }, 1000)
-    return () => clearInterval(id)
-  }, [])
+  const setSession = (expiresAt) => {
+    const nextExpiresAt = new Date(expiresAt)
+
+    setSessionExpiresAt(nextExpiresAt)
+    setModalOpen(false)
+    setError('')
+  }
 
   const clearSession = () => {
     setSessionExpiresAt(null)
     setSessionUserId(null)
+
+    localStorage.removeItem('daily_access_token')
     localStorage.removeItem('daily_access_user_id')
+
     setModalOpen(true)
   }
+
+  const logout = () => {
+    clearSession()
+    setError('')
+    setRequestMessage('')
+    setRequestError('')
+  }
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNowMs(Date.now())
+    }, 1000)
+
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
 
     const bootstrapSession = async () => {
-      // Check if there's a valid session cookie on the server
-      const check = await validateAccessSession()
-      if (!cancelled) {
-        if (check?.ok && check?.session_expires_at) {
+      try {
+        const storedUserId = localStorage.getItem('daily_access_user_id')
+        const check = await validateAccessSession()
+
+        if (cancelled) return
+
+        if (check?.ok && check?.session_expires_at && storedUserId) {
+          setSessionUserId(storedUserId)
           setSession(new Date(check.session_expires_at))
         } else {
           clearSession()
           setError('')
         }
-        setCheckingSession(false)
+      } catch {
+        if (!cancelled) {
+          clearSession()
+          setError('')
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingSession(false)
+        }
       }
     }
 
@@ -74,46 +121,39 @@ export default function useDailyCodeSession() {
     }
   }, [sessionExpiresAt, hasValidSession])
 
-  const setSession = (expiresAt) => {
-    const nextExpiresAt = new Date(expiresAt)
-    setSessionExpiresAt(nextExpiresAt)
-    setModalOpen(false)
-    setError('')
-  }
-  const logout = () => {
-    localStorage.removeItem('daily_access_token')
-    localStorage.removeItem('daily_access_user_id')
-
-    setSessionExpiresAt(null)
-    setModalOpen(true)
-  }
-  const [sessionUserId, setSessionUserId] = useState(() => {
-    return localStorage.getItem('daily_access_user_id') || null
-  })
-
   const submitCode = async (code, userId) => {
     setVerifying(true)
     setError('')
+
     try {
       const json = await verifyDailyCode(code, userId)
-      if (json?.ok && json?.session_expires_at) {
-        setSession(json.session_expires_at)
 
-        if (json.user_id) {
-          localStorage.setItem('daily_access_user_id', json.user_id)
-          setSessionUserId(json.user_id)
-        }
+      if (json?.ok && json?.session_expires_at && json?.user_id) {
+        localStorage.setItem('daily_access_user_id', json.user_id)
+        setSessionUserId(json.user_id)
+        setSession(json.session_expires_at)
 
         return {
           ok: true,
           userId: json.user_id,
         }
       }
-      setError(json?.error || 'Codigo invalido')
-      return { ok: false, error: json?.error }
+
+      const msg = json?.error || 'Codigo invalido'
+      setError(msg)
+
+      return {
+        ok: false,
+        error: msg,
+      }
     } catch (err) {
-      setError(err?.message || 'Error de red')
-      return { ok: false, error: err?.message }
+      const msg = err?.message || 'Error de red'
+      setError(msg)
+
+      return {
+        ok: false,
+        error: msg,
+      }
     } finally {
       setVerifying(false)
     }
@@ -132,15 +172,26 @@ export default function useDailyCodeSession() {
         return { ok: true }
       }
 
-      setRequestError(json?.error || 'No se pudo enviar el codigo')
-      return { ok: false, error: json?.error }
+      const msg = json?.error || 'No se pudo enviar el codigo'
+      setRequestError(msg)
+
+      return {
+        ok: false,
+        error: msg,
+      }
     } catch (err) {
-      setRequestError(err?.message || 'Error de red')
-      return { ok: false, error: err?.message }
+      const msg = err?.message || 'Error de red'
+      setRequestError(msg)
+
+      return {
+        ok: false,
+        error: msg,
+      }
     } finally {
       setRequestingCode(false)
     }
   }
+
   useEffect(() => {
     if (!requestMessage) return
 
@@ -188,7 +239,6 @@ export default function useDailyCodeSession() {
     remainingMs,
     remainingLabel,
     sessionUserId,
-    logout
-
+    logout,
   }
 }
