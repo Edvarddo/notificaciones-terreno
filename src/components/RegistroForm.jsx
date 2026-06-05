@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import IconQr from './IconQr'
 import IconList from './IconList'
 import IconTribunal from './IconTribunal'
@@ -43,17 +44,114 @@ function RegistroForm({
   onA3CasoChange,
   sessionUserInitials,
 }) {
+  const [selectorA1Abierto, setSelectorA1Abierto] = useState(false)
+  const [selectorA3Abierto, setSelectorA3Abierto] = useState(false)
+
+  const [a1CasoDraft, setA1CasoDraft] = useState('')
+  const [a1Valor1Draft, setA1Valor1Draft] = useState('')
+  const [a1Valor2Draft, setA1Valor2Draft] = useState('')
+
   const casoDefA1 = a1Casos?.[a1Caso] || null
-  const requiereA1 = casoDefA1?.requiere ?? 0
-  const placeholderA1_1 = a1Caso === 'TERMINA' ? 'YYYY (final)' : (a1Caso === 'COMIENZA' ? 'XXXX (inicio)' : (a1Caso === 'ENTRE' || a1Caso === 'SALTO' ? 'Dirección inicial (XXXX)' : 'Valor'))
-  const placeholderA1_2 = a1Caso === 'ENTRE' || a1Caso === 'SALTO' ? 'Dirección final (YYYY)' : 'Valor final'
+  const casoDefA1Draft = a1Casos?.[a1CasoDraft] || null
+  const requiereA1Draft = casoDefA1Draft?.requiere ?? 0
+  const casoDefA3 = a3Casos?.[a3Caso] || null
+
+  const placeholderA1_1 =
+    a1CasoDraft === 'TERMINA'
+      ? 'YYYY'
+      : a1CasoDraft === 'COMIENZA'
+        ? 'XXXX'
+        : a1CasoDraft === 'ENTRE' || a1CasoDraft === 'SALTO'
+          ? 'Inicio'
+          : 'Valor'
+
+  const placeholderA1_2 =
+    a1CasoDraft === 'ENTRE' || a1CasoDraft === 'SALTO'
+      ? 'Final'
+      : 'Valor final'
+
+  const etiquetaValor1 =
+    a1CasoDraft === 'TERMINA'
+      ? 'Final'
+      : a1CasoDraft === 'COMIENZA'
+        ? 'Inicio'
+        : a1CasoDraft === 'ENTRE' || a1CasoDraft === 'SALTO'
+          ? 'Desde'
+          : 'Valor'
+
+  const etiquetaValor2 =
+    a1CasoDraft === 'ENTRE' || a1CasoDraft === 'SALTO'
+      ? 'Hasta'
+      : 'Valor final'
+
+  const construirObservacionDesdeCaso = (caso, valor1 = '', valor2 = '') => {
+    let base = String(caso?.observacion || '').trim()
+
+    if (!base) {
+      base = String(caso?.etiqueta || '').trim()
+    }
+
+    return base
+      .replaceAll('XXXX', valor1 || 'XXXX')
+      .replaceAll('YYYY', valor2 || 'YYYY')
+      .replaceAll('{valor1}', valor1 || '')
+      .replaceAll('{valor2}', valor2 || '')
+  }
+
+  const abrirSelectorA1 = () => {
+    setA1CasoDraft(a1Caso || '')
+    setA1Valor1Draft(a1Valor1 || '')
+    setA1Valor2Draft(a1Valor2 || '')
+    setSelectorA1Abierto(true)
+  }
+
+  const seleccionarCasoA1Draft = (key) => {
+    setA1CasoDraft(key)
+    setA1Valor1Draft('')
+    setA1Valor2Draft('')
+  }
+
+  const aplicarCasoA1 = () => {
+    const caso = a1Casos?.[a1CasoDraft]
+
+    onA1CasoChange(a1CasoDraft)
+    onA1Valor1Change(a1Valor1Draft)
+    onA1Valor2Change(a1Valor2Draft)
+    onObservacionChange(
+      construirObservacionDesdeCaso(caso, a1Valor1Draft, a1Valor2Draft)
+    )
+
+    setSelectorA1Abierto(false)
+  }
+
+  const seleccionarCasoA3 = (key) => {
+    const caso = a3Casos?.[key]
+
+    onA3CasoChange(key)
+    onObservacionChange(construirObservacionDesdeCaso(caso))
+
+    setSelectorA3Abierto(false)
+  }
+
+  const obtenerTextoResumenA1 = () => {
+    if (!casoDefA1) return 'Seleccionar caso A1'
+
+    if (!a1Valor1 && !a1Valor2) {
+      return casoDefA1.etiqueta
+    }
+
+    if (a1Valor1 && a1Valor2) {
+      return `${casoDefA1.etiqueta}: ${a1Valor1} - ${a1Valor2}`
+    }
+
+    return `${casoDefA1.etiqueta}: ${a1Valor1 || a1Valor2}`
+  }
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault()
-
         if (cargando || cargaFinalizada) return
-
         onGuardar()
       }}
       className="formulario"
@@ -68,6 +166,7 @@ function RegistroForm({
           </span>
         </div>
       ) : null}
+
       {!mostraTribunal ? (
         <label className="campo-label">
           ID notificacion
@@ -81,8 +180,11 @@ function RegistroForm({
               maxLength={9}
               placeholder="Ej: 18099912"
               value={idNotificacion}
-              onChange={(e) => onIdChange(e.target.value.replace(/\D/g, '').slice(0, 9))}
+              onChange={(e) =>
+                onIdChange(e.target.value.replace(/\D/g, '').slice(0, 9))
+              }
             />
+
             <button
               type="button"
               className="boton-icono"
@@ -93,6 +195,7 @@ function RegistroForm({
             >
               <IconQr />
             </button>
+
             <button
               type="button"
               className="boton-icono boton-tribunal-toggle"
@@ -111,13 +214,14 @@ function RegistroForm({
             <input
               className="input-base"
               type="text"
-              inputMode='numeric'
+              inputMode="numeric"
               placeholder="Ej: 2490"
               value={rit}
               maxLength={5}
               onChange={(e) => onRitChange(e.target.value)}
             />
           </label>
+
           <label className="campo-label">
             AÑO
             <input
@@ -130,6 +234,7 @@ function RegistroForm({
               onChange={(e) => onAñoChange(parseInt(e.target.value) || '')}
             />
           </label>
+
           <button
             type="button"
             className="boton-icono boton-tribunal-toggle tribunal-activo"
@@ -156,6 +261,7 @@ function RegistroForm({
             value={codigo}
             onChange={onCodigoChange}
           />
+
           <button
             type="button"
             className="boton-icono"
@@ -178,59 +284,168 @@ function RegistroForm({
         </div>
       ) : null}
 
-      {codigoLimpioVista === 'A1' && (
+      {codigoLimpioVista === 'A1' ? (
         <div className="a1-opciones-box">
-          <label className="campo-label">A1 — tipo de caso</label>
-          <select className="input-base" value={a1Caso} onChange={(e) => onA1CasoChange(e.target.value)}>
-            <option value="">Seleccione un caso</option>
-            {Object.entries(a1Casos).map(([key, caso]) => (
-              <option key={key} value={key}>
-                {caso.etiqueta}
-              </option>
-            ))}
-          </select>
+          <div className="a1-selector-compacto">
+            <label className="campo-label">Detalle A1</label>
 
-          {a1Caso && (
-            requiereA1 === 0 ? (
-              <div className="a1-ayuda-caso">{casoDefA1?.etiqueta}</div>
-            ) : (
-              <div className={requiereA1 === 2 ? 'a1-range-inline' : ''}>
-                {requiereA1 >= 1 && (
-                  <input
-                    className="input-base"
-                    placeholder={placeholderA1_1}
-                    value={a1Valor1}
-                    onChange={(e) => onA1Valor1Change(e.target.value)}
-                  />
-                )}
+            <button
+              type="button"
+              className="selector-card"
+              onClick={abrirSelectorA1}
+            >
+              <span>{obtenerTextoResumenA1()}</span>
+              <span className="selector-card-flecha">›</span>
+            </button>
+          </div>
 
-                {requiereA1 === 2 && (
-                  <input
-                    className="input-base"
-                    placeholder={placeholderA1_2}
-                    value={a1Valor2}
-                    onChange={(e) => onA1Valor2Change(e.target.value)}
-                  />
-                )}
+          {selectorA1Abierto ? (
+            <div
+              className="selector-sheet-overlay"
+              onClick={() => setSelectorA1Abierto(false)}
+            >
+              <div
+                className="selector-sheet"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="selector-sheet-header">
+                  <div>
+                    <span className="selector-sheet-kicker">Detalle A1</span>
+                    <h3>Seleccione un caso</h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="selector-sheet-cerrar"
+                    onClick={() => setSelectorA1Abierto(false)}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+
+                <div className="selector-sheet-lista">
+                  {Object.entries(a1Casos).map(([key, caso]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`selector-sheet-item ${
+                        a1CasoDraft === key ? 'selector-sheet-item-activo' : ''
+                      }`}
+                      onClick={() => seleccionarCasoA1Draft(key)}
+                    >
+                      <span>{caso.etiqueta}</span>
+                      {a1CasoDraft === key ? (
+                        <span className="selector-sheet-check">✓</span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+
+                {a1CasoDraft && requiereA1Draft > 0 ? (
+                  <div
+                    className={`a1-modal-valores ${
+                      requiereA1Draft === 1 ? 'a1-un-valor' : ''
+                    }`}
+                  >
+                    {requiereA1Draft >= 1 ? (
+                      <label className="a1-mini-campo">
+                        <span>{etiquetaValor1}</span>
+                        <input
+                          className="input-base"
+                          placeholder={placeholderA1_1}
+                          value={a1Valor1Draft}
+                          onChange={(e) => setA1Valor1Draft(e.target.value)}
+                        />
+                      </label>
+                    ) : null}
+
+                    {requiereA1Draft === 2 ? (
+                      <label className="a1-mini-campo">
+                        <span>{etiquetaValor2}</span>
+                        <input
+                          className="input-base"
+                          placeholder={placeholderA1_2}
+                          value={a1Valor2Draft}
+                          onChange={(e) => setA1Valor2Draft(e.target.value)}
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  className="boton-principal"
+                  onClick={aplicarCasoA1}
+                  disabled={!a1CasoDraft}
+                >
+                  Aplicar
+                </button>
               </div>
-            )
-          )}
+            </div>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
-      {codigoLimpioVista === 'A3' && (
+      {codigoLimpioVista === 'A3' ? (
         <div className="a3-opciones-box">
-          <label className="campo-label">A3 — tipo de falta</label>
-          <select className="input-base" value={a3Caso} onChange={(e) => onA3CasoChange(e.target.value)}>
-            <option value="">Seleccione un caso</option>
-            {Object.entries(a3Casos).map(([key, caso]) => (
-              <option key={key} value={key}>
-                {caso.etiqueta}
-              </option>
-            ))}
-          </select>
+          <label className="campo-label">Detalle A3</label>
+
+          <button
+            type="button"
+            className="selector-card"
+            onClick={() => setSelectorA3Abierto(true)}
+          >
+            <span>{casoDefA3?.etiqueta || 'Seleccionar caso A3'}</span>
+            <span className="selector-card-flecha">›</span>
+          </button>
+
+          {selectorA3Abierto ? (
+            <div
+              className="selector-sheet-overlay"
+              onClick={() => setSelectorA3Abierto(false)}
+            >
+              <div
+                className="selector-sheet"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="selector-sheet-header">
+                  <div>
+                    <span className="selector-sheet-kicker">Detalle A3</span>
+                    <h3>Seleccione un caso</h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="selector-sheet-cerrar"
+                    onClick={() => setSelectorA3Abierto(false)}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+
+                <div className="selector-sheet-lista">
+                  {Object.entries(a3Casos).map(([key, caso]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`selector-sheet-item ${
+                        a3Caso === key ? 'selector-sheet-item-activo' : ''
+                      }`}
+                      onClick={() => seleccionarCasoA3(key)}
+                    >
+                      <span>{caso.etiqueta}</span>
+                      {a3Caso === key ? (
+                        <span className="selector-sheet-check">✓</span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       <label className="campo-label">
         Observacion
@@ -251,16 +466,6 @@ function RegistroForm({
           onChange={(e) => onComentariosChange(e.target.value)}
         />
       </label>
-
-      {/* <label className="check-row">
-        <input type="checkbox" checked={esNoUrbana} onChange={(e) => onEsNoUrbanaChange(e.target.checked)} />
-        <span>No urbana / rural</span>
-      </label> */}
-
-
-
-
-
 
       <div className="acciones acciones-secundarias">
         <button

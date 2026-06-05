@@ -9,6 +9,7 @@ import {
   actualizarRegistroPorId,
   obtenerEstadisticas,
   obtenerTodasLasCargasDeUnDia,
+  obtenerCargaActiva
 } from '../services/notificaciones'
 import {
   CODIGOS_BUSQUEDA,
@@ -28,14 +29,6 @@ import {
 import { validarIdNotificacion, esIdNotificacionValida } from '../utils/validation'
 import { enviarReporteFinalizacionCarga } from '../services/cierre'
 
-const generarCargaId = () => {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID()
-  }
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-}
-
 const TIEMPO_MAXIMO_CLASIFICACION_GEO_MS = 5000
 const TIEMPO_MAXIMO_CARGA_ACTIVA_MS = 10000
 
@@ -47,6 +40,7 @@ function useNotificaciones({
   const timersMensajesRef = useRef(new Map())
   const mensajeTimerRef = useRef(null)
   const errorMsgTimerRef = useRef(null)
+
   const [registros, setRegistros] = useState([])
   const [cargando, setCargando] = useState(false)
   const [guardandoLote, setGuardandoLote] = useState(false)
@@ -64,16 +58,8 @@ function useNotificaciones({
     guardarRegistro: 0,
     guardarLote: 0,
   })
-  const sincronizandoPendientesRef = useRef(false)
-  const quitarMensajeVisual = (id) => {
-    const timer = timersMensajesRef.current.get(id)
-    if (timer) {
-      clearTimeout(timer)
-      timersMensajesRef.current.delete(id)
-    }
 
-    setMensajes((prev) => prev.filter((mensaje) => mensaje.id !== id))
-  }
+  const sincronizandoPendientesRef = useRef(false)
 
   const setMensaje = (texto, duracion = 2800) => {
     if (mensajeTimerRef.current) {
@@ -110,14 +96,7 @@ function useNotificaciones({
   const agregarMensajeVisual = (texto, tipo = 'success', duracion = 4500) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-    setMensajes((prev) => [
-      ...prev,
-      {
-        id,
-        texto,
-        tipo,
-      },
-    ])
+    setMensajes((prev) => [...prev, { id, texto, tipo }])
 
     const timer = setTimeout(() => {
       timersMensajesRef.current.delete(id)
@@ -137,7 +116,9 @@ function useNotificaciones({
 
   const refrescarPendientesSync = async () => {
     const pendientes = await obtenerOperacionesPendientes().catch(() => [])
+
     setPendientesSync(pendientes.length)
+
     setPendientesDetalle(
       pendientes.map((pendiente) => ({
         id: pendiente.id,
@@ -156,10 +137,12 @@ function useNotificaciones({
         lastError: pendiente.lastError || '',
       }))
     )
+
     setPendientesPorTipo({
       guardarRegistro: pendientes.filter((pendiente) => pendiente.tipo === 'guardarRegistro').length,
       guardarLote: pendientes.filter((pendiente) => pendiente.tipo === 'guardarLote').length,
     })
+
     return pendientes
   }
 
@@ -171,6 +154,7 @@ function useNotificaciones({
         return await accion()
       } catch (error) {
         ultimoError = error
+
         if (!esErrorDeRed(error) && !/duplicate|unique/i.test(String(error?.message || ''))) {
           throw error
         }
@@ -187,14 +171,13 @@ function useNotificaciones({
   const sincronizarPendientes = async () => {
     if (!navigator.onLine || sincronizandoPendientesRef.current) return
 
-    const pendientes = await obtenerOperacionesPendientes().catch(() => [])
+    const pendientesIniciales = await obtenerOperacionesPendientes().catch(() => [])
 
-    if (!pendientes.length) {
-      return
-    }
+    if (!pendientesIniciales.length) return
 
     sincronizandoPendientesRef.current = true
     setSincronizandoPendientes(true)
+
     try {
       const pendientes = await refrescarPendientesSync()
 
@@ -228,12 +211,12 @@ function useNotificaciones({
               attempts: Number(pendiente.attempts || 0) + 1,
               lastTriedAt: Date.now(),
               lastError: mensajeError || 'Error de sincronizacion',
-            }).catch(() => { })
+            }).catch(() => {})
           }
         }
       }
 
-      await refrescarPendientesSync().catch(() => { })
+      await refrescarPendientesSync().catch(() => {})
 
       if (sincronizados > 0) {
         setMensaje(`Sincronizados ${sincronizados} registro(s) pendientes`)
@@ -254,19 +237,18 @@ function useNotificaciones({
         )
       }
 
-      await refrescarPendientesSync().catch(() => { })
+      await refrescarPendientesSync().catch(() => {})
     } finally {
       sincronizandoPendientesRef.current = false
       setSincronizandoPendientes(false)
-
     }
   }
 
   useEffect(() => {
-    refrescarPendientesSync().catch(() => { })
+    refrescarPendientesSync().catch(() => {})
 
     const intentarSincronizar = () => {
-      sincronizarPendientes().catch(() => { })
+      sincronizarPendientes().catch(() => {})
     }
 
     const manejarOnline = () => {
@@ -308,14 +290,17 @@ function useNotificaciones({
   }
 
   const resolverClasificacionTerreno = async (esNoUrbanaManual) => {
-    // Si el usuario ya marcó rural, no hace falta esperar GPS para guardar.
     if (esNoUrbanaManual === true) {
       return clasificarPorFallbackManual(true)
     }
 
     const clasificacionGps = determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual)
+
     const tiempoMaximo = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Tiempo de geolocalización agotado')), TIEMPO_MAXIMO_CLASIFICACION_GEO_MS)
+      setTimeout(
+        () => reject(new Error('Tiempo de geolocalización agotado')),
+        TIEMPO_MAXIMO_CLASIFICACION_GEO_MS
+      )
     })
 
     try {
@@ -328,17 +313,41 @@ function useNotificaciones({
   const limpiarMensajes = () => {
     timersMensajesRef.current.forEach((timer) => clearTimeout(timer))
     timersMensajesRef.current.clear()
+
     if (mensajeTimerRef.current) {
       clearTimeout(mensajeTimerRef.current)
       mensajeTimerRef.current = null
     }
+
     if (errorMsgTimerRef.current) {
       clearTimeout(errorMsgTimerRef.current)
       errorMsgTimerRef.current = null
     }
+
     setMensajeState('')
     setErrorMsgState('')
     setMensajes([])
+  }
+
+  const calcularNumeroCargaPorFecha = async (cargaIdBuscada) => {
+    if (!cargaIdBuscada) return 0
+
+    const cargas = await obtenerTodasLasCargasDeUnDia(fechaCertificacion)
+
+    const cargasOrdenadas = (cargas || []).slice().sort((a, b) => {
+      const fechaA = a?.creada_en ? new Date(a.creada_en).getTime() : 0
+      const fechaB = b?.creada_en ? new Date(b.creada_en).getTime() : 0
+
+      if (fechaA !== fechaB) return fechaA - fechaB
+
+      return String(a?.id || '').localeCompare(String(b?.id || ''))
+    })
+
+    const indice = cargasOrdenadas.findIndex(
+      (carga) => String(carga.id) === String(cargaIdBuscada)
+    )
+
+    return indice >= 0 ? indice + 1 : cargasOrdenadas.length || 1
   }
 
   const asegurarCargaActiva = async () => {
@@ -348,23 +357,60 @@ function useNotificaciones({
 
     try {
       const carga = await Promise.race([
-        obtenerOCrearCargaActiva(
-          fechaCertificacion,
-          sessionUserId
-        ),
+        obtenerOCrearCargaActiva(fechaCertificacion, sessionUserId),
         new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Tiempo de espera para la carga activa agotado')), TIEMPO_MAXIMO_CARGA_ACTIVA_MS)
+          setTimeout(
+            () => reject(new Error('Tiempo de espera para la carga activa agotado')),
+            TIEMPO_MAXIMO_CARGA_ACTIVA_MS
+          )
         }),
       ])
+
       const cargaId = carga?.id ? String(carga.id) : ''
+
       if (cargaId) {
         setCargaActivaId(cargaId)
+
+        const numero = await calcularNumeroCargaPorFecha(cargaId)
+        setNumeroCarga(numero)
       }
 
       return cargaId
     } catch (error) {
       console.warn('[carga-activa] no se pudo resolver o crear la carga activa; se continuará sin carga_id', error)
       return ''
+    }
+  }
+
+  const cargar = async (cargaId = cargaActivaId) => {
+    const cargaIdFinal = cargaId || cargaActivaId
+
+    if (!cargaIdFinal) {
+      setRegistros([])
+      setEstadisticas({ cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 })
+      return {
+        data: [],
+        stats: { cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 },
+      }
+    }
+
+    try {
+      const data = await obtenerRegistros(fechaCertificacion, cargaIdFinal)
+      setRegistros(data)
+
+      const stats = await obtenerEstadisticas(fechaCertificacion, cargaIdFinal)
+      setEstadisticas(stats)
+
+      return { data, stats }
+    } catch (error) {
+      setErrorMsg(`No se pudieron cargar los registros: ${error.message}`)
+      setRegistros([])
+      setEstadisticas({ cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 })
+
+      return {
+        data: [],
+        stats: { cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 },
+      }
     }
   }
 
@@ -375,10 +421,7 @@ function useNotificaciones({
 
     const prepararCargaActiva = async () => {
       try {
-        const carga = await obtenerOCrearCargaActiva(
-          fechaCertificacion,
-          sessionUserId
-        )
+        const carga = await obtenerCargaActiva(fechaCertificacion, sessionUserId)
 
         if (cancelled) return
 
@@ -388,17 +431,26 @@ function useNotificaciones({
         setCargaFinalizada(false)
 
         if (cargaId) {
-          await cargar(cargaId)
+          const numero = await calcularNumeroCargaPorFecha(cargaId)
+
+          if (!cancelled) {
+            setNumeroCarga(numero)
+            await cargar(cargaId)
+          }
+        } else {
+          setNumeroCarga(0)
+          setRegistros([])
+          setEstadisticas({ cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 })
         }
       } catch (error) {
         if (cancelled) return
 
         setCargaActivaId('')
+        setNumeroCarga(0)
+        setRegistros([])
+        setEstadisticas({ cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 })
 
-        console.warn(
-          '[carga-activa] no se pudo preparar la carga activa al montar',
-          error
-        )
+        console.warn('[carga-activa] no se pudo consultar la carga activa al montar', error)
       }
     }
 
@@ -409,36 +461,6 @@ function useNotificaciones({
     }
   }, [fechaCertificacion, sessionUserId])
 
-  // Calcular número de carga cuando se asigna cargaActivaId
-  useEffect(() => {
-    if (!cargaActivaId) {
-      setNumeroCarga(0)
-      return
-    }
-
-    const calcularNumero = async () => {
-      try {
-        const cargas = await obtenerTodasLasCargasDeUnDia(fechaCertificacion)
-        const indice = cargas.findIndex((c) => c.id === cargaActivaId)
-        if (indice >= 0) {
-          setNumeroCarga(indice + 1)
-          return
-        }
-
-        if (cargas.length > 0) {
-          setNumeroCarga(cargas.length)
-          return
-        }
-
-        setNumeroCarga(1)
-      } catch (error) {
-        setNumeroCarga(1)
-      }
-    }
-
-    calcularNumero()
-  }, [cargaActivaId, fechaCertificacion])
-
   useEffect(() => {
     return () => {
       timersMensajesRef.current.forEach((timer) => clearTimeout(timer))
@@ -448,39 +470,12 @@ function useNotificaciones({
     }
   }, [])
 
-  const cargar = async (cargaId = cargaActivaId) => {
-    // Si no hay cargaId, intentar cargar por fecha (fallback) — útil mientras se resuelve creación de cargas
-    const usarFecha = !cargaId
-
-    try {
-      const data = await obtenerRegistros(fechaCertificacion, cargaId || null)
-      setRegistros(data)
-      const stats = await obtenerEstadisticas(fechaCertificacion, cargaId || null)
-      setEstadisticas(stats)
-      return { data, stats }
-    } catch (error) {
-      setErrorMsg(`No se pudieron cargar los registros: ${error.message}`)
-      // Si falló y no habíamos intentado por fecha, intentar una vez por fecha como último recurso
-      if (!usarFecha) {
-        try {
-          const data = await obtenerRegistros(fechaCertificacion, null)
-          setRegistros(data)
-          const stats = await obtenerEstadisticas(fechaCertificacion, null)
-          setEstadisticas(stats)
-          return { data, stats }
-        } catch (err2) {
-          setErrorMsg(`No se pudieron cargar los registros por fecha: ${err2.message}`)
-        }
-      }
-
-      return { data: [], stats: { puntos: 0, rurales: 0, urbanas: 0 } }
-    }
-  }
-
   const bloquearSiCargaFinalizada = () => {
     if (!cargaFinalizada) return null
+
     const msg = 'La carga se está cerrando. Espera un momento.'
     setErrorMsg(msg)
+
     return { ok: false, error: msg }
   }
 
@@ -500,7 +495,10 @@ function useNotificaciones({
     const clasificacionTerrenoPromise = resolverClasificacionTerreno(esNoUrbana)
 
     const bloqueo = bloquearSiCargaFinalizada()
-    if (bloqueo) return bloqueo
+    if (bloqueo) {
+      setCargando(false)
+      return bloqueo
+    }
 
     const cargaId = await asegurarCargaActiva()
 
@@ -511,7 +509,7 @@ function useNotificaciones({
     const comentariosLimpios = comentarios.trim() || ''
     const ritLimpio = rit?.trim() || ''
     const conTribunal = ritLimpio && año
-    // Validar que tenga ID DE NOTIFICACIÓN o RIT + AÑO (pero no ambos nulos)
+
     if (!idLimpio && !conTribunal) {
       const msg = 'Ingresa ID de notificación o activa Tribunal (RIT + Año)'
       setErrorMsg(msg)
@@ -520,7 +518,6 @@ function useNotificaciones({
       return { ok: false, error: msg }
     }
 
-    // Si tiene ID, validar formato
     if (idLimpio && !validacionId.ok) {
       const msg = validacionId.error || 'La ID de notificacion debe contener 8 o 9 digitos'
       setErrorMsg(msg)
@@ -540,9 +537,9 @@ function useNotificaciones({
     const clasificacionTerreno = await clasificacionTerrenoPromise
 
     try {
-      // Solo validar duplicado si tiene ID de notificación
       if (idLimpio) {
         const yaExiste = await existeIdNotificacionEnFecha(idLimpio, fechaCertificacion)
+
         if (yaExiste) {
           const msg = 'Ya existe un registro con esa ID de notificacion'
           setErrorMsg(msg)
@@ -582,24 +579,23 @@ function useNotificaciones({
         } catch (queueError) {
           const msg = `No se pudo guardar sin conexion: ${queueError.message}`
           setErrorMsg(msg)
+          setCargando(false)
           return { ok: false, error: msg }
         }
 
         setMensaje('Sin conexion: registro pendiente de sincronizacion')
         agregarMensajeVisual('Guardado sin internet. Quedo pendiente de sincronizacion.', 'pendiente')
-        await refrescarPendientesSync().catch(() => { })
+        await refrescarPendientesSync().catch(() => {})
         enfocarId?.()
+        setCargando(false)
         return { ok: true, offline: true }
       }
 
       const msg = `No se pudo validar la ID: ${error.message}`
       setErrorMsg(msg)
-      return { ok: false, error: msg }
-    } finally {
       setCargando(false)
+      return { ok: false, error: msg }
     }
-
-    // setCargando(true)
 
     const ahora = new Date()
     const hora = ahora
@@ -629,12 +625,13 @@ function useNotificaciones({
       })
 
       setMensaje('Guardado')
-      // Pasar cargaId explícitamente para evitar desync con setCargaActivaId asincrónico
+
       try {
         await cargar(cargaId)
       } catch (refreshError) {
         console.warn('[guardarRegistro] no se pudo refrescar luego de guardar', refreshError)
       }
+
       enfocarId?.()
       return { ok: true }
     } catch (error) {
@@ -667,7 +664,7 @@ function useNotificaciones({
 
         setMensaje('Sin conexion: registro pendiente de sincronizacion')
         agregarMensajeVisual('Guardado sin internet. Quedo pendiente de sincronizacion.', 'pendiente')
-        await refrescarPendientesSync().catch(() => { })
+        await refrescarPendientesSync().catch(() => {})
         enfocarId?.()
         return { ok: true, offline: true }
       }
@@ -693,6 +690,7 @@ function useNotificaciones({
     }
 
     const ultimo = registros[0]
+
     try {
       await eliminarRegistroPorId(ultimo.id)
     } catch (error) {
@@ -739,6 +737,7 @@ function useNotificaciones({
 
     if (!modoTribunal) {
       const idsInvalidos = idsNormalizados.filter((id) => !esIdNotificacionValida(id))
+
       if (idsInvalidos.length > 0) {
         const msg = `Hay IDs invalidas en el lote: ${idsInvalidos.join(', ')}. Deben tener 8 o 9 digitos.`
         setErrorMsg(msg)
@@ -763,14 +762,15 @@ function useNotificaciones({
       horaLote?.trim()?.length === 4
         ? horaLote.trim()
         : new Date()
-          .toLocaleTimeString('es-CL', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          })
-          .replace(':', '')
+            .toLocaleTimeString('es-CL', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            })
+            .replace(':', '')
 
     const codigoNormalizado = codigoLote.trim().toUpperCase()
+
     if (!codigoNormalizado) {
       const msg = 'Ingresa o selecciona el codigo del lote'
       setErrorMsg(msg)
@@ -779,6 +779,7 @@ function useNotificaciones({
     }
 
     const clasificacionTerrenoPromise = resolverClasificacionTerreno(esNoUrbanaLote)
+
     const tribunalesNormalizados = (Array.isArray(tribunalesLote) ? tribunalesLote : []).map((item) => ({
       rit: String(item?.rit ?? '').trim(),
       año: String(item?.año ?? '').trim(),
@@ -793,6 +794,7 @@ function useNotificaciones({
       }
 
       const bloquesInvalidos = tribunalesNormalizados.filter((item) => !item.rit || !item.año)
+
       if (bloquesInvalidos.length > 0) {
         const msg = 'Completa RIT y Año en cada bloque de tribunal'
         setErrorMsg(msg)
@@ -803,13 +805,9 @@ function useNotificaciones({
 
     const observacionNormalizada = observacionLote.trim() || '.'
     const clasificacionTerreno = await clasificacionTerrenoPromise
-
-    // Generar UUID único para este lote (cada lote escaneado tiene un codigo_lote diferente)
     const idLoteUnico = crypto.randomUUID()
-
     const filas = []
 
-    // Registros con QR
     if (idsNormalizados.length > 0) {
       filas.push(
         ...idsNormalizados.map((id) => ({
@@ -832,7 +830,6 @@ function useNotificaciones({
       )
     }
 
-    // Registros sin QR / Tribunal
     if (modoTribunal && tribunalesNormalizados.length > 0) {
       filas.push(
         ...tribunalesNormalizados.map((item) => ({
@@ -859,9 +856,7 @@ function useNotificaciones({
       try {
         await agregarOperacionPendiente({
           tipo: 'guardarLote',
-          payload: {
-            filas,
-          },
+          payload: { filas },
         })
       } catch (queueError) {
         const msg = `No se pudo guardar el lote sin conexion: ${queueError.message}`
@@ -877,7 +872,7 @@ function useNotificaciones({
           : `${cantidadFilas} notificaciones del lote quedaron pendientes sin internet.`,
         'pendiente'
       )
-      await refrescarPendientesSync().catch(() => { })
+      await refrescarPendientesSync().catch(() => {})
       await onSuccess?.()
       return { ok: true, offline: true }
     }
@@ -886,6 +881,7 @@ function useNotificaciones({
       for (const id of idsNormalizados) {
         try {
           const yaExiste = await existeIdNotificacionEnFecha(id, fechaCertificacion)
+
           if (yaExiste) {
             const msg = `No se puede guardar el lote porque la ID ${id} ya existe en la base de datos`
             setErrorMsg(msg)
@@ -907,21 +903,20 @@ function useNotificaciones({
       await insertarLote(filas)
       setMensaje(`Lote guardado: ${cantidadFilas} registro(s)`)
       await onSuccess?.()
+
       try {
-        // Pasar cargaId explícitamente para evitar desync con setCargaActivaId asincrónico
         await cargar(cargaId)
       } catch (refreshError) {
         console.warn('[guardarLoteRegistros] no se pudo refrescar luego de guardar', refreshError)
       }
+
       return { ok: true }
     } catch (error) {
       if (esErrorDeRed(error)) {
         try {
           await agregarOperacionPendiente({
             tipo: 'guardarLote',
-            payload: {
-              filas,
-            },
+            payload: { filas },
           })
         } catch (queueError) {
           const msg = `No se pudo guardar el lote sin conexion: ${queueError.message}`
@@ -937,7 +932,7 @@ function useNotificaciones({
             : `${cantidadFilas} notificaciones del lote quedaron pendientes sin internet.`,
           'pendiente'
         )
-        await refrescarPendientesSync().catch(() => { })
+        await refrescarPendientesSync().catch(() => {})
         await onSuccess?.()
         return { ok: true, offline: true }
       }
@@ -954,7 +949,15 @@ function useNotificaciones({
     }
   }
 
-  const actualizarRegistro = async ({ id, codigo, hora, es_no_urbana, observacion, comentarios, codigo_lote }) => {
+  const actualizarRegistro = async ({
+    id,
+    codigo,
+    hora,
+    es_no_urbana,
+    observacion,
+    comentarios,
+    codigo_lote,
+  }) => {
     limpiarMensajes()
 
     const codigoLimpio = String(codigo ?? '').trim().toUpperCase()
@@ -1058,6 +1061,7 @@ function useNotificaciones({
 
     try {
       envio = await enviarReporteFinalizacionCarga(fechaCertificacion, cargaId)
+
       if (!envio?.ok) {
         const msg = envio?.error || 'No se pudo enviar el reporte de cierre'
         setErrorMsg(msg)
@@ -1071,18 +1075,15 @@ function useNotificaciones({
       return { ok: false, error: msg }
     }
 
-    // NO asignar una nueva carga automáticamente.
-    // Será creada lazy cuando el usuario guarde el primer registro del siguiente ciclo.
-    // Esto evita cargas vacías acumulándose en la BD.
     setCargaActivaId('')
-
-    // Limpiar registros e estadísticas para reflejar que no hay carga activa
+    setNumeroCarga(0)
     setRegistros([])
     setEstadisticas({ puntos: 0, rurales: 0, urbanas: 0 })
 
     setCargaFinalizada(false)
     setMensaje('Carga finalizada. La siguiente se creará cuando guardes el próximo registro.')
     agregarMensajeVisual('Se envió el reporte por correo. Próxima carga lista cuando guardes.', 'sincronizado')
+
     return { ok: true, resumen: construirResumenCarga(registrosDia, statsDia) }
   }
 

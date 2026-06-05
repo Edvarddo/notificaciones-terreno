@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import L from 'leaflet'
 import {
   obtenerRegistros,
   actualizarRegistroPorId,
@@ -7,12 +8,57 @@ import {
 } from '../services/notificaciones'
 import CodigoDialog from '../features/CodigoDialog'
 
-function generarIdPrueba() {
-  // generar un id_notificacion aleatorio de 1-8 dígitos
-  return String(Math.floor(100000 + Math.random() * 899999))
+function AjustarMapa({ puntos }) {
+  const map = useMap()
+  const yaAjustoRef = useRef(false)
+
+  useEffect(() => {
+    if (!puntos.length) return
+    if (yaAjustoRef.current) return
+
+    const bounds = L.latLngBounds(
+      puntos.map((p) => [Number(p.latitud), Number(p.longitud)])
+    )
+
+    map.fitBounds(bounds, { padding: [35, 35] })
+    yaAjustoRef.current = true
+  }, [map, puntos])
+
+  return null
 }
 
-function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esperandoCargaActiva = false }) {
+function crearIconoPunto(numero, total) {
+  return L.divIcon({
+    className: 'mapa-punto-wrapper',
+    html: `
+      <div class="mapa-punto">
+        <span>${numero}</span>
+        ${total > 1 ? `<small>${total}</small>` : ''}
+      </div>
+    `,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+    popupAnchor: [0, -18],
+  })
+}
+
+function obtenerMinutosHora(hora) {
+  const texto = String(hora || '').replace(/\D/g, '').padStart(4, '0').slice(-4)
+  const hh = Number(texto.slice(0, 2))
+  const mm = Number(texto.slice(2, 4))
+
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return -1
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return -1
+
+  return hh * 60 + mm
+}
+
+function MonitoreoLive({
+  fechaCertificacion,
+  cargaId,
+  soloLectura = false,
+  esperandoCargaActiva = false,
+}) {
   const [registros, setRegistros] = useState([])
   const [cargasDelDia, setCargasDelDia] = useState([])
   const [editandoId, setEditandoId] = useState(null)
@@ -21,15 +67,21 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
   const [codigoDialogAbierto, setCodigoDialogAbierto] = useState(false)
   const [registroCodigoEditando, setRegistroCodigoEditando] = useState(null)
   const [cargasListas, setCargasListas] = useState(false)
+  const [grupoSeleccionadoId, setGrupoSeleccionadoId] = useState('')
+  const [pollingActive, setPollingActive] = useState(false)
+  const [lastRefetch, setLastRefetch] = useState(null)
+  const [refetchCount, setRefetchCount] = useState(0)
+  const [toastNuevoRegistro, setToastNuevoRegistro] = useState(null)
+
   const mounted = useRef(true)
-  const channelRef = useRef(null)
+  const pollingRef = useRef(null)
+  const idsRegistrosPreviosRef = useRef(new Set())
+  const primeraCargaRef = useRef(true)
+  const toastTimeoutRef = useRef(null)
 
   const obtenerNumeroCarga = (carga, fallbackIndex = 0) => {
     const numero = Number(carga?.numero_carga)
-    if (Number.isFinite(numero) && numero > 0) {
-      return numero
-    }
-
+    if (Number.isFinite(numero) && numero > 0) return numero
     return fallbackIndex + 1
   }
 
@@ -52,16 +104,14 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
 
       registros.forEach((registro) => {
         const cargaIdRegistro = String(registro?.carga_id || '').trim()
-        if (!cargaIdRegistro || idsVistos.has(cargaIdRegistro)) {
-          return
-        }
+        if (!cargaIdRegistro || idsVistos.has(cargaIdRegistro)) return
 
         idsVistos.add(cargaIdRegistro)
         idsOrdenados.push(cargaIdRegistro)
       })
 
-      idsOrdenados.forEach((cargaId, index) => {
-        mapa.set(cargaId, {
+      idsOrdenados.forEach((id, index) => {
+        mapa.set(id, {
           numero: index + 1,
           clase: `carga-${(index % 6) + 1}`,
         })
@@ -71,16 +121,20 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
     return mapa
   }, [cargasDelDia, registros])
 
+  const registrosConGps = useMemo(() => {
+    return registros.filter((r) => {
+      const lat = Number(r.latitud)
+      const lng = Number(r.longitud)
+      return Number.isFinite(lat) && Number.isFinite(lng)
+    })
+  }, [registros])
+
   const obtenerInfoCarga = (cargaIdFila) => {
     const id = String(cargaIdFila || '')
-    if (!id) {
-      return { etiqueta: 'Sin carga', clase: 'carga-sin-dato' }
-    }
+    if (!id) return { etiqueta: 'Sin carga', clase: 'carga-sin-dato' }
 
     const carga = mapaCargas.get(id)
-    if (!carga) {
-      return { etiqueta: 'Carga', clase: 'carga-desconocida' }
-    }
+    if (!carga) return { etiqueta: 'Carga', clase: 'carga-desconocida' }
 
     return {
       etiqueta: `Carga ${carga.numero}`,
@@ -113,14 +167,10 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
 
   const obtenerInfoLote = (codigoLote) => {
     const id = String(codigoLote || '').trim()
-    if (!id) {
-      return { etiqueta: 'Sin lote', clase: 'lote-sin-dato' }
-    }
+    if (!id) return { etiqueta: 'Sin lote', clase: 'lote-sin-dato' }
 
     const lote = mapaLotes.get(id)
-    if (!lote) {
-      return { etiqueta: id, clase: 'lote-desconocido', mostrar: false }
-    }
+    if (!lote) return { etiqueta: id, clase: 'lote-desconocido', mostrar: false }
 
     return {
       etiqueta: `Lote ${lote.numero}`,
@@ -134,17 +184,22 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
 
     registros.forEach((registro) => {
       const cargaIdRegistro = String(registro?.carga_id || '').trim() || 'sin-carga'
-      if (!grupos.has(cargaIdRegistro)) {
-        grupos.set(cargaIdRegistro, [])
-      }
-
+      if (!grupos.has(cargaIdRegistro)) grupos.set(cargaIdRegistro, [])
       grupos.get(cargaIdRegistro).push(registro)
     })
 
     const entradas = [...grupos.entries()]
     entradas.sort((a, b) => {
-      const infoA = a[0] === 'sin-carga' ? { numero: Number.POSITIVE_INFINITY } : mapaCargas.get(a[0]) || { numero: Number.POSITIVE_INFINITY }
-      const infoB = b[0] === 'sin-carga' ? { numero: Number.POSITIVE_INFINITY } : mapaCargas.get(b[0]) || { numero: Number.POSITIVE_INFINITY }
+      const infoA =
+        a[0] === 'sin-carga'
+          ? { numero: Number.POSITIVE_INFINITY }
+          : mapaCargas.get(a[0]) || { numero: Number.POSITIVE_INFINITY }
+
+      const infoB =
+        b[0] === 'sin-carga'
+          ? { numero: Number.POSITIVE_INFINITY }
+          : mapaCargas.get(b[0]) || { numero: Number.POSITIVE_INFINITY }
+
       return infoA.numero - infoB.numero
     })
 
@@ -160,16 +215,12 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
   }, [mapaCargas, registros])
 
   const gruposPublicos = useMemo(() => {
-    return registrosAgrupadosPorCarga
-      .slice()
-      .sort((a, b) => {
-        const numeroA = a.cargaInfo?.numero || Number.POSITIVE_INFINITY
-        const numeroB = b.cargaInfo?.numero || Number.POSITIVE_INFINITY
-        return numeroA - numeroB
-      })
+    return registrosAgrupadosPorCarga.slice().sort((a, b) => {
+      const numeroA = a.cargaInfo?.numero || Number.POSITIVE_INFINITY
+      const numeroB = b.cargaInfo?.numero || Number.POSITIVE_INFINITY
+      return numeroA - numeroB
+    })
   }, [registrosAgrupadosPorCarga])
-
-  const [grupoSeleccionadoId, setGrupoSeleccionadoId] = useState('')
 
   useEffect(() => {
     if (!soloLectura) return
@@ -181,17 +232,86 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
     }
 
     const grupoExiste = gruposPublicos.some((grupo) => grupo.cargaId === grupoSeleccionadoId)
-    if (!grupoExiste) {
-      setGrupoSeleccionadoId(primerGrupo.cargaId)
-    }
+    if (!grupoExiste) setGrupoSeleccionadoId(primerGrupo.cargaId)
   }, [grupoSeleccionadoId, gruposPublicos, soloLectura])
 
   const grupoPublicoActivo = useMemo(() => {
     if (!soloLectura) return null
     if (!gruposPublicos.length) return null
-
     return gruposPublicos.find((grupo) => grupo.cargaId === grupoSeleccionadoId) || gruposPublicos[0]
   }, [gruposPublicos, grupoSeleccionadoId, soloLectura])
+
+  const registrosMapaVisibles = useMemo(() => {
+    if (soloLectura && grupoPublicoActivo) {
+      return grupoPublicoActivo.registros.filter((r) => {
+        const lat = Number(r.latitud)
+        const lng = Number(r.longitud)
+        return Number.isFinite(lat) && Number.isFinite(lng)
+      })
+    }
+
+    return registrosConGps
+  }, [grupoPublicoActivo, registrosConGps, soloLectura])
+
+  const puntosMapa = useMemo(() => {
+    const mapa = new Map()
+
+    registrosMapaVisibles.forEach((r) => {
+      const lat = Number(r.latitud)
+      const lng = Number(r.longitud)
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+      const key = `${lat.toFixed(6)},${lng.toFixed(6)}`
+
+      if (!mapa.has(key)) {
+        mapa.set(key, {
+          latitud: lat,
+          longitud: lng,
+          registros: [],
+          horaMaximaMinutos: -1,
+        })
+      }
+
+      const punto = mapa.get(key)
+      punto.registros.push(r)
+      punto.horaMaximaMinutos = Math.max(
+        punto.horaMaximaMinutos,
+        obtenerMinutosHora(r.hora)
+      )
+    })
+
+    return [...mapa.values()]
+      .sort((a, b) => {
+        if (a.horaMaximaMinutos !== b.horaMaximaMinutos) {
+          return a.horaMaximaMinutos - b.horaMaximaMinutos
+        }
+
+        const idA = Math.min(...a.registros.map((r) => Number(r.id) || Infinity))
+        const idB = Math.min(...b.registros.map((r) => Number(r.id) || Infinity))
+        return idA - idB
+      })
+      .map((punto, index) => ({
+        ...punto,
+        numero: index + 1,
+      }))
+  }, [registrosMapaVisibles])
+
+  const mapaSecuenciaPorRegistro = useMemo(() => {
+    const mapa = new Map()
+
+    puntosMapa.forEach((punto) => {
+      punto.registros.forEach((registro) => {
+        mapa.set(registro.id, punto.numero)
+      })
+    })
+
+    return mapa
+  }, [puntosMapa])
+
+  const obtenerSecuenciaPunto = (registro) => {
+    return mapaSecuenciaPorRegistro.get(registro.id) || '--'
+  }
 
   const obtenerInfoGrupo = (grupo) => {
     if (grupo.cargaId === 'sin-carga') {
@@ -203,45 +323,42 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
     return { titulo: `Carga ${numero}`, clase }
   }
 
-  const crearUrlMapaPoligono = (latitud, longitud) => {
+  const crearUrlStreetView = (latitud, longitud) => {
     const lat = Number(latitud)
     const lng = Number(longitud)
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return null
-    }
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
 
-    return `https://www.google.com/maps/d/u/0/edit?mid=1IpkPA0M1XRX52_P042vszJz2rmoi0zg&ll=${lat}%2C${lng}&z=18`
+    return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`
   }
 
   const obtenerTextoCoordenadas = (latitud, longitud) => {
     const lat = Number(latitud)
     const lng = Number(longitud)
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return ''
-    }
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return ''
 
     return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
   }
 
   const renderCeldaMapa = (registro) => {
-    const urlMapa = crearUrlMapaPoligono(registro.latitud, registro.longitud)
+    const urlStreetView = crearUrlStreetView(registro.latitud, registro.longitud)
     const textoCoordenadas = obtenerTextoCoordenadas(registro.latitud, registro.longitud)
 
     return (
       <td>
-        {urlMapa ? (
+        {urlStreetView ? (
           <div className="acciones-tabla">
             <a
-              href={urlMapa}
+              href={urlStreetView}
               target="_blank"
               rel="noreferrer"
               className="boton-tabla editar"
-              title={textoCoordenadas ? `Ver en mapa: ${textoCoordenadas}` : 'Ver en mapa'}
+              title={textoCoordenadas ? `Ver Street View: ${textoCoordenadas}` : 'Ver Street View'}
             >
-              Mapa
+              Street View
             </a>
+
             <span className="lote-codigo">{textoCoordenadas}</span>
           </div>
         ) : (
@@ -250,6 +367,47 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
       </td>
     )
   }
+
+  useEffect(() => {
+    const idsActuales = new Set(registros.map((r) => r.id))
+
+    if (primeraCargaRef.current) {
+      idsRegistrosPreviosRef.current = idsActuales
+      primeraCargaRef.current = false
+      return
+    }
+
+    const nuevos = registros.filter((r) => !idsRegistrosPreviosRef.current.has(r.id))
+
+    if (nuevos.length > 0) {
+      const nuevo = nuevos
+        .slice()
+        .sort((a, b) => Number(b.id) - Number(a.id))[0]
+
+      const punto = obtenerSecuenciaPunto(nuevo)
+
+      setToastNuevoRegistro({
+        id: nuevo.id,
+        texto: nuevo.id_notificacion
+          ? `Nueva notificación ${nuevo.id_notificacion}`
+          : nuevo.rit
+            ? `Nuevo registro ${nuevo.rit}-${nuevo.año || ''}`
+            : `Nuevo registro ${nuevo.id}`,
+        detalle: `Punto ${punto} · ${nuevo.codigo || '--'} · ${nuevo.hora || '--'}`,
+      })
+
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current)
+      }
+
+      toastTimeoutRef.current = window.setTimeout(() => {
+        setToastNuevoRegistro(null)
+        toastTimeoutRef.current = null
+      }, 4500)
+    }
+
+    idsRegistrosPreviosRef.current = idsActuales
+  }, [registros, mapaSecuenciaPorRegistro])
 
   async function refetch() {
     try {
@@ -283,17 +441,14 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
 
     cargarInicial()
 
-    // Solo polling: refresca cada 10 segundos.
-    console.log('Iniciando polling al montar MonitoreoLive (cada 10s)')
     const pollInterval = setInterval(async () => {
       try {
         const data = await obtenerRegistros(fechaCertificacion, cargaId)
         if (!mounted.current) return
-        const count = data?.length || 0
+
         setRegistros(data || [])
         setLastRefetch(new Date())
         setRefetchCount((prev) => prev + 1)
-        console.log('Polling refetch encontró', count, 'registros')
       } catch (e) {
         console.warn('Polling error', e)
       }
@@ -304,13 +459,18 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
 
     return () => {
       mounted.current = false
-      // Detener polling
+
       if (pollingRef.current) {
         clearInterval(pollingRef.current)
         pollingRef.current = null
       }
+
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current)
+        toastTimeoutRef.current = null
+      }
+
       setPollingActive(false)
-      console.log('MonitoreoLive cleanup: polling detenido')
     }
   }, [fechaCertificacion, cargaId, esperandoCargaActiva, soloLectura])
 
@@ -343,34 +503,15 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
         const listaFiltrada = todasOrdenadas.filter((c) => idsUnicos.includes(c.id))
 
         if (listaFiltrada.length) {
-          if (!cancelled) {
-            setCargasDelDia(listaFiltrada)
-            setCargasListas(true)
-          }
+          setCargasDelDia(listaFiltrada)
+          setCargasListas(true)
           return
         }
       } catch (error) {
-        // seguimos con fallback
+        // fallback
       }
 
-      const primerRegistroPorCarga = {}
-      for (const id of idsUnicos) {
-        const regs = registrosDelDia.filter((r) => String(r.carga_id || '') === String(id))
-        const times = regs.map((r) => {
-          const horaTexto = String(r.hora || '0000').padStart(4, '0')
-          const hh = horaTexto.slice(0, 2)
-          const mm = horaTexto.slice(2, 4)
-          const d = new Date(`${fechaCertificacion}T${hh}:${mm}:00`).getTime()
-          return Number.isFinite(d) ? d : Infinity
-        })
-        primerRegistroPorCarga[id] = times.length ? Math.min(...times) : Infinity
-      }
-
-      const idsOrdenados = idsUnicos
-        .slice()
-        .sort((a, b) => (primerRegistroPorCarga[a] || Infinity) - (primerRegistroPorCarga[b] || Infinity))
-
-      const listaFallback = idsOrdenados.map((id) => ({ id }))
+      const listaFallback = idsUnicos.map((id) => ({ id }))
       if (!cancelled) {
         setCargasDelDia(listaFallback)
         setCargasListas(true)
@@ -383,10 +524,6 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
       cancelled = true
     }
   }, [fechaCertificacion, registros])
-
-  const reiniciarSuscripcion = async () => {
-    await refetch()
-  }
 
   const abrirEdicion = (registro) => {
     setEditandoId(registro.id)
@@ -408,7 +545,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
         es_rebajada: esRebajadaEdit,
         codigo_lote: codigoLoteEdit,
       })
-      // Actualizar estado local
+
       setRegistros((prev) =>
         prev.map((r) =>
           r.id === id
@@ -420,6 +557,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
             : r
         )
       )
+
       cancelarEdicion()
     } catch (err) {
       console.error('Error actualizando es_rebajada', err)
@@ -462,49 +600,86 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
     }
   }
 
-  // Polling fallback (dev) to detect changes if realtime fails
-  const pollingRef = useRef(null)
-  const [pollingActive, setPollingActive] = useState(false)
-  const [lastRefetch, setLastRefetch] = useState(null)
-  const [refetchCount, setRefetchCount] = useState(0)
-
-  const startPolling = () => {
-    if (pollingRef.current) return
-    console.log('Polling iniciado (cada 2s)')
-    pollingRef.current = setInterval(async () => {
-      try {
-        const data = await obtenerRegistros(fechaCertificacion, cargaId)
-        if (!mounted.current) return
-        const count = data?.length || 0
-        setRegistros(data || [])
-        setLastRefetch(new Date())
-        setRefetchCount((prev) => prev + 1)
-        console.log('Polling refetch encontró', count, 'registros')
-      } catch (e) {
-        console.warn('Polling error', e)
-      }
-    }, 2000)
-    setPollingActive(true)
-  }
-
-  const stopPolling = () => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current)
-      pollingRef.current = null
-    }
-    setPollingActive(false)
-  }
-
   return (
     <div className="monitoreo-live pagina-desktop-only">
       <h2>{soloLectura ? 'Monitoreo público' : 'Monitoreo por refetch'}</h2>
+
       <p className="kicker">
         {soloLectura
           ? esperandoCargaActiva
             ? 'Sin carga activa por ahora. La tabla queda vacía esperando la siguiente carga.'
             : 'Vista pública de solo lectura, con refresco automático cada 10 segundos.'
-          : 'Notificaciones subidas desde terreno (solo lectura, refresco cada 10 segundos)'}
+          : 'Notificaciones subidas desde terreno, con refresco automático cada 10 segundos.'}
       </p>
+
+      {toastNuevoRegistro ? (
+        <div className="toast-nuevo-registro">
+          <strong>{toastNuevoRegistro.texto}</strong>
+          <span>{toastNuevoRegistro.detalle}</span>
+        </div>
+      ) : null}
+
+      <div className="monitoreo-mapa">
+        <MapContainer center={[-22.466, -68.93]} zoom={13} className="leaflet-monitor">
+          <TileLayer
+            attribution="&copy; OpenStreetMap"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          <AjustarMapa puntos={puntosMapa} />
+
+          {puntosMapa.map((punto) => (
+            <Marker
+              key={`${punto.latitud}-${punto.longitud}`}
+              position={[punto.latitud, punto.longitud]}
+              icon={crearIconoPunto(punto.numero, punto.registros.length)}
+            >
+              <Popup>
+                <div className="popup-mapa">
+                  <div className="popup-mapa-header">Punto {punto.numero}</div>
+
+                  <div className="popup-mapa-grid">
+                    <span>Total</span>
+                    <strong>{punto.registros.length} registro(s)</strong>
+
+                    <span>Coord.</span>
+                    <strong>
+                      {punto.latitud.toFixed(6)}, {punto.longitud.toFixed(6)}
+                    </strong>
+                  </div>
+
+                  <div className="popup-mapa-lista">
+                    {punto.registros.map((r) => (
+                      <div key={r.id} className="popup-mapa-registro">
+                        <strong>
+                          {r.id_notificacion
+                            ? r.id_notificacion
+                            : r.rit
+                              ? `${r.rit}-${r.año || ''}`
+                              : `Registro ${r.id}`}
+                        </strong>
+                        <span>
+                          {r.codigo || '--'} · {r.hora || '--'}
+                        </span>
+                        <small>{r.observacion || 'Sin observación'}</small>
+                      </div>
+                    ))}
+                  </div>
+
+                  <a
+                    href={crearUrlStreetView(punto.latitud, punto.longitud)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="popup-mapa-link"
+                  >
+                    Abrir Street View
+                  </a>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      </div>
 
       <div className="tabla-wrapper">
         {soloLectura ? (
@@ -513,6 +688,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
               <label className="monitoreo-publico-selector-label" htmlFor="selector-carga-publica">
                 Carga visible
               </label>
+
               <select
                 id="selector-carga-publica"
                 className="select-tabla monitoreo-publico-select"
@@ -529,8 +705,11 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                   )
                 })}
               </select>
+
               <span className="monitoreo-publico-selector-info">
-                {grupoPublicoActivo ? `${grupoPublicoActivo.registros.length} registro(s)` : 'Sin cargas disponibles'}
+                {grupoPublicoActivo
+                  ? `${grupoPublicoActivo.registros.length} registro(s)`
+                  : 'Sin cargas disponibles'}
               </span>
             </div>
 
@@ -544,6 +723,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                 <table className="tabla-monitoreo tabla-monitoreo-grupo">
                   <thead>
                     <tr>
+                      <th>Punto</th>
                       <th>ID</th>
                       <th>ID Notif / RIT</th>
                       <th>Código</th>
@@ -551,16 +731,25 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                       <th>Observación</th>
                       <th>Código Lote</th>
                       <th>No Urbana</th>
-                      <th>Coordenadas / Mapa</th>
+                      <th>Street View</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {grupoPublicoActivo.registros.map((r) => {
                       const infoLote = obtenerInfoLote(r.codigo_lote)
                       const claseTipo = r.es_no_urbana ? 'tipo-rural' : 'tipo-urbana'
+
                       return (
                         <tr key={r.id} className={`${infoLote.clase} ${claseTipo}`.trim()}>
+                          <td>
+                            <span className="punto-tabla-badge">
+                              {obtenerSecuenciaPunto(r)}
+                            </span>
+                          </td>
+
                           <td>{r.id}</td>
+
                           <td>
                             {r.id_notificacion ? (
                               r.id_notificacion
@@ -570,9 +759,11 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                               <span className="sin-id">--</span>
                             )}
                           </td>
+
                           <td>{r.codigo}</td>
                           <td>{r.hora}</td>
                           <td>{r.observacion}</td>
+
                           <td>
                             {infoLote.mostrar ? (
                               <div className="lote-celda">
@@ -583,11 +774,13 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                               <span className="lote-codigo lote-codigo-vacio" aria-label="Sin lote visible" />
                             )}
                           </td>
+
                           <td>
                             <span className={`tipo-badge-monitoreo ${claseTipo}`}>
                               {r.es_no_urbana ? 'No urbana' : 'Urbana'}
                             </span>
                           </td>
+
                           {renderCeldaMapa(r)}
                         </tr>
                       )
@@ -603,6 +796,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
           <table className="tabla-monitoreo">
             <thead>
               <tr>
+                <th>Punto</th>
                 <th>Carga</th>
                 <th>ID</th>
                 <th>ID Notif / RIT</th>
@@ -611,25 +805,37 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                 <th>Observacion</th>
                 <th>Codigo Lote</th>
                 <th>No Urbana</th>
-                <th>Coordenadas / Mapa</th>
+                <th>Street View</th>
                 {!soloLectura ? <th>ACCIÓN</th> : null}
               </tr>
             </thead>
+
             <tbody>
               {registros.map((r) => {
                 const enEdicion = editandoId === r.id
                 const infoCarga = obtenerInfoCarga(r.carga_id)
                 const infoLote = obtenerInfoLote(r.codigo_lote)
                 const claseTipo = r.es_no_urbana ? 'tipo-rural' : 'tipo-urbana'
+
                 return (
                   <tr
                     key={r.id}
-                    className={`${infoCarga.clase} ${infoLote.clase} ${claseTipo} ${enEdicion ? 'fila-editando' : ''}`.trim()}
+                    className={`${infoCarga.clase} ${infoLote.clase} ${claseTipo} ${
+                      enEdicion ? 'fila-editando' : ''
+                    }`.trim()}
                   >
+                    <td>
+                      <span className="punto-tabla-badge">
+                        {obtenerSecuenciaPunto(r)}
+                      </span>
+                    </td>
+
                     <td>
                       <span className={`carga-badge ${infoCarga.clase}`}>{infoCarga.etiqueta}</span>
                     </td>
+
                     <td>{r.id}</td>
+
                     <td>
                       {r.id_notificacion ? (
                         r.id_notificacion
@@ -639,9 +845,11 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                         <span className="sin-id">--</span>
                       )}
                     </td>
+
                     <td>{r.codigo}</td>
                     <td>{r.hora}</td>
                     <td>{r.observacion}</td>
+
                     <td>
                       {infoLote.mostrar ? (
                         <div className="lote-celda" data-lote={r.codigo_lote || ''}>
@@ -652,11 +860,15 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                         <span className="lote-codigo lote-codigo-vacio" aria-label="Sin lote visible" />
                       )}
                     </td>
+
                     <td>
                       <span className={`tipo-badge-monitoreo ${claseTipo}`}>
                         {r.es_no_urbana ? 'No urbana' : 'Urbana'}
                       </span>
                     </td>
+
+                    {renderCeldaMapa(r)}
+
                     {!soloLectura ? (
                       <td>
                         {enEdicion ? (
@@ -669,6 +881,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                             >
                               Código
                             </button>
+
                             <button
                               type="button"
                               className="boton-tabla guardar"
@@ -677,6 +890,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                             >
                               ✓
                             </button>
+
                             <button
                               type="button"
                               className="boton-tabla cancelar"
@@ -696,6 +910,7 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
                             >
                               ✎
                             </button>
+
                             <button
                               type="button"
                               className="boton-tabla editar"
@@ -720,7 +935,11 @@ function MonitoreoLive({ fechaCertificacion, cargaId, soloLectura = false, esper
         <CodigoDialog
           abierto={codigoDialogAbierto}
           titulo="Cambiar código"
-          valorActual={registroCodigoEditando?.codigo ? String(registroCodigoEditando.codigo).trim().toUpperCase() : ''}
+          valorActual={
+            registroCodigoEditando?.codigo
+              ? String(registroCodigoEditando.codigo).trim().toUpperCase()
+              : ''
+          }
           onClose={cerrarCambioCodigo}
           onSelect={seleccionarCodigo}
         />

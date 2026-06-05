@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase'
-
 export async function obtenerCargaActiva(fechaCertificacion, userId) {
   const { data, error } = await supabase
     .from('cargas_terreno')
@@ -11,7 +10,15 @@ export async function obtenerCargaActiva(fechaCertificacion, userId) {
     .limit(1)
     .maybeSingle()
 
+  console.log('[obtenerCargaActiva]', {
+    fechaCertificacion,
+    userId,
+    data,
+    error,
+  })
+
   if (error) throw error
+
   return data || null
 }
 
@@ -20,7 +27,7 @@ export async function obtenerUltimaCargaFinalizada(fechaCertificacion) {
     .from('cargas_terreno')
     .select('id, creada_en, cerrada_en, estado, fecha_certificacion')
     .eq('fecha_certificacion', fechaCertificacion)
-    .eq('estado', 'finalizada')
+    .eq('estado', 'cerrada')
     .order('cerrada_en', { ascending: false, nullsFirst: false })
     .order('creada_en', { ascending: false })
     .limit(1)
@@ -201,9 +208,10 @@ export async function obtenerEstadisticas(fechaCertificacion, cargaId = null) {
 export async function obtenerTodasLasCargasDeUnDia(fechaCertificacion) {
   const { data, error } = await supabase
     .from('cargas_terreno')
-    .select('id, creada_en, cerrada_en, numero_carga')
+    .select('id, creada_en, cerrada_en, estado, fecha_certificacion, user_id')
     .eq('fecha_certificacion', fechaCertificacion)
     .order('creada_en', { ascending: true })
+    .order('id', { ascending: true })
 
   if (error) throw error
   return data || []

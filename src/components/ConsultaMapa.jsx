@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { divIcon, latLngBounds } from 'leaflet'
 import { MapContainer, TileLayer, Polygon, Marker, Polyline, Popup, useMap } from 'react-leaflet'
-import { POLIGONO_URBANO } from '../utils/geolocalizacion'
+import { POLIGONO_URBANO } from '../data/poligonoCalama'
 import 'leaflet/dist/leaflet.css'
 
 function esCoordenadaValida(valor) {

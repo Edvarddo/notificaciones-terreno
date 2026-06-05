@@ -4,27 +4,23 @@ export const CODIGOS = [
     items: [
       {
         codigo: 'D2',
-        descripcion:
-          'Se realiza la gestion dejando la notificacion directamente en domicilio señalado',
+        descripcion: 'Notificación realizada en domicilio',
       },
       {
         codigo: 'D4',
-        descripcion:
-          'Luego de realizar dos gestiones B7 se comporta como un D2 en la ultima gestion',
+        descripcion: 'Notificación realizada luego de dos gestiones B7',
       },
       {
         codigo: 'D1',
-        descripcion:
-          'Se realiza la gestion y se deja constancia de notificacion en terreno',
+        descripcion: 'Se deja constancia de notificación en terreno',
       },
       {
         codigo: 'D3',
-        descripcion:
-          'Se concreta la gestion de notificacion por una via valida distinta al domicilio',
+        descripcion: 'Notificación realizada por vía válida distinta al domicilio',
       },
       {
         codigo: 'E1',
-        descripcion: 'Se entrega personalmente en terreno la notificacion',
+        descripcion: 'Se notifica personalmente en terreno',
       },
     ],
   },
@@ -33,32 +29,27 @@ export const CODIGOS = [
     items: [
       {
         codigo: 'B1',
-        descripcion:
-          'Se busca en el domicilio y no se logra ubicar al requerido',
+        descripcion: 'No se logra ubicar al requerido en el domicilio',
       },
       {
         codigo: 'B3',
-        descripcion:
-          'No contestan o abren la puerta en el domicilio (se debe dejar aviso)',
+        descripcion: 'Se deja aviso',
       },
       {
         codigo: 'B4',
-        descripcion:
-          'Se busca en el domicilio y la persona requerida no se encuentra',
+        descripcion: 'La persona requerida no se encuentra en el domicilio',
       },
       {
         codigo: 'B7',
-        descripcion:
-          'La persona requerida vive en el lugar pero no se encuentra por estar trabajando o haciendo otra cosa fuera de casa',
+        descripcion: 'Vive en el domicilio pero no se encuentra',
       },
       {
         codigo: 'B8',
-        descripcion:
-          'Se realiza busqueda en el domicilio con resultado sin notificacion efectiva',
+        descripcion: 'Persona se mudó del domicilio',
       },
       {
         codigo: 'B10',
-        descripcion: 'Lugares de acceso cerrado',
+        descripcion: 'No se logró ubicar el domicilio o residente',
       },
     ],
   },
@@ -67,47 +58,39 @@ export const CODIGOS = [
     items: [
       {
         codigo: 'A1',
-        descripcion:
-          'La direccion se constato en terreno de que no existe la numeracion o algo similar',
+        descripcion: 'Dirección sin numeración visible',
       },
       {
         codigo: 'A2',
-        descripcion:
-          'No existe la direccion en la comuna donde se realizan las gestiones',
+        descripcion: 'No existe la calle o pasaje indicado',
       },
       {
         codigo: 'A3',
-        descripcion:
-          'Hace falta informacion como manzana, numeracion, numero de departamento, block, nombre de calle',
+        descripcion: 'Dirección incompleta o insuficiente para ubicar',
       },
       {
         codigo: 'A4',
-        descripcion:
-          'La direccion consignada presenta inconsistencias que impiden continuar la gestion',
+        descripcion: 'Persona se encuentra detenida',
       },
       {
         codigo: 'A5',
-        descripcion:
-          'No es posible determinar con certeza la ubicacion correcta para la notificacion',
+        descripcion: 'Persona fallecida según información obtenida',
       },
       {
         codigo: 'B2',
-        descripcion: 'Domicilio deshabitado',
+        descripcion: 'Inmueble no habitado',
       },
       {
         codigo: 'B5',
-        descripcion:
-          'Persona adulta nos indica que el requerido no vive en el domicilio',
+        descripcion: 'No corresponde al requerido',
       },
       {
         codigo: 'B6',
-        descripcion:
-          'No se logra ubicar una referencia util para completar la notificacion',
+        descripcion: 'No corresponde al requerido y sin mayores antecedentes',
       },
       {
         codigo: 'F4',
-        descripcion:
-          'Luego de dos gestiones B3, la notificación se deja negativa',
+        descripcion: 'Luego de dos avisos no se concreta la notificación',
       },
     ],
   },

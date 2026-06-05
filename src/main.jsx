@@ -3,7 +3,7 @@ import './index.css'
 import App from './App.jsx'
 import AuthGate from './components/AuthGate'
 import MonitoreoLive from './pages/MonitoreoLive'
-
+import 'leaflet/dist/leaflet.css'
 const esMonitoreoPublico = /^\/monitoreo-publico\/?$/i.test(window.location.pathname)
 
 function PublicMonitorApp() {

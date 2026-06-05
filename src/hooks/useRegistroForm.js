@@ -28,20 +28,20 @@ function useRegistroForm() {
     COMIENZA: {
       etiqueta: 'La numeración comienza en XXXX',
       requiere: 1,
-      build: (v1) => (v1 ? `Se constata que la numeración comienza en ${v1}.` : 'Se constata que la numeración comienza en un valor determinado.'),
+      build: (v1) => (v1 ? `La numeración comienza en ${v1}.` : 'Se constata que la numeración comienza en un valor determinado.'),
     },
     TERMINA: {
       etiqueta: 'La numeración termina en YYYY',
       requiere: 1,
-      build: (v1) => (v1 ? `Se constata que la numeración termina en ${v1}.` : 'Se constata que la numeración termina en un valor determinado.'),
+      build: (v1) => (v1 ? `La numeración termina en ${v1}.` : 'Se constata que la numeración termina en un valor determinado.'),
     },
     ENTRE: {
       etiqueta: 'La numeración está entre XXXX y YYYY',
       requiere: 2,
       build: (v1, v2) => {
-        if (v1 && v2) return `Se constata numeración entre ${v1} y ${v2}.`
-        if (v1) return `Se constata numeración a partir de ${v1}.`
-        return 'Se constata numeración en un rango no especificado.'
+        if (v1 && v2) return `La numeración está entre ${v1} y ${v2}.`
+        if (v1) return `La numeración a partir de ${v1}.`
+        return 'La numeración en un rango no especificado.'
       },
     },
     SIN_ORDEN: {
@@ -75,11 +75,29 @@ function useRegistroForm() {
     },
   }
 
-  const OBSERVACIONES_SUGERIDAS = {
-    D2: '.',
-    E1: 'Se notifica personalmente en terreno',
-    B3: 'Se deja aviso',
-  }
+const OBSERVACIONES_SUGERIDAS = {
+  // Realizadas
+  D2: '.',
+  D4: '.',
+  E1: 'Se notifica personalmente en terreno',
+
+  // Dirección
+  A2: 'No existe la calle o pasaje indicado',
+  A4: 'Persona se encuentra detenida',
+  A5: 'Persona fallecida según información obtenida',
+
+  // Búsqueda
+  B3: 'Se deja aviso',
+  B5: 'No corresponde al requerido',
+  B7: 'Vive en el domicilio pero no se encuentra',
+  B10: 'No se logró ubicar el domicilio o residente',
+
+  // Negativas / otros
+  B2: 'Inmueble no habitado',
+  B6: 'No corresponde al requerido y sin mayores antecedentes',
+  B8: 'Persona se mudó del domicilio',
+  B9: 'Vecinos o residentes no entregan información',
+}
 
   // Añadir B7 y A1 (A1 como opciones)
   OBSERVACIONES_SUGERIDAS.B7 = 'Se deja aviso'
