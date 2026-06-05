@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import DailyCodePage from './DailyCodePage'
 import useDailyCodeSession from '../hooks/useDailyCodeSession'
 import { supabase } from '../lib/supabase'
+import SessionSidebar from './SessionSidebar'
 
 export default function AuthGate({ children }) {
   const [users, setUsers] = useState([])
@@ -20,7 +21,7 @@ export default function AuthGate({ children }) {
     requestError,
     remainingLabel,
     sessionUserId,
-    
+
     logout
   } = useDailyCodeSession()
   const sessionUser = users.find(
@@ -53,52 +54,21 @@ export default function AuthGate({ children }) {
   }
 
   if (hasValidSession) {
+    const confirmarLogout = () => {
+      const ok = window.confirm('¿Cerrar la sesión activa?')
+      if (ok) logout()
+    }
     return (
       <>
-        <div
-          style={{
-            position: 'fixed',
-            right: 12,
-            bottom: 12,
-            zIndex: 1200,
-            display: 'flex',
-            gap: '8px',
-            alignItems: 'center',
-          }}
-        >
-          <div
-            style={{
-              background: '#0f3f63',
-              color: '#fff',
-              padding: '8px 10px',
-              borderRadius: 8,
-              fontSize: 12,
-              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
-            }}
-          >
-            Sesion activa · expira en {remainingLabel}
-          </div>
-
-          {/* <button
-            type="button"
-            onClick={logout}
-            style={{
-              background: '#dc2626',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '8px 10px',
-              cursor: 'pointer',
-              fontSize: 12,
-            }}
-          >
-            Salir
-          </button> */}
-        </div>
+        <SessionSidebar
+          initials={sessionUser?.initials || ''}
+          remainingLabel={remainingLabel}
+          onLogout={logout}
+        />
 
         {React.cloneElement(children, {
           sessionUserId,
-          sessionUserInitials : sessionUser?.initials || '',
+          sessionUserInitials: sessionUser?.initials || '',
         })}
       </>
     )

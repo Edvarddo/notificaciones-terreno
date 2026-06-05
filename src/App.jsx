@@ -19,7 +19,10 @@ import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
 import { determinarSiEsNoUrbanaDesdeGPS } from './utils/geolocalizacion'
 import IconReload from './components/IconReload'
-function App({ sessionUserId, sessionUserInitials,}) {
+function App({   sessionUserId,
+  sessionUserInitials,
+  sessionRemainingLabel,
+  onLogout,}) {
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
   const [dialogoLoteAbierto, setDialogoLoteAbierto] = useState(false)
   const [dialogoCodigoLoteAbierto, setDialogoCodigoLoteAbierto] = useState(false)
