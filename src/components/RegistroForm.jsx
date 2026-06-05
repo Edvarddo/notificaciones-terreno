@@ -114,11 +114,15 @@ function RegistroForm({
   const aplicarCasoA1 = () => {
     const caso = a1Casos?.[a1CasoDraft]
 
+    const valor1Final = a1CasoDraft === 'TERMINA' ? '' : a1Valor1Draft
+    const valor2Final = a1CasoDraft === 'TERMINA' ? a1Valor1Draft : a1Valor2Draft
+
     onA1CasoChange(a1CasoDraft)
-    onA1Valor1Change(a1Valor1Draft)
-    onA1Valor2Change(a1Valor2Draft)
+    onA1Valor1Change(valor1Final)
+    onA1Valor2Change(valor2Final)
+
     onObservacionChange(
-      construirObservacionDesdeCaso(caso, a1Valor1Draft, a1Valor2Draft)
+      construirObservacionDesdeCaso(caso, valor1Final, valor2Final)
     )
 
     setSelectorA1Abierto(false)
@@ -136,7 +140,11 @@ function RegistroForm({
   const obtenerTextoResumenA1 = () => {
     if (!casoDefA1) return 'Seleccionar caso A1'
 
-    if (!a1Valor1 && !a1Valor2) {
+    const valorPrincipal = a1Caso === 'TERMINA'
+      ? a1Valor2
+      : a1Valor1
+
+    if (!valorPrincipal && !a1Valor2) {
       return casoDefA1.etiqueta
     }
 
@@ -144,7 +152,7 @@ function RegistroForm({
       return `${casoDefA1.etiqueta}: ${a1Valor1} - ${a1Valor2}`
     }
 
-    return `${casoDefA1.etiqueta}: ${a1Valor1 || a1Valor2}`
+    return `${casoDefA1.etiqueta}: ${valorPrincipal || a1Valor2}`
   }
 
   return (
@@ -328,9 +336,8 @@ function RegistroForm({
                     <button
                       key={key}
                       type="button"
-                      className={`selector-sheet-item ${
-                        a1CasoDraft === key ? 'selector-sheet-item-activo' : ''
-                      }`}
+                      className={`selector-sheet-item ${a1CasoDraft === key ? 'selector-sheet-item-activo' : ''
+                        }`}
                       onClick={() => seleccionarCasoA1Draft(key)}
                     >
                       <span>{caso.etiqueta}</span>
@@ -343,14 +350,15 @@ function RegistroForm({
 
                 {a1CasoDraft && requiereA1Draft > 0 ? (
                   <div
-                    className={`a1-modal-valores ${
-                      requiereA1Draft === 1 ? 'a1-un-valor' : ''
-                    }`}
+                    className={`a1-modal-valores ${requiereA1Draft === 1 ? 'a1-un-valor' : ''
+                      }`}
                   >
                     {requiereA1Draft >= 1 ? (
                       <label className="a1-mini-campo">
                         <span>{etiquetaValor1}</span>
                         <input
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           className="input-base"
                           placeholder={placeholderA1_1}
                           value={a1Valor1Draft}
@@ -364,6 +372,8 @@ function RegistroForm({
                         <span>{etiquetaValor2}</span>
                         <input
                           className="input-base"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           placeholder={placeholderA1_2}
                           value={a1Valor2Draft}
                           onChange={(e) => setA1Valor2Draft(e.target.value)}
@@ -429,9 +439,8 @@ function RegistroForm({
                     <button
                       key={key}
                       type="button"
-                      className={`selector-sheet-item ${
-                        a3Caso === key ? 'selector-sheet-item-activo' : ''
-                      }`}
+                      className={`selector-sheet-item ${a3Caso === key ? 'selector-sheet-item-activo' : ''
+                        }`}
                       onClick={() => seleccionarCasoA3(key)}
                     >
                       <span>{caso.etiqueta}</span>
