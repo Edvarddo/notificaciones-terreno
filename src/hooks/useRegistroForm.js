@@ -22,18 +22,18 @@ function useRegistroForm() {
       build: (valor1, valor2) => {
         if (valor1 && valor2) return `Salto de numeración desde ${valor1} hasta ${valor2}.`
         if (valor1) return `Salto de numeración desde ${valor1}.`
-        return 'Salto salto de numeración.'
+        return 'Salto de numeración.'
       },
     },
     COMIENZA: {
       etiqueta: 'La numeración comienza en XXXX',
       requiere: 1,
-      build: (v1) => (v1 ? `La numeración comienza en ${v1}.` : 'Se constata que la numeración comienza en un valor determinado.'),
+      build: (v1) => (v1 ? `La numeración comienza en ${v1}.` : 'Salto de numeración comienza en un valor determinado.'),
     },
     TERMINA: {
       etiqueta: 'La numeración termina en YYYY',
       requiere: 1,
-      build: (v1) => (v1 ? `La numeración termina en ${v1}.` : 'Se constata que la numeración termina en un valor determinado.'),
+      build: (v1) => (v1 ? `La numeración termina en ${v1}.` : 'Salto numeración termina en un valor determinado.'),
     },
     ENTRE: {
       etiqueta: 'La numeración está entre XXXX y YYYY',
@@ -48,7 +48,7 @@ function useRegistroForm() {
       etiqueta: 'Numeración no definida en el área',
       requiere: 0,
       build: () =>
-        'Se constata que la numeración no se encuentra y no existe un orden definido en el área.',
+        'La numeración no se encuentra y no existe un orden definido en el área.',
     },
     SECTOR_TOMAS: {
       etiqueta: 'Sector tomas, sin nombre ni numeración a la vista',
@@ -109,49 +109,33 @@ const OBSERVACIONES_SUGERIDAS = {
     return OBSERVACIONES_SUGERIDAS[codigoValue.trim().toUpperCase()] || ''
   }
 
-  const setCodigo = (nuevoCodigo) => {
-    const codigoLimpio = String(nuevoCodigo ?? '').trim().toUpperCase()
-    const sugerenciaActual = obtenerObservacionSugerida(codigo)
-    const sugerenciaNueva = obtenerObservacionSugerida(codigoLimpio)
+const setCodigo = (nuevoCodigo) => {
+  const codigoLimpio = String(nuevoCodigo ?? '').trim().toUpperCase()
+  const sugerenciaNueva = obtenerObservacionSugerida(codigoLimpio)
 
-    const sugerenciaActualNorm = Array.isArray(sugerenciaActual) ? (sugerenciaActual[0] || '') : sugerenciaActual
-    setCodigoState(codigoLimpio)
+  setCodigoState(codigoLimpio)
 
-    if (sugerenciaNueva) {
-      if (Array.isArray(sugerenciaNueva)) {
-        if (codigoLimpio === 'A1') {
-          const casoInicial = 'SALTO'
-          const textoInicial = A1_CASOS[casoInicial].build('', '')
-          if (!observacion.trim() || observacion === sugerenciaActualNorm) {
-            setObservacion(textoInicial)
-          }
-          setA1Caso(casoInicial)
-          setA1Valor1('')
-          setA1Valor2('')
-        } else if (codigoLimpio === 'A3') {
-          const casoInicial = 'FALTA_NUMERO_CASA'
-          const textoInicial = A3_CASOS[casoInicial].build()
-          if (!observacion.trim() || observacion === sugerenciaActualNorm) {
-            setObservacion(textoInicial)
-          }
-          setA3Caso(casoInicial)
-        } else {
-          const primer = sugerenciaNueva[0]
-          if (!observacion.trim() || observacion === sugerenciaActualNorm) setObservacion(primer)
-        }
-      } else {
-        if (!observacion.trim() || observacion === sugerenciaActualNorm) {
-          setObservacion(sugerenciaNueva)
-        }
-        setA1Caso('')
-        setA1Valor1('')
-        setA1Valor2('')
-        setA3Caso('')
-      }
-    } else if (observacion.trim() && observacion === sugerenciaActualNorm) {
-      setObservacion('')
-    }
+  setA1Caso('')
+  setA1Valor1('')
+  setA1Valor2('')
+  setA3Caso('')
+
+  if (codigoLimpio === 'A1') {
+    const casoInicial = 'SALTO'
+    setA1Caso(casoInicial)
+    setObservacion(A1_CASOS[casoInicial].build('', ''))
+    return
   }
+
+  if (codigoLimpio === 'A3') {
+    const casoInicial = 'FALTA_NUMERO_CASA'
+    setA3Caso(casoInicial)
+    setObservacion(A3_CASOS[casoInicial].build())
+    return
+  }
+
+  setObservacion(sugerenciaNueva || '')
+}
 
   const construirObservacionA1 = (caso, valor1, valor2) => {
     const casoActual = A1_CASOS[caso]
