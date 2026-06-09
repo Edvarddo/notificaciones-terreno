@@ -30,7 +30,7 @@ import {
 import { validarIdNotificacion, esIdNotificacionValida } from '../utils/validation'
 import { enviarReporteFinalizacionCarga } from '../services/cierre'
 
-const TIEMPO_MAXIMO_CLASIFICACION_GEO_MS = 5000
+const TIEMPO_MAXIMO_CLASIFICACION_GEO_MS = 20000
 const TIEMPO_MAXIMO_CARGA_ACTIVA_MS = 10000
 
 function useNotificaciones({
@@ -565,7 +565,7 @@ function useNotificaciones({
     }
 
     const codigoLote = generarCodigoLote()
-    const clasificacionTerreno = await clasificacionTerrenoPromise
+    const clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbana)
 
     try {
       if (idLimpio) {
@@ -835,7 +835,7 @@ function useNotificaciones({
     }
 
     const observacionNormalizada = observacionLote.trim() || '.'
-    const clasificacionTerreno = await clasificacionTerrenoPromise
+    const clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbanaLote)
     const idLoteUnico = crypto.randomUUID()
     const filas = []
 
