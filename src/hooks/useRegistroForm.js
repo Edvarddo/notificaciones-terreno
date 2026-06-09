@@ -20,9 +20,9 @@ function useRegistroForm() {
       etiqueta: 'Salto de numeración desde XXXX hasta YYYY',
       requiere: 2,
       build: (valor1, valor2) => {
-        if (valor1 && valor2) return `Se constata salto de numeración desde ${valor1} hasta ${valor2}.`
-        if (valor1) return `Se constata numeración desde ${valor1}.`
-        return 'Se constata salto de numeración.'
+        if (valor1 && valor2) return `Salto de numeración desde ${valor1} hasta ${valor2}.`
+        if (valor1) return `Salto de numeración desde ${valor1}.`
+        return 'Salto salto de numeración.'
       },
     },
     COMIENZA: {
@@ -82,21 +82,22 @@ const OBSERVACIONES_SUGERIDAS = {
   E1: 'Se notifica personalmente en terreno',
 
   // Dirección
-  A2: 'No existe la calle o pasaje indicado',
-  A4: 'Persona se encuentra detenida',
-  A5: 'Persona fallecida según información obtenida',
+  A2: '.',
+  A4: '.',
+  A5: '.',
 
   // Búsqueda
   B3: 'Se deja aviso',
-  B5: 'No corresponde al requerido',
-  B7: 'Vive en el domicilio pero no se encuentra',
-  B10: 'No se logró ubicar el domicilio o residente',
+  B5: '.',
+  B7: 'Se deja aviso',
+  B10: '.',
 
   // Negativas / otros
-  B2: 'Inmueble no habitado',
-  B6: 'No corresponde al requerido y sin mayores antecedentes',
-  B8: 'Persona se mudó del domicilio',
-  B9: 'Vecinos o residentes no entregan información',
+  B2: '.',
+  B6: '.',
+  B8: '.',
+  B9: '.',
+  F4: '.',
 }
 
   // Añadir B7 y A1 (A1 como opciones)

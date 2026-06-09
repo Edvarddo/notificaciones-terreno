@@ -9,6 +9,7 @@ export default function QrScannerModal({
   onClose,
   onDetected,
   onError,
+  setZoom
 }) {
   const [errorMsg, setErrorMsg] = useState(null)
 
@@ -31,7 +32,7 @@ export default function QrScannerModal({
         if (scanner && typeof scanner.detenerEscaneo === 'function') {
           await scanner.detenerEscaneo()
         }
-      } catch {}
+      } catch { }
     }
 
     const startIfPossible = async () => {
@@ -81,6 +82,24 @@ export default function QrScannerModal({
 
         <div className="scanner-modal-contenido">
           <div className="scanner-modal-preview">
+            <div className="qr-zoom-info">
+              Zoom {Math.round((scanner.zoom || 1) * 100)}%
+            </div>
+            <div className="qr-zoom-slider">
+              <span className="qr-zoom-slider-icon">+</span>
+
+              <input
+                type="range"
+                min="1"
+                max="3"
+                step="0.25"
+                value={scanner.zoom || 1}
+                onChange={(e) => scanner.setZoom?.(Number(e.target.value))}
+                aria-label="Control de zoom"
+              />
+
+              <span className="qr-zoom-slider-icon">−</span>
+            </div>
             <div id={qrRegionId} className="scanner-modal-region" />
             {!scanner.escaneando && errorMsg ? (
               <div className="scanner-modal-error">
@@ -107,21 +126,39 @@ export default function QrScannerModal({
           </div>
 
           <div className="qr-zoom-bar">
-            <button type="button" className="boton-mini" onClick={scanner.zoomOut} aria-label="Alejar cámara">
-              -
+            <button
+              type="button"
+              className="boton-zoom boton-zoom-out"
+              onClick={scanner.zoomOut}
+              aria-label="Alejar cámara"
+            >
+              −
             </button>
-            <span className="qr-zoom-valor">Zoom {Math.round((scanner.zoom || 1) * 100)}%</span>
-            <button type="button" className="boton-mini" onClick={scanner.zoomIn} aria-label="Acercar cámara">
+
+            <button
+              type="button"
+              className="boton-zoom boton-zoom-in"
+              onClick={scanner.zoomIn}
+              aria-label="Acercar cámara"
+            >
               +
-            </button>
-            <button type="button" className="boton-mini" onClick={scanner.resetZoom} aria-label="Restablecer zoom">
-              Reset
             </button>
           </div>
 
-          <div className="scanner-modal-ayuda">
+
+
+          <button
+            type="button"
+            className="boton-reset-zoom"
+            onClick={scanner.resetZoom}
+            aria-label="Restablecer zoom"
+          >
+            Reset Zoom
+          </button>
+
+          {/* <div className="scanner-modal-ayuda">
             Apunta la cámara al código QR. Si no inicia, revisa permisos y que la app esté en HTTPS.
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

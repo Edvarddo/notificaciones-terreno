@@ -466,7 +466,7 @@ function RegistroForm({
         />
       </label>
 
-      <label className="campo-label">
+      {/* <label className="campo-label">
         Comentarios (opcional)
         <textarea
           className="textarea-base"
@@ -474,7 +474,7 @@ function RegistroForm({
           value={comentarios}
           onChange={(e) => onComentariosChange(e.target.value)}
         />
-      </label>
+      </label> */}
 
       <div className="acciones acciones-secundarias">
         <button

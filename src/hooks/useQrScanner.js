@@ -33,7 +33,7 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
 
     lastCodeRef.current = decodedText
     lastTimeRef.current = now
-    try { playBeep() } catch {}
+    try { playBeep() } catch { }
     await onDetected?.(decodedText)
   }
 
@@ -42,7 +42,7 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
       source,
       config,
       handleDecoded,
-      () => {}
+      () => { }
     )
   }
 
@@ -168,7 +168,7 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
 
   useEffect(() => {
     return () => {
-      detenerEscaneo().catch(() => {})
+      detenerEscaneo().catch(() => { })
     }
   }, [])
 
@@ -182,5 +182,6 @@ export default function useQrScanner({ qrRegionId = 'qr-reader', onDetected, onE
     resetZoom,
     start: iniciarEscaneo,
     stop: detenerEscaneo,
+    setZoom: aplicarZoom,
   }
 }
