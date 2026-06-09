@@ -285,7 +285,7 @@ export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
     const poligonoUrbano = polygon([POLIGONO_URBANO])
     const esUrbana = puntoEnPoligono([lng, lat], poligonoUrbano)
 
-    guardarUltimaPosicionGps({ latitud: lat, longitud: lng, precision: precisionGps })
+    // guardarUltimaPosicionGps({ latitud: lat, longitud: lng, precision: precisionGps })
 
     console.log('[geo] ubicacion GPS', {
       latitud: lat,
