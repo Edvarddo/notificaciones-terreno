@@ -304,10 +304,7 @@ export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
       fuente: 'gps',
     }
   } catch (error) {
-    console.error(
-      '[geo] GPS no disponible y se deshabilitó el uso de ultima posicion conocida',
-      error?.message || error
-    )
+    console.error('[geo] GPS actual falló. No se usará última ubicación en esta prueba.', error?.message || error)
 
     return clasificarPorFallbackManual(esNoUrbanaManual)
   }
