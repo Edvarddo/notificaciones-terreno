@@ -128,7 +128,55 @@ const ULTIMA_POSICION_TTL_MS = 2 * 60 * 1000
 
 const poligonoPrueba = polygon([POLIGONO_URBANO])
 
+let watchIdGps = null
+let ultimaPosicionWatch = null
 
+export function iniciarWatchGps() {
+  if (!navigator.geolocation || watchIdGps !== null) return
+
+  watchIdGps = navigator.geolocation.watchPosition(
+    (posicion) => {
+      ultimaPosicionWatch = posicion
+
+      console.log('[GPS WATCH]', {
+        timestamp: posicion.timestamp,
+        edadMs: Date.now() - posicion.timestamp,
+        accuracy: posicion.coords.accuracy,
+        latitud: posicion.coords.latitude,
+        longitud: posicion.coords.longitude,
+      })
+    },
+    (error) => {
+      console.warn('[GPS WATCH ERROR]', error?.message || error)
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 20000,
+    }
+  )
+}
+
+export function detenerWatchGps() {
+  if (watchIdGps !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(watchIdGps)
+  }
+
+  watchIdGps = null
+  ultimaPosicionWatch = null
+}
+
+function obtenerPosicionWatchValida() {
+  if (!ultimaPosicionWatch) return null
+
+  const edadMs = Date.now() - ultimaPosicionWatch.timestamp
+  const precision = ultimaPosicionWatch.coords.accuracy
+
+  if (edadMs > 30000) return null
+  if (precision > 80) return null
+
+  return ultimaPosicionWatch
+}
 
 
 const obtenerPoligonoConMargen = (margenMetros) => {
@@ -241,6 +289,18 @@ function leerUltimaPosicionGps() {
 }
 
 async function obtenerPosicionConReintentos() {
+  const posicionWatch = obtenerPosicionWatchValida()
+
+  if (posicionWatch) {
+    console.log('[GPS] usando posicion watch activa', {
+      edadMs: Date.now() - posicionWatch.timestamp,
+      accuracy: posicionWatch.coords.accuracy,
+      latitud: posicionWatch.coords.latitude,
+      longitud: posicionWatch.coords.longitude,
+    })
+
+    return posicionWatch
+  }
   const intentos = [
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },

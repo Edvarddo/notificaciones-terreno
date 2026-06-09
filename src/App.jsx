@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 
+import { iniciarWatchGps, detenerWatchGps } from './utils/geolocalizacion'
 import { MAPA_CODIGOS } from './constants/codigos'
 import RegistroForm from './components/RegistroForm'
 import RegistroTable from './components/RegistroTable'
@@ -408,6 +409,13 @@ function App({ sessionUserId,
     return () => {
       activo = false
       clearInterval(intervalo)
+    }
+  }, [])
+  useEffect(() => {
+    iniciarWatchGps()
+
+    return () => {
+      detenerWatchGps()
     }
   }, [])
 
