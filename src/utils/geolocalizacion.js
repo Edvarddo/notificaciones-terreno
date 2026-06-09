@@ -126,6 +126,10 @@ const UMBRAL_PRECISION_BAJA_METROS = 30
 const ULTIMA_POSICION_KEY = 'notificaciones-terreno-ultima-posicion-gps'
 const ULTIMA_POSICION_TTL_MS = 30 * 60 * 1000
 
+const poligonoPrueba = polygon([POLIGONO_URBANO])
+
+
+
 
 const obtenerPoligonoConMargen = (margenMetros) => {
   try {
@@ -171,6 +175,7 @@ function puntoEnPoligono([lng, lat], poligono) {
 
   return dentro
 }
+
 
 function obtenerPosicionActual(options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }) {
   return new Promise((resolve, reject) => {
@@ -253,8 +258,9 @@ export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
     const lng = posicion.coords.longitude
     const lat = posicion.coords.latitude
     const precisionGps = posicion.coords.accuracy
+
     const margenAplicado = calcularMargenSegunPrecision(precisionGps)
-    const poligonoUrbano = obtenerPoligonoConMargen(margenAplicado)
+    const poligonoUrbano = polygon([POLIGONO_URBANO])
     const esUrbana = puntoEnPoligono([lng, lat], poligonoUrbano)
 
     guardarUltimaPosicionGps({ latitud: lat, longitud: lng, precision: precisionGps })
@@ -281,9 +287,9 @@ export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
     const ultimaPosicion = leerUltimaPosicionGps()
     if (ultimaPosicion) {
       const margenAplicado = calcularMargenSegunPrecision(ultimaPosicion.precision)
-      const poligonoUrbano = obtenerPoligonoConMargen(margenAplicado)
+      const poligonoUrbano = polygon([POLIGONO_URBANO])
       const esUrbana = puntoEnPoligono([ultimaPosicion.longitud, ultimaPosicion.latitud], poligonoUrbano)
-
+      
       console.log('[geo] usando ultima posicion GPS conocida', {
         latitud: ultimaPosicion.latitud,
         longitud: ultimaPosicion.longitud,

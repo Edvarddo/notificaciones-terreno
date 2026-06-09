@@ -216,3 +216,88 @@ export async function obtenerTodasLasCargasDeUnDia(fechaCertificacion) {
   if (error) throw error
   return data || []
 }
+
+export async function obtenerCargaPorId(cargaId) {
+  const { data, error } = await supabase
+    .from('cargas_terreno')
+    .select('id, estado, cerrada_en')
+    .eq('id', cargaId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data || null
+}
+
+// 
+
+export async function obtenerResumenNotificaciones({ año, mes, dia = '' }) {
+  const inicio = dia
+    ? `${año}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+    : `${año}-${String(mes).padStart(2, '0')}-01`
+
+  const fin = dia
+    ? inicio
+    : new Date(Number(año), Number(mes), 0).toISOString().slice(0, 10)
+
+  const { data, error } = await supabase
+    .from('notificaciones_terreno')
+    .select('id, fecha_certificacion, codigo_lote, es_no_urbana')
+    .gte('fecha_certificacion', inicio)
+    .lte('fecha_certificacion', fin)
+
+  if (error) throw error
+
+  const registros = data || []
+  const porDia = new Map()
+
+  for (const r of registros) {
+    const fecha = r.fecha_certificacion
+    if (!porDia.has(fecha)) {
+      porDia.set(fecha, {
+        fecha,
+        cargaTotal: 0,
+        lotes: new Map(),
+      })
+    }
+
+    const item = porDia.get(fecha)
+    item.cargaTotal += 1
+
+    const lote = String(r.codigo_lote || '').trim()
+    if (lote && !item.lotes.has(lote)) {
+      item.lotes.set(lote, Boolean(r.es_no_urbana))
+    }
+  }
+
+  const dias = [...porDia.values()].map((item) => {
+    const puntos = item.lotes.size
+    const rurales = [...item.lotes.values()].filter(Boolean).length
+    const urbanas = Math.max(puntos - rurales, 0)
+
+    return {
+      fecha: item.fecha,
+      cargaTotal: item.cargaTotal,
+      puntos,
+      urbanas,
+      rurales,
+    }
+  })
+
+  const total = dias.reduce(
+    (acc, d) => {
+      acc.cargaTotal += d.cargaTotal
+      acc.puntos += d.puntos
+      acc.urbanas += d.urbanas
+      acc.rurales += d.rurales
+      return acc
+    },
+    { cargaTotal: 0, puntos: 0, urbanas: 0, rurales: 0 }
+  )
+
+  return {
+    inicio,
+    fin,
+    total,
+    dias: dias.sort((a, b) => a.fecha.localeCompare(b.fecha)),
+  }
+}

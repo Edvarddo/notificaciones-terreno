@@ -9,7 +9,8 @@ import {
   actualizarRegistroPorId,
   obtenerEstadisticas,
   obtenerTodasLasCargasDeUnDia,
-  obtenerCargaActiva
+  obtenerCargaActiva,
+  obtenerCargaPorId,
 } from '../services/notificaciones'
 import {
   CODIGOS_BUSQUEDA,
@@ -61,6 +62,26 @@ function useNotificaciones({
 
   const sincronizandoPendientesRef = useRef(false)
 
+  const validarCargaActivaAntesDeGuardar = async (cargaId) => {
+    if (!cargaId) {
+      return { ok: false, error: 'No hay carga activa para guardar' }
+    }
+
+    const carga = await obtenerCargaPorId(cargaId)
+
+    if (!carga) {
+      return { ok: false, error: 'La carga activa ya no existe o no está disponible' }
+    }
+
+    if (String(carga.estado).toLowerCase() !== 'activa') {
+      return {
+        ok: false,
+        error: 'Esta carga ya fue cerrada en otro dispositivo. Recarga la aplicación para continuar.',
+      }
+    }
+
+    return { ok: true }
+  }
   const setMensaje = (texto, duracion = 2800) => {
     if (mensajeTimerRef.current) {
       clearTimeout(mensajeTimerRef.current)
@@ -211,12 +232,12 @@ function useNotificaciones({
               attempts: Number(pendiente.attempts || 0) + 1,
               lastTriedAt: Date.now(),
               lastError: mensajeError || 'Error de sincronizacion',
-            }).catch(() => {})
+            }).catch(() => { })
           }
         }
       }
 
-      await refrescarPendientesSync().catch(() => {})
+      await refrescarPendientesSync().catch(() => { })
 
       if (sincronizados > 0) {
         setMensaje(`Sincronizados ${sincronizados} registro(s) pendientes`)
@@ -237,7 +258,7 @@ function useNotificaciones({
         )
       }
 
-      await refrescarPendientesSync().catch(() => {})
+      await refrescarPendientesSync().catch(() => { })
     } finally {
       sincronizandoPendientesRef.current = false
       setSincronizandoPendientes(false)
@@ -245,10 +266,10 @@ function useNotificaciones({
   }
 
   useEffect(() => {
-    refrescarPendientesSync().catch(() => {})
+    refrescarPendientesSync().catch(() => { })
 
     const intentarSincronizar = () => {
-      sincronizarPendientes().catch(() => {})
+      sincronizarPendientes().catch(() => { })
     }
 
     const manejarOnline = () => {
@@ -501,7 +522,17 @@ function useNotificaciones({
     }
 
     const cargaId = await asegurarCargaActiva()
+    const validacionCarga = await validarCargaActivaAntesDeGuardar(cargaId)
 
+    if (!validacionCarga.ok) {
+      setErrorMsg(validacionCarga.error)
+      setCargaActivaId('')
+      setNumeroCarga(0)
+      setRegistros([])
+      setEstadisticas({ cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 })
+      setCargando(false)
+      return { ok: false, error: validacionCarga.error }
+    }
     const validacionId = validarIdNotificacion(idNotificacion)
     const idLimpio = validacionId.valor
     const codigoLimpio = codigo.trim().toUpperCase()
@@ -585,7 +616,7 @@ function useNotificaciones({
 
         setMensaje('Sin conexion: registro pendiente de sincronizacion')
         agregarMensajeVisual('Guardado sin internet. Quedo pendiente de sincronizacion.', 'pendiente')
-        await refrescarPendientesSync().catch(() => {})
+        await refrescarPendientesSync().catch(() => { })
         enfocarId?.()
         setCargando(false)
         return { ok: true, offline: true }
@@ -664,7 +695,7 @@ function useNotificaciones({
 
         setMensaje('Sin conexion: registro pendiente de sincronizacion')
         agregarMensajeVisual('Guardado sin internet. Quedo pendiente de sincronizacion.', 'pendiente')
-        await refrescarPendientesSync().catch(() => {})
+        await refrescarPendientesSync().catch(() => { })
         enfocarId?.()
         return { ok: true, offline: true }
       }
@@ -762,12 +793,12 @@ function useNotificaciones({
       horaLote?.trim()?.length === 4
         ? horaLote.trim()
         : new Date()
-            .toLocaleTimeString('es-CL', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            })
-            .replace(':', '')
+          .toLocaleTimeString('es-CL', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          })
+          .replace(':', '')
 
     const codigoNormalizado = codigoLote.trim().toUpperCase()
 
@@ -872,7 +903,7 @@ function useNotificaciones({
           : `${cantidadFilas} notificaciones del lote quedaron pendientes sin internet.`,
         'pendiente'
       )
-      await refrescarPendientesSync().catch(() => {})
+      await refrescarPendientesSync().catch(() => { })
       await onSuccess?.()
       return { ok: true, offline: true }
     }
@@ -932,7 +963,7 @@ function useNotificaciones({
             : `${cantidadFilas} notificaciones del lote quedaron pendientes sin internet.`,
           'pendiente'
         )
-        await refrescarPendientesSync().catch(() => {})
+        await refrescarPendientesSync().catch(() => { })
         await onSuccess?.()
         return { ok: true, offline: true }
       }
@@ -1032,7 +1063,17 @@ function useNotificaciones({
     limpiarMensajes()
 
     const cargaId = await asegurarCargaActiva()
+    const validacionCarga = await validarCargaActivaAntesDeGuardar(cargaId)
 
+    if (!validacionCarga.ok) {
+      setErrorMsg(validacionCarga.error)
+      setCargaActivaId('')
+      setNumeroCarga(0)
+      setRegistros([])
+      setEstadisticas({ cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 })
+      setCargando(false)
+      return { ok: false, error: validacionCarga.error }
+    }
     if (cargaFinalizada) {
       const msg = 'La carga se está cerrando. Espera un momento.'
       setErrorMsg(msg)

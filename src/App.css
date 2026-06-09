@@ -4880,3 +4880,137 @@ body.modal-abierto {
   height: 56px;
   font-size: 1rem;
 }
+
+/*  */
+
+
+.resumen-page {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.resumen-header {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.resumen-kicker {
+  color: #0b3c5d;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.resumen-header h1 {
+  margin: 0.25rem 0;
+  color: #0f172a;
+  font-size: 1.6rem;
+}
+
+.resumen-header p {
+  margin: 0;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.resumen-filtros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.resumen-filtros label {
+  display: grid;
+  gap: 0.35rem;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.resumen-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.resumen-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 1rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.resumen-card span {
+  display: block;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.resumen-card strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #0b3c5d;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.resumen-tabla-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 1rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.resumen-tabla-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.resumen-tabla-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.resumen-tabla-header span {
+  color: #0b3c5d;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .resumen-page {
+    padding: 0.8rem;
+  }
+
+  .resumen-filtros {
+    grid-template-columns: 1fr;
+  }
+
+  .resumen-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .resumen-card strong {
+    font-size: 1.6rem;
+  }
+}

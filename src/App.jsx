@@ -19,10 +19,10 @@ import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
 import { determinarSiEsNoUrbanaDesdeGPS } from './utils/geolocalizacion'
 import IconReload from './components/IconReload'
-function App({   sessionUserId,
+function App({ sessionUserId,
   sessionUserInitials,
   sessionRemainingLabel,
-  onLogout,}) {
+  onLogout, }) {
   const [dialogoCodigoAbierto, setDialogoCodigoAbierto] = useState(false)
   const [dialogoLoteAbierto, setDialogoLoteAbierto] = useState(false)
   const [dialogoCodigoLoteAbierto, setDialogoCodigoLoteAbierto] = useState(false)
@@ -40,7 +40,7 @@ function App({   sessionUserId,
   const [mostrarConsulta, setMostrarConsulta] = useState(false)
   const [mostrarMonitoreo, setMostrarMonitoreo] = useState(false)
   const [menuAbierto, setMenuAbierto] = useState(false)
-
+  const [mostrarResumenMensual, setMostrarResumenMensual] = useState(false)
   const hayModalAbierto =
     dialogoCodigoAbierto ||
     dialogoLoteAbierto ||
@@ -79,9 +79,9 @@ function App({   sessionUserId,
   }
 
   const notificaciones = useNotificaciones({
-  fechaCertificacion,
-  enfocarId,
-  sessionUserId,
+    fechaCertificacion,
+    enfocarId,
+    sessionUserId,
   })
 
   const [ultimoIdAgregadoLote, setUltimoIdAgregadoLote] = useState('')
@@ -305,6 +305,11 @@ function App({   sessionUserId,
   }
 
   const finalizarCarga = async () => {
+    if (!notificaciones.cargaActivaId) {
+      notificaciones.setErrorMsg('No hay una carga activa para finalizar')
+      return
+    }
+
     setConfirmFinalizarAbierto(true)
   }
 
@@ -667,24 +672,26 @@ function App({   sessionUserId,
               obtenerObservacionSugerida={lote.obtenerObservacionSugerida}
             />
 
-            <div className="acciones-cierre-panel">
-              <div className="acciones-cierre-texto">
-                <span className="acciones-cierre-kicker">Cierre de carga</span>
-                <h3>Finalizar la carga actual</h3>
-                <p>Esta acción conviene tomarla al final, después de revisar los registros cargados.</p>
-              </div>
+            {notificaciones.cargaActivaId ? (
+              <div className="acciones-cierre-panel">
+                <div className="acciones-cierre-texto">
+                  <span className="acciones-cierre-kicker">Cierre de carga</span>
+                  <h3>Finalizar la carga actual</h3>
+                  <p>Esta acción conviene tomarla al final, después de revisar los registros cargados.</p>
+                </div>
 
-              <button
-                type="button"
-                className="boton-peligro boton-cierre-carga"
-                onClick={finalizarCarga}
-                disabled={notificaciones.cargaFinalizada || finalizarEnProceso}
-              >
-                {notificaciones.cargaFinalizada || finalizarEnProceso
-                  ? 'Cerrando carga...'
-                  : 'Finalizar carga'}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className="boton-peligro boton-cierre-carga"
+                  onClick={finalizarCarga}
+                  disabled={notificaciones.cargaFinalizada || finalizarEnProceso}
+                >
+                  {notificaciones.cargaFinalizada || finalizarEnProceso
+                    ? 'Cerrando carga...'
+                    : 'Finalizar carga'}
+                </button>
+              </div>
+            ) : null}
 
             <ConfirmDialog
               abierto={confirmFinalizarAbierto}

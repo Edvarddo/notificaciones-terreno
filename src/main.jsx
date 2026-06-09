@@ -4,7 +4,11 @@ import App from './App.jsx'
 import AuthGate from './components/AuthGate'
 import MonitoreoLive from './pages/MonitoreoLive'
 import 'leaflet/dist/leaflet.css'
+
+import ResumenMensual from './pages/ResumenMensual.jsx'
+
 const esMonitoreoPublico = /^\/monitoreo-publico\/?$/i.test(window.location.pathname)
+const esResumenMensual = /^\/resumen-mensual\/?$/i.test(window.location.pathname)
 
 function PublicMonitorApp() {
   const hoy = new Date()
@@ -28,10 +32,11 @@ const root =
   globalThis.__NOTIFICACIONES_APP_ROOT__ || createRoot(rootElement)
 
 globalThis.__NOTIFICACIONES_APP_ROOT__ = root
-
 root.render(
   esMonitoreoPublico ? (
     <PublicMonitorApp />
+  ) : esResumenMensual ? (
+    <ResumenMensual />
   ) : (
     <AuthGate>
       <App />
@@ -46,11 +51,11 @@ if (import.meta.hot) {
   })
 }
 
-// Register service worker (basic)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .catch(() => {})
-  })
-}
+// // Register service worker (basic)
+// if ('serviceWorker' in navigator) {
+//   window.addEventListener('load', () => {
+//     navigator.serviceWorker
+//       .register('/sw.js')
+//       .catch(() => {})
+//   })
+// }
