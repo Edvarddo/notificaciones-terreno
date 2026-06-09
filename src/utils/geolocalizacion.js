@@ -124,7 +124,7 @@ const UMBRAL_PRECISION_ALTA_METROS = 10
 const UMBRAL_PRECISION_MEDIA_METROS = 20
 const UMBRAL_PRECISION_BAJA_METROS = 30
 const ULTIMA_POSICION_KEY = 'notificaciones-terreno-ultima-posicion-gps'
-const ULTIMA_POSICION_TTL_MS = 30 * 60 * 1000
+const ULTIMA_POSICION_TTL_MS = 2 * 60 * 1000
 
 const poligonoPrueba = polygon([POLIGONO_URBANO])
 
@@ -233,9 +233,12 @@ function leerUltimaPosicionGps() {
 
 async function obtenerPosicionConReintentos() {
   const intentos = [
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 },
-    { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 },
   ]
 
   let ultimoError = null
@@ -245,7 +248,10 @@ async function obtenerPosicionConReintentos() {
       return await obtenerPosicionActual(opciones)
     } catch (error) {
       ultimoError = error
-      console.warn('[geo] intento GPS fallido', { opciones, error: error?.message || error })
+      console.warn('[geo] intento GPS fallido', {
+        opciones,
+        error: error?.message || error,
+      })
     }
   }
 
@@ -255,6 +261,13 @@ async function obtenerPosicionConReintentos() {
 export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
   try {
     const posicion = await obtenerPosicionConReintentos()
+    console.log('[GPS RAW]', {
+      timestamp: posicion.timestamp,
+      edadMs: Date.now() - posicion.timestamp,
+      accuracy: posicion.coords.accuracy,
+      latitud: posicion.coords.latitude,
+      longitud: posicion.coords.longitude,
+    })
     const lng = posicion.coords.longitude
     const lat = posicion.coords.latitude
     const precisionGps = posicion.coords.accuracy
@@ -289,7 +302,7 @@ export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
       const margenAplicado = calcularMargenSegunPrecision(ultimaPosicion.precision)
       const poligonoUrbano = polygon([POLIGONO_URBANO])
       const esUrbana = puntoEnPoligono([ultimaPosicion.longitud, ultimaPosicion.latitud], poligonoUrbano)
-      
+
       console.log('[geo] usando ultima posicion GPS conocida', {
         latitud: ultimaPosicion.latitud,
         longitud: ultimaPosicion.longitud,
