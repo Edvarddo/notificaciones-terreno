@@ -255,6 +255,8 @@ async function obtenerPosicionConReintentos() {
 
 export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
   try {
+
+    const posicion = await obtenerPosicionConReintentos()
     console.log('[GPS RAW]', {
       timestamp: posicion.timestamp,
       edadMs: Date.now() - posicion.timestamp,
@@ -262,7 +264,6 @@ export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
       latitud: posicion.coords.latitude,
       longitud: posicion.coords.longitude,
     })
-    const posicion = await obtenerPosicionConReintentos()
     const lng = posicion.coords.longitude
     const lat = posicion.coords.latitude
     const precisionGps = posicion.coords.accuracy
