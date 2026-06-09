@@ -162,12 +162,12 @@ function puntoEnPoligono([lng, lat], poligono) {
   const turfPoint = point([lng, lat])
   const dentro = booleanPointInPolygon(turfPoint, poligono, { ignoreBoundary: false })
 
-  console.log('[geo] comparacion Turf', {
-    punto: [lng, lat],
-    dentro,
-    modo: dentro ? 'urbano' : 'rural',
-    margenMetros: MARGEN_POLIGONO_METROS,
-  })
+  // console.log('[geo] comparacion Turf', {
+  //   punto: [lng, lat],
+  //   dentro,
+  //   modo: dentro ? 'urbano' : 'rural',
+  //   margenMetros: MARGEN_POLIGONO_METROS,
+  // })
 
   return dentro
 }
@@ -228,9 +228,12 @@ function leerUltimaPosicionGps() {
 
 async function obtenerPosicionConReintentos() {
   const intentos = [
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 },
-    { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 },
   ]
 
   let ultimoError = null
@@ -240,7 +243,10 @@ async function obtenerPosicionConReintentos() {
       return await obtenerPosicionActual(opciones)
     } catch (error) {
       ultimoError = error
-      console.warn('[geo] intento GPS fallido', { opciones, error: error?.message || error })
+      console.warn('[geo] intento GPS fallido', {
+        opciones,
+        error: error?.message || error,
+      })
     }
   }
 
@@ -249,6 +255,13 @@ async function obtenerPosicionConReintentos() {
 
 export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
   try {
+    console.log('[GPS RAW]', {
+      timestamp: posicion.timestamp,
+      edadMs: Date.now() - posicion.timestamp,
+      accuracy: posicion.coords.accuracy,
+      latitud: posicion.coords.latitude,
+      longitud: posicion.coords.longitude,
+    })
     const posicion = await obtenerPosicionConReintentos()
     const lng = posicion.coords.longitude
     const lat = posicion.coords.latitude
@@ -259,15 +272,15 @@ export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
 
     guardarUltimaPosicionGps({ latitud: lat, longitud: lng, precision: precisionGps })
 
-    console.log('[geo] ubicacion GPS', {
-      latitud: lat,
-      longitud: lng,
-      precision: precisionGps,
-      esUrbana,
-      esNoUrbana: !esUrbana,
-      poligono: 'POLIGONO_URBANO',
-      margenMetros: margenAplicado,
-    })
+    // console.log('[geo] ubicacion GPS', {
+    //   latitud: lat,
+    //   longitud: lng,
+    //   precision: precisionGps,
+    //   esUrbana,
+    //   esNoUrbana: !esUrbana,
+    //   poligono: 'POLIGONO_URBANO',
+    //   margenMetros: margenAplicado,
+    // })
 
     return {
       latitud: lat,
