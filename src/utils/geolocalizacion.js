@@ -244,17 +244,38 @@ async function obtenerPosicionConReintentos() {
   const intentos = [
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 },
   ]
 
   let ultimoError = null
+  let ultimaPosicionValida = null
 
-  for (const opciones of intentos) {
+  for (let i = 0; i < intentos.length; i += 1) {
+    const opciones = intentos[i]
+
     try {
-      return await obtenerPosicionActual(opciones)
+      const posicion = await obtenerPosicionActual(opciones)
+
+      const edadMs = Date.now() - posicion.timestamp
+      const precision = posicion.coords.accuracy
+
+      console.log('[GPS intento]', {
+        intento: i + 1,
+        edadMs,
+        precision,
+        latitud: posicion.coords.latitude,
+        longitud: posicion.coords.longitude,
+      })
+
+      if (edadMs <= 10000 && precision <= 50) {
+        return posicion
+      }
+
+      ultimaPosicionValida = posicion
+
+      await new Promise((resolve) => setTimeout(resolve, 2000))
     } catch (error) {
       ultimoError = error
       console.warn('[geo] intento GPS fallido', {
@@ -262,6 +283,10 @@ async function obtenerPosicionConReintentos() {
         error: error?.message || error,
       })
     }
+  }
+
+  if (ultimaPosicionValida) {
+    return ultimaPosicionValida
   }
 
   throw ultimoError || new Error('No fue posible obtener la geolocalización')
