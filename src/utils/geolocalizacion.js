@@ -184,6 +184,15 @@ function obtenerPosicionActual(options = { enableHighAccuracy: true, timeout: 10
       return
     }
 
+    if (navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: 'geolocation' })
+        .then((permiso) => {
+          console.log('[PERMISO UBICACION]', permiso.state)
+        })
+        .catch(() => { })
+    }
+
     navigator.geolocation.getCurrentPosition(resolve, reject, options)
   })
 }
@@ -295,30 +304,10 @@ export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
       fuente: 'gps',
     }
   } catch (error) {
-    console.warn('[geo] GPS no disponible, intentando ultima posicion conocida', error?.message || error)
-
-    const ultimaPosicion = leerUltimaPosicionGps()
-    if (ultimaPosicion) {
-      const margenAplicado = calcularMargenSegunPrecision(ultimaPosicion.precision)
-      const poligonoUrbano = polygon([POLIGONO_URBANO])
-      const esUrbana = puntoEnPoligono([ultimaPosicion.longitud, ultimaPosicion.latitud], poligonoUrbano)
-
-      console.log('[geo] usando ultima posicion GPS conocida', {
-        latitud: ultimaPosicion.latitud,
-        longitud: ultimaPosicion.longitud,
-        precision: ultimaPosicion.precision,
-        esUrbana,
-        esNoUrbana: !esUrbana,
-        fuente: 'gps-cache',
-      })
-
-      return {
-        latitud: ultimaPosicion.latitud,
-        longitud: ultimaPosicion.longitud,
-        es_no_urbana: !esUrbana,
-        fuente: 'gps-cache',
-      }
-    }
+    console.error(
+      '[geo] GPS no disponible y se deshabilitó el uso de ultima posicion conocida',
+      error?.message || error
+    )
 
     return clasificarPorFallbackManual(esNoUrbanaManual)
   }
