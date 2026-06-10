@@ -21,6 +21,8 @@ import MonitoreoLive from './pages/MonitoreoLive'
 import { determinarSiEsNoUrbanaDesdeGPS } from './utils/geolocalizacion'
 import IconReload from './components/IconReload'
 import { determinarZonaHeaderRapida } from './utils/geolocalizacion'
+import ArbolCodigos from './pages/ArbolCodigos'
+import { useToast } from './context/ToastContext'
 function App({ sessionUserId,
   sessionUserInitials,
   sessionRemainingLabel,
@@ -114,11 +116,13 @@ function App({ sessionUserId,
     setScannerIndividualAbierto(false)
     setScannerLoteAbierto(false)
   }
+  const { showToast } = useToast()
 
   useEffect(() => {
     enfocarId()
   }, [])
 
+  const [mostrarArbolCodigos, setMostrarArbolCodigos] = useState(false)
   useEffect(() => {
     const body = document.body
     if (hayModalAbierto) {
@@ -155,8 +159,9 @@ function App({ sessionUserId,
       return
     }
 
+
     registro.setIdNotificacion(validacion.valor)
-    notificaciones.setMensaje(`Escaneado ${validacion.valor} con éxito`)
+    showToast(`QR escaneado: ${validacion.valor}`, 'success')
     setScannerIndividualAbierto(false)
     enfocarId()
   }
@@ -188,12 +193,10 @@ function App({ sessionUserId,
       return
     }
 
-    const resultado = lote.agregarIdTemporal(validacion.valor, (idDuplicado) => {
-      notificaciones.setMensaje(`ID repetido omitido: ${idDuplicado}`)
-    })
+    const resultado = lote.agregarIdTemporal(validacion.valor)
 
     if (resultado.agregado) {
-      notificaciones.setMensaje(`Escaneado ${resultado.id} con éxito`)
+      showToast(`ID agregada: ${resultado.id}`, 'success')
       setUltimoIdAgregadoLote(validacion.valor)
 
       if (ultimoIdAgregadoLoteTimer.current) {
@@ -205,8 +208,9 @@ function App({ sessionUserId,
         ultimoIdAgregadoLoteTimer.current = null
       }, 2200)
     } else {
-      notificaciones.setErrorMsg(`La ID ${resultado.id} ya estaba escaneada`)
+      showToast(`ID repetida omitida: ${resultado.id}`, 'warning')
     }
+
   }
 
   const abrirDialogoLote = () => {
@@ -381,7 +385,7 @@ function App({ sessionUserId,
   const estadoZonaRef = useRef('desconocido')
 
   useEffect(() => {
-    if (localStorage.getItem('gps_inicializado') !== 'true') return
+
 
     let activo = true
 
@@ -422,6 +426,21 @@ function App({ sessionUserId,
     }
   }, [])
 
+  useEffect(() => {
+    const abrir = () => {
+      setMostrarArbolCodigos(true)
+      setMostrarConsulta(false)
+      setMostrarMonitoreo(false)
+      setScannerIndividualAbierto(false)
+      setScannerLoteAbierto(false)
+    }
+
+    window.addEventListener('abrir-arbol-codigos', abrir)
+
+    return () => {
+      window.removeEventListener('abrir-arbol-codigos', abrir)
+    }
+  }, [])
   return (
     // bg red-50
     <div
@@ -597,8 +616,13 @@ function App({ sessionUserId,
           onError={notificaciones.setErrorMsg}
         />
 
-        {mostrarMonitoreo ? (
-          <MonitoreoLive fechaCertificacion={fechaCertificacion} cargaId={notificaciones.cargaActivaId} />
+        {mostrarArbolCodigos ? (
+          <ArbolCodigos onVolver={irAFormulario} />
+        ) : mostrarMonitoreo ? (
+          <MonitoreoLive
+            fechaCertificacion={fechaCertificacion}
+            cargaId={notificaciones.cargaActivaId}
+          />
         ) : mostrarConsulta ? (
           <ConsultaHistorico onVolver={irAFormulario} />
         ) : (
@@ -649,6 +673,7 @@ function App({ sessionUserId,
               finalizandoEnProceso={finalizarEnProceso}
               eliminandoEnProceso={eliminarEnProceso}
               sessionUserInitials={sessionUserInitials}
+              totalRegistros={notificaciones.estadisticas.cargaTotal}
             />
 
             {notificaciones.mensaje ? (
@@ -683,12 +708,16 @@ function App({ sessionUserId,
               obtenerObservacionSugerida={lote.obtenerObservacionSugerida}
             />
 
-            {notificaciones.cargaActivaId ? (
+            {notificaciones.cargaActivaId &&
+              notificaciones.estadisticas.cargaTotal > 0 ? (
               <div className="acciones-cierre-panel">
                 <div className="acciones-cierre-texto">
                   <span className="acciones-cierre-kicker">Cierre de carga</span>
                   <h3>Finalizar la carga actual</h3>
-                  <p>Esta acción conviene tomarla al final, después de revisar los registros cargados.</p>
+                  <p>
+                    Esta acción conviene tomarla al final,
+                    después de revisar los registros cargados.
+                  </p>
                 </div>
 
                 <button
@@ -776,7 +805,9 @@ function App({ sessionUserId,
               esNoUrbanaLote={lote.esNoUrbanaLote}
               onEsNoUrbanaLoteChange={lote.setEsNoUrbanaLote}
               mostraTribunalLote={lote.mostraTribunalLote}
-              onMostraTribunalLote={() => lote.setMostraTribunalLote((prev) => !prev)}
+              onMostraTribunalLote={() =>
+                lote.setMostraTribunalLote((prev) => !prev)
+              }
               tribunalesLote={lote.tribunalesLote}
               onAgregarTribunalLote={lote.agregarTribunalLote}
               onCopiarUltimoTribunalLote={lote.copiarUltimoTribunalLote}

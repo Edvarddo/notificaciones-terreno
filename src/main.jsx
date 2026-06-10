@@ -4,6 +4,7 @@ import App from './App.jsx'
 import AuthGate from './components/AuthGate'
 import MonitoreoLive from './pages/MonitoreoLive'
 import 'leaflet/dist/leaflet.css'
+import { ToastProvider } from './context/ToastContext'
 
 import ResumenMensual from './pages/ResumenMensual.jsx'
 
@@ -38,9 +39,11 @@ root.render(
   ) : esResumenMensual ? (
     <ResumenMensual />
   ) : (
-    <AuthGate>
-      <App />
-    </AuthGate>
+    <ToastProvider>
+      <AuthGate>
+        <App />
+      </AuthGate>
+    </ToastProvider>
   ),
 )
 

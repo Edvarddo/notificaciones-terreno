@@ -164,7 +164,7 @@ function RegistroForm({
       }}
       className="formulario"
     >
-      {sessionUserInitials ? (
+      {/* {sessionUserInitials ? (
         <div className="usuario-activo-chip">
           <span className="usuario-activo-avatar">
             {sessionUserInitials.slice(0, 2)}
@@ -173,7 +173,7 @@ function RegistroForm({
             Notificador <strong>{sessionUserInitials}</strong>
           </span>
         </div>
-      ) : null}
+      ) : null} */}
 
       {!mostraTribunal ? (
         <label className="campo-label">

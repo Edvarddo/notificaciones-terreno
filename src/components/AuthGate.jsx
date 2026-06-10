@@ -65,6 +65,9 @@ export default function AuthGate({ children }) {
           initials={sessionUser?.initials || ''}
           remainingLabel={remainingLabel}
           onLogout={logout}
+          onIrArbolCodigos={() => {
+            window.dispatchEvent(new CustomEvent('abrir-arbol-codigos'))
+          }}
         />
 
         {React.cloneElement(children, {

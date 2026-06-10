@@ -29,7 +29,7 @@ import {
 } from '../utils/geolocalizacion'
 import { validarIdNotificacion, esIdNotificacionValida } from '../utils/validation'
 import { enviarReporteFinalizacionCarga } from '../services/cierre'
-
+import { useToast } from '../context/ToastContext'
 const TIEMPO_MAXIMO_CLASIFICACION_GEO_MS = 20000
 const TIEMPO_MAXIMO_CARGA_ACTIVA_MS = 10000
 
@@ -59,7 +59,7 @@ function useNotificaciones({
     guardarRegistro: 0,
     guardarLote: 0,
   })
-
+  const { showToast } = useToast()
   const sincronizandoPendientesRef = useRef(false)
 
   const validarCargaActivaAntesDeGuardar = async (cargaId) => {
@@ -241,6 +241,10 @@ function useNotificaciones({
 
       if (sincronizados > 0) {
         setMensaje(`Sincronizados ${sincronizados} registro(s) pendientes`)
+        showToast(
+          `${sincronizados} registros sincronizados`,
+          'success'
+        )
         agregarMensajeVisual(
           sincronizados === 1
             ? '1 notificación pendiente fue sincronizada'
@@ -589,6 +593,10 @@ function useNotificaciones({
         })
 
         setMensaje('Sin conexion: registro pendiente de sincronizacion')
+        showToast(
+          'Registro pendiente de sincronización',
+          'warning'
+        )
         agregarMensajeVisual(
           'Guardado sin internet. Quedo pendiente de sincronizacion.',
           'pendiente'
@@ -629,6 +637,7 @@ function useNotificaciones({
         if (yaExiste) {
           const msg = 'Ya existe un registro con esa ID de notificacion'
           setErrorMsg(msg)
+          showToast(msg, 'error')
           enfocarId?.()
           setCargando(false)
           return { ok: false, error: msg }
@@ -709,7 +718,7 @@ function useNotificaciones({
         rit: ritLimpio || null,
         año: año || null,
       })
-
+      showToast('Notificación guardada', 'success')
       setMensaje('Guardado')
 
       try {
@@ -745,6 +754,7 @@ function useNotificaciones({
         } catch (queueError) {
           const msg = `No se pudo guardar sin conexion: ${queueError.message}`
           setErrorMsg(msg)
+          showToast(msg, 'error')
           return { ok: false, error: msg }
         }
 
@@ -760,6 +770,7 @@ function useNotificaciones({
         : `Error al guardar: ${error.message}`
 
       setErrorMsg(msg)
+      showToast(msg, 'error')
       return { ok: false, error: msg }
     } finally {
       setCargando(false)
@@ -772,6 +783,7 @@ function useNotificaciones({
     if (!registros.length) {
       const msg = 'No hay registros para eliminar'
       setErrorMsg(msg)
+      
       return { ok: false, error: msg }
     }
 
@@ -782,10 +794,12 @@ function useNotificaciones({
     } catch (error) {
       const msg = `No se pudo eliminar: ${error.message}`
       setErrorMsg(msg)
+      showToast(msg, 'error')
       return { ok: false, error: msg }
     }
-
+    console.log('Registro eliminado:', ultimo)
     setMensaje('Eliminado')
+    showToast(`Último registro ${ultimo.id_notificacion} eliminado`, 'warning')
     await cargar()
     enfocarId?.()
     return { ok: true }
@@ -957,6 +971,10 @@ function useNotificaciones({
       }
 
       setMensaje(`Lote pendiente de sincronizacion: ${cantidadFilas} registro(s)`)
+      showToast(
+        `${cantidadFilas} registros pendientes`,
+        'warning'
+      )
       agregarMensajeVisual(
         cantidadFilas === 1
           ? '1 notificación del lote quedó pendiente sin internet.'
@@ -994,6 +1012,10 @@ function useNotificaciones({
           if (yaExiste) {
             const msg = `No se puede guardar el lote porque la ID ${id} ya existe en la base de datos`
             setErrorMsg(msg)
+            showToast(
+              `La ID ${id} ya existe en la base de datos`,
+              'error'
+            )
             await onBeforeError?.()
             return { ok: false, error: msg }
           }
@@ -1010,6 +1032,7 @@ function useNotificaciones({
 
     try {
       await insertarLote(filasOnline)
+      showToast(`${cantidadFilas} registros guardados`, 'success')
       setMensaje(`Lote guardado: ${cantidadFilas} registro(s)`)
       await onSuccess?.()
 
@@ -1051,6 +1074,7 @@ function useNotificaciones({
         : `Error al guardar lote: ${error.message}`
 
       setErrorMsg(msg)
+      showToast(msg, 'error')
       await onBeforeError?.()
       return { ok: false, error: msg }
     } finally {
@@ -1099,9 +1123,11 @@ function useNotificaciones({
     } catch (error) {
       const msg = `No se pudo actualizar: ${error.message}`
       setErrorMsg(msg)
+      showToast(msg, 'error')
       return { ok: false, error: msg }
     }
 
+    showToast('Registro actualizado', 'success')
     setMensaje('Registro actualizado')
     await cargar()
     return { ok: true }
@@ -1202,7 +1228,10 @@ function useNotificaciones({
     setCargaFinalizada(false)
     setMensaje('Carga finalizada. La siguiente se creará cuando guardes el próximo registro.')
     agregarMensajeVisual('Se envió el reporte por correo. Próxima carga lista cuando guardes.', 'sincronizado')
-
+    showToast(
+      'Carga finalizada correctamente',
+      'success'
+    )
     return { ok: true, resumen: construirResumenCarga(registrosDia, statsDia) }
   }
 

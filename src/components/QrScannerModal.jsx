@@ -85,10 +85,9 @@ export default function QrScannerModal({
             <div className="qr-zoom-info">
               Zoom {Math.round((scanner.zoom || 1) * 100)}%
             </div>
-            <div className="qr-zoom-slider">
-              <span className="qr-zoom-slider-icon">+</span>
-
+            <div className="qr-zoom-custom">
               <input
+                className="qr-zoom-custom-range"
                 type="range"
                 min="1"
                 max="3"
@@ -97,8 +96,6 @@ export default function QrScannerModal({
                 onChange={(e) => scanner.setZoom?.(Number(e.target.value))}
                 aria-label="Control de zoom"
               />
-
-              <span className="qr-zoom-slider-icon">−</span>
             </div>
             <div id={qrRegionId} className="scanner-modal-region" />
             {!scanner.escaneando && errorMsg ? (

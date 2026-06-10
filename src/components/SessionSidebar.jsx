@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-function SessionSidebar({ initials, remainingLabel, onLogout }) {
+function SessionSidebar({ initials, remainingLabel, onLogout, onIrArbolCodigos }) {
   const [abierto, setAbierto] = useState(false)
 
   const cerrarSesion = () => {
@@ -16,7 +16,7 @@ function SessionSidebar({ initials, remainingLabel, onLogout }) {
         onClick={() => setAbierto(true)}
         aria-label="Abrir sesión"
       >
-        {initials || 'U'}
+        {initials.trim().slice(0,2) || 'U'}
       </button>
 
       {abierto ? (
@@ -57,6 +57,13 @@ function SessionSidebar({ initials, remainingLabel, onLogout }) {
             >
               Cerrar sesión
             </button>
+            {/* <button
+              type="button"
+              className="session-sidebar-arbol-codigos"
+              onClick={onIrArbolCodigos}
+            >
+              Ver árbol de códigos
+            </button> */}
           </aside>
         </div>
       ) : null}

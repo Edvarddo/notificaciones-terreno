@@ -15,6 +15,7 @@
     "@turf/buffer": "^7.3.5",
     "@turf/helpers": "^7.3.5",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "@zxing/browser": "^0.2.0",
     "html5-qrcode": "^2.3.8",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
