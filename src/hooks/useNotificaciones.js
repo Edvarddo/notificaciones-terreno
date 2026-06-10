@@ -513,26 +513,12 @@ function useNotificaciones({
     setCargando(true)
     setMensaje('Procesando registro...')
 
-    const clasificacionTerrenoPromise = resolverClasificacionTerreno(esNoUrbana)
-
     const bloqueo = bloquearSiCargaFinalizada()
     if (bloqueo) {
       setCargando(false)
       return bloqueo
     }
 
-    const cargaId = await asegurarCargaActiva()
-    const validacionCarga = await validarCargaActivaAntesDeGuardar(cargaId)
-
-    if (!validacionCarga.ok) {
-      setErrorMsg(validacionCarga.error)
-      setCargaActivaId('')
-      setNumeroCarga(0)
-      setRegistros([])
-      setEstadisticas({ cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 })
-      setCargando(false)
-      return { ok: false, error: validacionCarga.error }
-    }
     const validacionId = validarIdNotificacion(idNotificacion)
     const idLimpio = validacionId.valor
     const codigoLimpio = codigo.trim().toUpperCase()
@@ -565,6 +551,75 @@ function useNotificaciones({
     }
 
     const codigoLote = generarCodigoLote()
+
+    if (!navigator.onLine) {
+      let clasificacionTerreno = null
+
+      try {
+        clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbana)
+      } catch {
+        clasificacionTerreno = clasificarPorFallbackManual(esNoUrbana)
+      }
+
+      try {
+        await agregarOperacionPendiente({
+          tipo: 'guardarRegistro',
+          payload: {
+            id_notificacion: idLimpio || null,
+            fecha_certificacion: fechaCertificacion,
+            hora: new Date()
+              .toLocaleTimeString('es-CL', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              })
+              .replace(':', ''),
+            codigo: codigoLimpio,
+            observacion: observacionLimpia,
+            comentarios: comentariosLimpios,
+            es_no_urbana: Boolean(clasificacionTerreno.es_no_urbana),
+            geolocalizacion_fuente: clasificacionTerreno.fuente || 'manual',
+            latitud: clasificacionTerreno.latitud,
+            longitud: clasificacionTerreno.longitud,
+            codigo_lote: codigoLote,
+            carga_id: cargaActivaId || null,
+            rit: ritLimpio || null,
+            año: año || null,
+          },
+        })
+
+        setMensaje('Sin conexion: registro pendiente de sincronizacion')
+        agregarMensajeVisual(
+          'Guardado sin internet. Quedo pendiente de sincronizacion.',
+          'pendiente'
+        )
+
+        await refrescarPendientesSync().catch(() => { })
+        enfocarId?.()
+        setCargando(false)
+
+        return { ok: true, offline: true }
+      } catch (queueError) {
+        const msg = `No se pudo guardar sin conexion: ${queueError.message}`
+        setErrorMsg(msg)
+        setCargando(false)
+        return { ok: false, error: msg }
+      }
+    }
+
+    const cargaId = await asegurarCargaActiva()
+    const validacionCarga = await validarCargaActivaAntesDeGuardar(cargaId)
+
+    if (!validacionCarga.ok) {
+      setErrorMsg(validacionCarga.error)
+      setCargaActivaId('')
+      setNumeroCarga(0)
+      setRegistros([])
+      setEstadisticas({ cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 })
+      setCargando(false)
+      return { ok: false, error: validacionCarga.error }
+    }
+
     const clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbana)
 
     try {
@@ -753,8 +808,6 @@ function useNotificaciones({
     const bloqueo = bloquearSiCargaFinalizada()
     if (bloqueo) return bloqueo
 
-    const cargaId = await asegurarCargaActiva()
-
     const modoTribunal = Boolean(mostraTribunalLote)
 
     if (idsTemporales.length === 0 && !modoTribunal) {
@@ -809,8 +862,6 @@ function useNotificaciones({
       return { ok: false, error: msg }
     }
 
-    const clasificacionTerrenoPromise = resolverClasificacionTerreno(esNoUrbanaLote)
-
     const tribunalesNormalizados = (Array.isArray(tribunalesLote) ? tribunalesLote : []).map((item) => ({
       rit: String(item?.rit ?? '').trim(),
       año: String(item?.año ?? '').trim(),
@@ -835,8 +886,17 @@ function useNotificaciones({
     }
 
     const observacionNormalizada = observacionLote.trim() || '.'
-    const clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbanaLote)
+
+    let clasificacionTerreno = null
+
+    try {
+      clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbanaLote)
+    } catch {
+      clasificacionTerreno = clasificarPorFallbackManual(esNoUrbanaLote)
+    }
+
     const idLoteUnico = crypto.randomUUID()
+    const cargaIdParaFilas = navigator.onLine ? '' : (cargaActivaId || null)
     const filas = []
 
     if (idsNormalizados.length > 0) {
@@ -854,7 +914,7 @@ function useNotificaciones({
           latitud: clasificacionTerreno.latitud,
           longitud: clasificacionTerreno.longitud,
           codigo_lote: idLoteUnico,
-          carga_id: cargaId,
+          carga_id: cargaIdParaFilas,
           rit: null,
           año: null,
         }))
@@ -874,7 +934,7 @@ function useNotificaciones({
           latitud: clasificacionTerreno.latitud,
           longitud: clasificacionTerreno.longitud,
           codigo_lote: idLoteUnico,
-          carga_id: cargaId,
+          carga_id: cargaIdParaFilas,
           rit: item.rit,
           año: Number(item.año),
         }))
@@ -908,6 +968,24 @@ function useNotificaciones({
       return { ok: true, offline: true }
     }
 
+    const cargaId = await asegurarCargaActiva()
+    const validacionCarga = await validarCargaActivaAntesDeGuardar(cargaId)
+
+    if (!validacionCarga.ok) {
+      setErrorMsg(validacionCarga.error)
+      setCargaActivaId('')
+      setNumeroCarga(0)
+      setRegistros([])
+      setEstadisticas({ cargaTotal: 0, puntos: 0, rurales: 0, urbanas: 0 })
+      await onBeforeError?.()
+      return { ok: false, error: validacionCarga.error }
+    }
+
+    const filasOnline = filas.map((fila) => ({
+      ...fila,
+      carga_id: cargaId,
+    }))
+
     if (!modoTribunal) {
       for (const id of idsNormalizados) {
         try {
@@ -931,7 +1009,7 @@ function useNotificaciones({
     setGuardandoLote(true)
 
     try {
-      await insertarLote(filas)
+      await insertarLote(filasOnline)
       setMensaje(`Lote guardado: ${cantidadFilas} registro(s)`)
       await onSuccess?.()
 
@@ -947,7 +1025,7 @@ function useNotificaciones({
         try {
           await agregarOperacionPendiente({
             tipo: 'guardarLote',
-            payload: { filas },
+            payload: { filas: filasOnline },
           })
         } catch (queueError) {
           const msg = `No se pudo guardar el lote sin conexion: ${queueError.message}`

@@ -5129,3 +5129,40 @@ body.modal-abierto {
   border-radius: 999px;
   z-index: 40;
 }
+
+.gps-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(180deg, #eef6ff, #ffffff);
+}
+
+.gps-gate-card {
+  width: min(420px, 100%);
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+  text-align: center;
+}
+
+.gps-gate-card h2 {
+  margin: 0 0 12px;
+  color: #0f3f63;
+}
+
+.gps-gate-card p {
+  margin: 0 0 20px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.gps-gate-error {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 700;
+}

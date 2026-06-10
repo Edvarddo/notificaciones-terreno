@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
-
+import PermisoUbicacionGate from './components/PermisoUbicacionGate'
 import { iniciarWatchGps, detenerWatchGps } from './utils/geolocalizacion'
 import { MAPA_CODIGOS } from './constants/codigos'
 import RegistroForm from './components/RegistroForm'
@@ -20,6 +20,7 @@ import ConsultaHistorico from './pages/ConsultaHistorico'
 import MonitoreoLive from './pages/MonitoreoLive'
 import { determinarSiEsNoUrbanaDesdeGPS } from './utils/geolocalizacion'
 import IconReload from './components/IconReload'
+import { determinarZonaHeaderRapida } from './utils/geolocalizacion'
 function App({ sessionUserId,
   sessionUserInitials,
   sessionRemainingLabel,
@@ -380,6 +381,8 @@ function App({ sessionUserId,
   const estadoZonaRef = useRef('desconocido')
 
   useEffect(() => {
+    if (localStorage.getItem('gps_inicializado') !== 'true') return
+
     let activo = true
 
     const aplicarZona = (zona) => {
@@ -396,7 +399,7 @@ function App({ sessionUserId,
     }
 
     const verificarZona = async () => {
-      const resultado = await determinarSiEsNoUrbanaDesdeGPS()
+      const resultado = await determinarZonaHeaderRapida()
       if (!activo) return
 
       aplicarZona(resultado.es_no_urbana ? 'rural' : 'urbano')

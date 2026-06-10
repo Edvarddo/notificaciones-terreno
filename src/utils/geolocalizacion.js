@@ -172,12 +172,45 @@ function obtenerPosicionWatchValida() {
   const edadMs = Date.now() - ultimaPosicionWatch.timestamp
   const precision = ultimaPosicionWatch.coords.accuracy
 
-  if (edadMs > 30000) return null
+  console.log('[GPS WATCH VALIDACION]', {
+    edadMs,
+    precision,
+  })
+
   if (precision > 80) return null
 
   return ultimaPosicionWatch
 }
+export function solicitarPermisoUbicacionInicial() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocalización no soportada'))
+      return
+    }
 
+    navigator.geolocation.getCurrentPosition(
+      (posicion) => {
+        console.log('[GPS PERMISO INICIAL OK]', {
+          accuracy: posicion.coords.accuracy,
+          latitud: posicion.coords.latitude,
+          longitud: posicion.coords.longitude,
+        })
+
+        iniciarWatchGps()
+        resolve(posicion)
+      },
+      (error) => {
+        console.warn('[GPS PERMISO INICIAL ERROR]', error?.message || error)
+        reject(error)
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 15000,
+      }
+    )
+  })
+}
 
 const obtenerPoligonoConMargen = (margenMetros) => {
   try {
@@ -346,9 +379,17 @@ async function obtenerPosicionConReintentos() {
   }
 
   if (ultimaPosicionValida) {
+    console.warn('[geo] usando posicion no reciente como ultimo recurso', {
+      edadMs: Date.now() - ultimaPosicionValida.timestamp,
+      precision: ultimaPosicionValida.coords.accuracy,
+      latitud: ultimaPosicionValida.coords.latitude,
+      longitud: ultimaPosicionValida.coords.longitude,
+    })
+
     return ultimaPosicionValida
   }
 
+  throw ultimoError || new Error('No fue posible obtener la geolocalización')
   throw ultimoError || new Error('No fue posible obtener la geolocalización')
 }
 
@@ -405,5 +446,29 @@ export function clasificarPorFallbackManual(esNoUrbanaManual) {
     longitud: null,
     es_no_urbana: Boolean(esNoUrbanaManual),
     fuente: 'manual',
+  }
+}
+export async function determinarZonaHeaderRapida() {
+  try {
+    const posicion = await obtenerPosicionActual({
+      enableHighAccuracy: false,
+      timeout: 3000,
+      maximumAge: 30000,
+    })
+
+    const lng = posicion.coords.longitude
+    const lat = posicion.coords.latitude
+    const poligonoUrbano = polygon([POLIGONO_URBANO])
+    const esUrbana = puntoEnPoligono([lng, lat], poligonoUrbano)
+
+    return {
+      es_no_urbana: !esUrbana,
+      fuente: 'header',
+    }
+  } catch {
+    return {
+      es_no_urbana: false,
+      fuente: 'header-fallback',
+    }
   }
 }

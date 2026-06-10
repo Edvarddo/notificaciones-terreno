@@ -4,6 +4,7 @@ import DailyCodePage from './DailyCodePage'
 import useDailyCodeSession from '../hooks/useDailyCodeSession'
 import { supabase } from '../lib/supabase'
 import SessionSidebar from './SessionSidebar'
+import PermisoUbicacionGate from './PermisoUbicacionGate'
 
 export default function AuthGate({ children }) {
   const [users, setUsers] = useState([])
