@@ -826,7 +826,9 @@ function useNotificaciones({
 
     if (idsTemporales.length === 0 && !modoTribunal) {
       const msg = 'No hay IDs en el lote'
+
       setErrorMsg(msg)
+      showToast(msg, 'error')
       await onBeforeError?.()
       return { ok: false, error: msg }
     }
