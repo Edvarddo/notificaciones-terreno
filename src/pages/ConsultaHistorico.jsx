@@ -53,7 +53,7 @@ export default function ConsultaHistorico({ onVolver }) {
           return ta - tb
         })
         console.log('[HISTORICO] todasOrdenadas', todasOrdenadas)
-
+        console.log("pba")
 
         // Filtrar por las cargas que realmente tienen registros y mantener el orden por creada_en
         const listaFiltrada = todasOrdenadas.filter((c) => idsUnicos.includes(c.id))
