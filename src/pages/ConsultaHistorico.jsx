@@ -43,6 +43,7 @@ export default function ConsultaHistorico({ onVolver }) {
       try {
         // Intentar obtener las cargas con timestamps (para numerarlas cronológicamente)
         const listaTodas = await obtenerTodasLasCargasDeUnDia(fechaDesde)
+        console.log('[HISTORICO] listaTodas', listaTodas)
         if (cancelled) return
 
         // Asegurar orden explícita por fecha de creación (ascendente)
@@ -51,10 +52,13 @@ export default function ConsultaHistorico({ onVolver }) {
           const tb = b?.creada_en ? new Date(b.creada_en).getTime() : 0
           return ta - tb
         })
+        console.log('[HISTORICO] todasOrdenadas', todasOrdenadas)
+
 
         // Filtrar por las cargas que realmente tienen registros y mantener el orden por creada_en
         const listaFiltrada = todasOrdenadas.filter((c) => idsUnicos.includes(c.id))
-
+        console.log('[HISTORICO] idsUnicos', idsUnicos)
+        console.log('[HISTORICO] listaFiltrada', listaFiltrada)
         if (listaFiltrada.length) {
           setCargas(listaFiltrada)
           setCargaId((prev) => (prev && listaFiltrada.some((c) => String(c.id) === String(prev)) ? prev : ''))
@@ -391,46 +395,46 @@ export default function ConsultaHistorico({ onVolver }) {
                 )}
               </select>
             </label>
-              <label className="consulta-filtro-fecha">
-                <span className="consulta-filtro-label">Carga</span>
-                <select
-                  className="input-busqueda input-busqueda-ancha consulta-filtro-select"
-                  value={cargaId}
-                  onChange={(e) => setCargaId(e.target.value)}
-                  aria-label="Filtrar por carga"
-                  disabled={cargas.length === 0}
-                >
-                  <option value="">Todas las cargas</option>
-                  {cargas.map((carga, idx) => {
-                    const numeroCarga = Number.isFinite(Number(carga?.numero_carga)) ? Number(carga.numero_carga) : idx + 1
-                    const created = carga?.creada_en ? new Date(carga.creada_en) : null
-                    let createdText = ''
-                    if (created) {
-                      createdText = `${created.toLocaleDateString()} ${created.toLocaleTimeString()}`
-                    } else {
-                      // fallback: buscar el primer registro asociado para aproximar la hora
-                      const primerRegistro = registros.find(
-                        (r) => String(r.carga_id || '') === String(carga.id) && (r.fecha_certificacion || '') === fechaDesde
-                      )
-                      if (primerRegistro) {
-                        const horaTexto = String(primerRegistro.hora || '0000').padStart(4, '0')
-                        const hh = horaTexto.slice(0, 2)
-                        const mm = horaTexto.slice(2, 4)
-                        createdText = `${fechaDesde} ${hh}:${mm}`
-                      }
-                    }
-
-                    const idTail = carga.id ? `(${String(carga.id).slice(0, 8)})` : ''
-
-                    return (
-                      <option key={carga.id} value={carga.id}>
-                        {`Carga ${numeroCarga}${createdText ? ' — ' + createdText : ''}${idTail ? ' ' + idTail : ''}`}
-                      </option>
+            <label className="consulta-filtro-fecha">
+              <span className="consulta-filtro-label">Carga</span>
+              <select
+                className="input-busqueda input-busqueda-ancha consulta-filtro-select"
+                value={cargaId}
+                onChange={(e) => setCargaId(e.target.value)}
+                aria-label="Filtrar por carga"
+                disabled={cargas.length === 0}
+              >
+                <option value="">Todas las cargas</option>
+                {cargas.map((carga, idx) => {
+                  const numeroCarga = Number.isFinite(Number(carga?.numero_carga)) ? Number(carga.numero_carga) : idx + 1
+                  const created = carga?.creada_en ? new Date(carga.creada_en) : null
+                  let createdText = ''
+                  if (created) {
+                    createdText = `${created.toLocaleDateString()} ${created.toLocaleTimeString()}`
+                  } else {
+                    // fallback: buscar el primer registro asociado para aproximar la hora
+                    const primerRegistro = registros.find(
+                      (r) => String(r.carga_id || '') === String(carga.id) && (r.fecha_certificacion || '') === fechaDesde
                     )
-                  })}
-                </select>
-              </label>
-              {/* Carga selector populated from registros */}
+                    if (primerRegistro) {
+                      const horaTexto = String(primerRegistro.hora || '0000').padStart(4, '0')
+                      const hh = horaTexto.slice(0, 2)
+                      const mm = horaTexto.slice(2, 4)
+                      createdText = `${fechaDesde} ${hh}:${mm}`
+                    }
+                  }
+
+                  const idTail = carga.id ? `(${String(carga.id).slice(0, 8)})` : ''
+
+                  return (
+                    <option key={carga.id} value={carga.id}>
+                      {`Carga ${numeroCarga}${createdText ? ' — ' + createdText : ''}${idTail ? ' ' + idTail : ''}`}
+                    </option>
+                  )
+                })}
+              </select>
+            </label>
+            {/* Carga selector populated from registros */}
           </div>
         </div>
 
@@ -469,26 +473,26 @@ export default function ConsultaHistorico({ onVolver }) {
                   const secuenciaInfo = secuenciaPorId.get(reg.id) || { secuencia: '--', interno: 1, totalInterno: 1, esLote: false }
 
                   return (
-                  <tr key={reg.id}>
-                    <td>
-                      <div className="secuencia-celda">
-                        <strong>{secuenciaInfo.secuencia}</strong>
-                        {secuenciaInfo.esLote ? (
-                          <span className="secuencia-subtexto">{secuenciaInfo.interno}/{secuenciaInfo.totalInterno}</span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td>{reg.fecha_certificacion}</td>
-                    <td>{String(reg.hora || '').trim() || '--'}</td>
-                    <td className="id-cell">{reg.id_notificacion}</td>
-                    <td>{reg.codigo}</td>
-                    <td>{reg.observacion}</td>
-                    <td>
-                      <span className={`tipo-badge tipo-${reg.es_no_urbana ? 'rural' : 'urbana'}`}>
-                        {reg.es_no_urbana ? 'RURAL' : 'URB'}
-                      </span>
-                    </td>
-                  </tr>
+                    <tr key={reg.id}>
+                      <td>
+                        <div className="secuencia-celda">
+                          <strong>{secuenciaInfo.secuencia}</strong>
+                          {secuenciaInfo.esLote ? (
+                            <span className="secuencia-subtexto">{secuenciaInfo.interno}/{secuenciaInfo.totalInterno}</span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td>{reg.fecha_certificacion}</td>
+                      <td>{String(reg.hora || '').trim() || '--'}</td>
+                      <td className="id-cell">{reg.id_notificacion}</td>
+                      <td>{reg.codigo}</td>
+                      <td>{reg.observacion}</td>
+                      <td>
+                        <span className={`tipo-badge tipo-${reg.es_no_urbana ? 'rural' : 'urbana'}`}>
+                          {reg.es_no_urbana ? 'RURAL' : 'URB'}
+                        </span>
+                      </td>
+                    </tr>
                   )
                 })}
               </tbody>

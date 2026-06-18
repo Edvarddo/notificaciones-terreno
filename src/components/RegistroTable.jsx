@@ -63,9 +63,14 @@ function RegistroTable({
 
   const aplicarCodigoEdit = (nuevoCodigo) => {
     const codigoNormalizado = codigoLimpioView(nuevoCodigo)
-    const sugerida = obtenerObservacionSugerida?.(codigoNormalizado) || ''
 
     setCodigoEdit(codigoNormalizado)
+
+    if (codigoNormalizado === 'A1' || codigoNormalizado === 'A3') {
+      return
+    }
+
+    const sugerida = obtenerObservacionSugerida?.(codigoNormalizado) || ''
 
     if (sugerida) {
       setObservacionEdit(sugerida)
@@ -348,11 +353,9 @@ function RegistroTable({
                 {registros.map((r) => (
                   <tr
                     key={r.id}
-                    className={`${r.es_rebajada ? 'fila-rebajada' : ''} ${
-                      r.es_no_urbana ? 'fila-rural' : ''
-                    } ${obtenerClaseLote(r.codigo_lote)} ${
-                      seleccionados.has(r.id) ? 'fila-seleccionada' : ''
-                    } fila-clickeable`.trim()}
+                    className={`${r.es_rebajada ? 'fila-rebajada' : ''} ${r.es_no_urbana ? 'fila-rural' : ''
+                      } ${obtenerClaseLote(r.codigo_lote)} ${seleccionados.has(r.id) ? 'fila-seleccionada' : ''
+                      } fila-clickeable`.trim()}
                     onClick={() => iniciarEdicion(r)}
                   >
                     <td className="td-checkbox">

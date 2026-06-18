@@ -213,6 +213,8 @@ export async function obtenerTodasLasCargasDeUnDia(fechaCertificacion) {
     .order('creada_en', { ascending: true })
     .order('id', { ascending: true })
 
+  console.log('[CARGAS] fecha', fechaCertificacion)
+  console.log('[CARGAS] resultado', data)
   if (error) throw error
   return data || []
 }

@@ -30,7 +30,7 @@ import {
 import { validarIdNotificacion, esIdNotificacionValida } from '../utils/validation'
 import { enviarReporteFinalizacionCarga } from '../services/cierre'
 import { useToast } from '../context/ToastContext'
-const TIEMPO_MAXIMO_CLASIFICACION_GEO_MS = 20000
+const TIEMPO_MAXIMO_CLASIFICACION_GEO_MS = 30000
 const TIEMPO_MAXIMO_CARGA_ACTIVA_MS = 10000
 
 function useNotificaciones({
@@ -316,7 +316,7 @@ function useNotificaciones({
 
   const resolverClasificacionTerreno = async (esNoUrbanaManual) => {
     if (esNoUrbanaManual === true) {
-      return clasificarPorFallbackManual(true)
+      return await clasificarPorFallbackManual(true)
     }
 
     const clasificacionGps = determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual)
@@ -331,7 +331,7 @@ function useNotificaciones({
     try {
       return await Promise.race([clasificacionGps, tiempoMaximo])
     } catch (error) {
-      return clasificarPorFallbackManual(esNoUrbanaManual)
+      return  await clasificarPorFallbackManual(esNoUrbanaManual)
     }
   }
 
@@ -424,6 +424,7 @@ function useNotificaciones({
       setRegistros(data)
 
       const stats = await obtenerEstadisticas(fechaCertificacion, cargaIdFinal)
+      
       setEstadisticas(stats)
 
       return { data, stats }
@@ -562,7 +563,7 @@ function useNotificaciones({
       try {
         clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbana)
       } catch {
-        clasificacionTerreno = clasificarPorFallbackManual(esNoUrbana)
+        clasificacionTerreno = await clasificarPorFallbackManual(esNoUrbana)
       }
 
       try {
@@ -908,7 +909,7 @@ function useNotificaciones({
     try {
       clasificacionTerreno = await resolverClasificacionTerreno(esNoUrbanaLote)
     } catch {
-      clasificacionTerreno = clasificarPorFallbackManual(esNoUrbanaLote)
+      clasificacionTerreno = await clasificarPorFallbackManual(esNoUrbanaLote)
     }
 
     const idLoteUnico = crypto.randomUUID()

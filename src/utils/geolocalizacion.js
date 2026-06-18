@@ -181,6 +181,7 @@ function obtenerPosicionWatchValida() {
 
   return ultimaPosicionWatch
 }
+
 export function solicitarPermisoUbicacionInicial() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -390,7 +391,6 @@ async function obtenerPosicionConReintentos() {
   }
 
   throw ultimoError || new Error('No fue posible obtener la geolocalización')
-  throw ultimoError || new Error('No fue posible obtener la geolocalización')
 }
 
 export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
@@ -432,20 +432,60 @@ export async function determinarSiEsNoUrbanaDesdeGPS(esNoUrbanaManual = false) {
   } catch (error) {
     console.error('[geo] GPS actual falló. No se usará última ubicación en esta prueba.', error?.message || error)
 
-    return clasificarPorFallbackManual(esNoUrbanaManual)
+    return await clasificarPorFallbackManual(esNoUrbanaManual)
   }
 }
 
-export function clasificarPorFallbackManual(esNoUrbanaManual) {
-  console.log('[geo] fallback manual', {
+export async function clasificarPorFallbackManual(esNoUrbanaManual) {
+  console.warn('[geo] fallback manual: último intento GPS antes de null', {
     esNoUrbanaManual: Boolean(esNoUrbanaManual),
   })
 
-  return {
-    latitud: null,
-    longitud: null,
-    es_no_urbana: Boolean(esNoUrbanaManual),
-    fuente: 'manual',
+  try {
+    const posicionWatch = obtenerPosicionWatchValida()
+
+    if (posicionWatch) {
+      const lng = posicionWatch.coords.longitude
+      const lat = posicionWatch.coords.latitude
+      const precisionGps = posicionWatch.coords.accuracy
+      const poligonoUrbano = polygon([POLIGONO_URBANO])
+      const esUrbana = puntoEnPoligono([lng, lat], poligonoUrbano)
+
+      return {
+        latitud: lat,
+        longitud: lng,
+        es_no_urbana: !esUrbana,
+        fuente: 'gps-watch-fallback',
+      }
+    }
+
+    const posicion = await obtenerPosicionActual({
+      enableHighAccuracy: true,
+      timeout: 5000,
+      maximumAge: 0,
+    })
+
+    const lng = posicion.coords.longitude
+    const lat = posicion.coords.latitude
+    const precisionGps = posicion.coords.accuracy
+    const poligonoUrbano = polygon([POLIGONO_URBANO])
+    const esUrbana = puntoEnPoligono([lng, lat], poligonoUrbano)
+
+    return {
+      latitud: lat,
+      longitud: lng,
+      es_no_urbana: !esUrbana,
+      fuente: 'gps-current-fallback',
+    }
+  } catch (error) {
+    console.warn('[geo] fallback final sin GPS, usando manual/null', error?.message || error)
+
+    return {
+      latitud: null,
+      longitud: null,
+      es_no_urbana: Boolean(esNoUrbanaManual),
+      fuente: 'manual',
+    }
   }
 }
 export async function determinarZonaHeaderRapida() {
