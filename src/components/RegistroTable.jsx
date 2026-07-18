@@ -18,7 +18,9 @@ function RegistroTable({
   urbanas = 0,
   rurales = 0,
   obtenerObservacionSugerida,
+  onEliminarRegistro,
 }) {
+
   const [registroEditando, setRegistroEditando] = useState(null)
   const [codigoEdit, setCodigoEdit] = useState('')
   const [horaEdit, setHoraEdit] = useState('')
@@ -30,7 +32,10 @@ function RegistroTable({
   const [seleccionados, setSeleccionados] = useState(new Set())
   const [codigoLoteGlobal, setCodigoLoteGlobal] = useState('')
   const [asignandoGlobal, setAsignandoGlobal] = useState(false)
-
+  const [registroAEliminar, setRegistroAEliminar] = useState(null)
+  const [motivoEliminacion, setMotivoEliminacion] = useState('')
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminacion, setErrorEliminacion] = useState('')
   const codigoLimpioView = (codigo) => String(codigo || '').trim().toUpperCase()
 
   const lotesAgrupados = registros.reduce((acc, registro) => {
@@ -194,6 +199,65 @@ function RegistroTable({
       otros: 0,
     }
   )
+  const abrirModalEliminacion = (registro) => {
+    setRegistroAEliminar(registro)
+    setMotivoEliminacion('')
+    setErrorEliminacion('')
+  }
+
+  const cerrarModalEliminacion = () => {
+    if (eliminando) return
+
+    setRegistroAEliminar(null)
+    setMotivoEliminacion('')
+    setErrorEliminacion('')
+  }
+
+  const confirmarEliminacion = async () => {
+    const motivoLimpio = motivoEliminacion.trim()
+
+    if (!registroAEliminar?.id) {
+      setErrorEliminacion('No se pudo identificar el registro.')
+      return
+    }
+
+    if (!motivoLimpio) {
+      setErrorEliminacion('Debes ingresar un motivo de eliminación.')
+      return
+    }
+
+    if (typeof onEliminarRegistro !== 'function') {
+      setErrorEliminacion('La función de eliminación no está disponible.')
+      return
+    }
+
+    setEliminando(true)
+    setErrorEliminacion('')
+
+    try {
+      const resultado = await onEliminarRegistro(
+        registroAEliminar.id,
+        motivoLimpio
+      )
+
+      if (!resultado?.ok) {
+        setErrorEliminacion(
+          resultado?.error || 'No se pudo eliminar el registro.'
+        )
+        return
+      }
+
+      setRegistroAEliminar(null)
+      setMotivoEliminacion('')
+      setErrorEliminacion('')
+    } catch (error) {
+      setErrorEliminacion(
+        error?.message || 'Ocurrió un error al eliminar el registro.'
+      )
+    } finally {
+      setEliminando(false)
+    }
+  }
 
   useEffect(() => {
     if (registroEditando) {
@@ -417,6 +481,34 @@ function RegistroTable({
                       >
                         ✎
                       </button>
+                      <button
+                        type="button"
+                        className="boton-accion-tabla boton-eliminar-registro"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          abrirModalEliminacion(r)
+                        }}
+                        title="Eliminar registro"
+                        aria-label={`Eliminar registro ${r.id_notificacion || r.id}`}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="18"
+                          height="18"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4h8v2" />
+                          <path d="M19 6l-1 14H6L5 6" />
+                          <path d="M10 11v5" />
+                          <path d="M14 11v5" />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -550,6 +642,147 @@ function RegistroTable({
         </Modal>
       ) : null}
 
+      {registroAEliminar && (
+        <div
+          className="modal-eliminacion-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              cerrarModalEliminacion()
+            }
+          }}
+        >
+          <div
+            className="modal-eliminacion"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-modal-eliminacion"
+          >
+            <div className="modal-eliminacion-icono">
+              <svg
+                viewBox="0 0 24 24"
+                width="28"
+                height="28"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M19 6l-1 14H6L5 6" />
+                <path d="M10 11v5" />
+                <path d="M14 11v5" />
+              </svg>
+            </div>
+
+            <div className="modal-eliminacion-contenido">
+              <h2 id="titulo-modal-eliminacion">
+                Eliminar registro
+              </h2>
+
+              <p className="modal-eliminacion-descripcion">
+                Esta acción eliminará permanentemente el registro seleccionado.
+                La operación quedará guardada en la auditoría.
+              </p>
+
+              <div className="modal-eliminacion-registro">
+                <span>Registro</span>
+
+                <strong>
+                  {registroAEliminar.id_notificacion
+                    ? `ID ${registroAEliminar.id_notificacion}`
+                    : registroAEliminar.rit
+                      ? `RIT ${registroAEliminar.rit}-${registroAEliminar.año}`
+                      : `N.º ${registroAEliminar.id}`}
+                </strong>
+              </div>
+
+              <label
+                className="modal-eliminacion-label"
+                htmlFor="motivo-eliminacion"
+              >
+                Motivo de eliminación
+              </label>
+
+              <textarea
+                id="motivo-eliminacion"
+                className="modal-eliminacion-textarea"
+                value={motivoEliminacion}
+                onChange={(event) => {
+                  setMotivoEliminacion(event.target.value)
+
+                  if (errorEliminacion) {
+                    setErrorEliminacion('')
+                  }
+                }}
+                placeholder="Ej.: registro duplicado, ID incorrecta o carga equivocada"
+                rows={4}
+                maxLength={300}
+                autoFocus
+                disabled={eliminando}
+              />
+
+              <div className="modal-eliminacion-contador">
+                {motivoEliminacion.length}/300
+              </div>
+
+              {errorEliminacion && (
+                <div className="modal-eliminacion-error" role="alert">
+                  {errorEliminacion}
+                </div>
+              )}
+
+              <div className="modal-eliminacion-acciones">
+                <button
+                  type="button"
+                  className="boton-modal-cancelar"
+                  onClick={cerrarModalEliminacion}
+                  disabled={eliminando}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  className="boton-modal-eliminar"
+                  onClick={confirmarEliminacion}
+                  disabled={eliminando || !motivoEliminacion.trim()}
+                >
+                  {eliminando ? (
+                    <>
+                      <span className="spinner-eliminacion" />
+                      Eliminando…
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="17"
+                        height="17"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4h8v2" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                      </svg>
+
+                      Eliminar registro
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <CodigoDialog
         abierto={dialogoCodigoAbierto}
         titulo="Seleccionar código"

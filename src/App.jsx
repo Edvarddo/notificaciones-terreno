@@ -86,6 +86,7 @@ function App({ sessionUserId,
     fechaCertificacion,
     enfocarId,
     sessionUserId,
+
   })
 
   const [ultimoIdAgregadoLote, setUltimoIdAgregadoLote] = useState('')
@@ -418,6 +419,8 @@ function App({ sessionUserId,
       clearInterval(intervalo)
     }
   }, [])
+
+
   useEffect(() => {
     iniciarWatchGps()
 
@@ -472,7 +475,7 @@ function App({ sessionUserId,
         className={`contenedor ${mostrarMonitoreo ? 'contenedor-monitoreo' : ''} ${mostrarConsulta ? 'contenedor-consulta' : ''
           }`}
       >
-        {dialogoEliminarAbierto ? (
+        {/* {dialogoEliminarAbierto ? (
           <div className="dialogo-overlay top" onClick={() => setDialogoEliminarAbierto(false)}>
             <div className="dialogo-codigos dialogo-confirmar" onClick={(e) => e.stopPropagation()}>
               <div className="dialogo-header">
@@ -517,7 +520,7 @@ function App({ sessionUserId,
               </div>
             </div>
           </div>
-        ) : null}
+        ) : null} */}
         <button
           type="button"
           className="boton-debug-recargar"
@@ -706,6 +709,7 @@ function App({ sessionUserId,
               urbanas={notificaciones.estadisticas.urbanas}
               rurales={notificaciones.estadisticas.rurales}
               obtenerObservacionSugerida={lote.obtenerObservacionSugerida}
+              onEliminarRegistro={notificaciones.eliminarRegistro}
             />
 
             {notificaciones.cargaActivaId &&
@@ -745,7 +749,7 @@ function App({ sessionUserId,
               cargando={notificaciones.cargaFinalizada || finalizarEnProceso}
             />
 
-            <ConfirmDialog
+            {/* <ConfirmDialog
               abierto={confirmEliminarAbierto}
               titulo="Eliminar último registro"
               mensaje="¿Eliminar el último registro de la lista? Esta acción no se puede deshacer."
@@ -755,7 +759,7 @@ function App({ sessionUserId,
               onConfirmar={confirmarEliminarUltimo}
               onCancelar={cancelarEliminarUltimo}
               cargando={notificaciones.cargando || eliminarEnProceso}
-            />
+            /> */}
 
             <CodigoDialog
               abierto={dialogoCodigoAbierto}

@@ -303,3 +303,38 @@ export async function obtenerResumenNotificaciones({ año, mes, dia = '' }) {
     dias: dias.sort((a, b) => a.fecha.localeCompare(b.fecha)),
   }
 }
+
+export async function eliminarRegistroAuditado({
+  id,
+  motivo,
+  usuarioId,
+}) {
+  const motivoLimpio = String(motivo ?? '').trim()
+
+  if (!id) {
+    throw new Error('No se recibió el ID interno del registro')
+  }
+
+  if (!motivoLimpio) {
+    throw new Error('El motivo de eliminación es obligatorio')
+  }
+
+  if (!usuarioId) {
+    throw new Error('No se pudo identificar al usuario de la sesión')
+  }
+
+  const { data, error } = await supabase.rpc(
+    'eliminar_notificacion_auditada',
+    {
+      p_id: id,
+      p_motivo: motivoLimpio,
+      p_usuario_id: usuarioId,
+    }
+  )
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}

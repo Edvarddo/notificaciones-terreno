@@ -504,7 +504,7 @@ function RegistroForm({
         </button>
       </div>
 
-      <div className="acciones acciones-criticas">
+      {/* <div className="acciones acciones-criticas">
         <button
           type="button"
           className="boton-peligro boton-critico"
@@ -513,7 +513,7 @@ function RegistroForm({
         >
           Eliminar ultimo
         </button>
-      </div>
+      </div> */}
 
       {cargaFinalizada ? (
         <div className="carga-finalizada-banner">

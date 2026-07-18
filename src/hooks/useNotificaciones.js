@@ -11,6 +11,7 @@ import {
   obtenerTodasLasCargasDeUnDia,
   obtenerCargaActiva,
   obtenerCargaPorId,
+  eliminarRegistroAuditado
 } from '../services/notificaciones'
 import {
   CODIGOS_BUSQUEDA,
@@ -331,7 +332,7 @@ function useNotificaciones({
     try {
       return await Promise.race([clasificacionGps, tiempoMaximo])
     } catch (error) {
-      return  await clasificarPorFallbackManual(esNoUrbanaManual)
+      return await clasificarPorFallbackManual(esNoUrbanaManual)
     }
   }
 
@@ -424,7 +425,7 @@ function useNotificaciones({
       setRegistros(data)
 
       const stats = await obtenerEstadisticas(fechaCertificacion, cargaIdFinal)
-      
+
       setEstadisticas(stats)
 
       return { data, stats }
@@ -784,7 +785,7 @@ function useNotificaciones({
     if (!registros.length) {
       const msg = 'No hay registros para eliminar'
       setErrorMsg(msg)
-      
+
       return { ok: false, error: msg }
     }
 
@@ -1135,7 +1136,79 @@ function useNotificaciones({
     await cargar()
     return { ok: true }
   }
+  
+  const eliminarRegistro = async (id, motivo) => {
+    limpiarMensajes()
 
+    const motivoLimpio = String(motivo ?? '').trim()
+
+    if (!id) {
+      const msg = 'No se pudo identificar el registro'
+      setErrorMsg(msg)
+      showToast(msg, 'error')
+
+      return {
+        ok: false,
+        error: msg,
+      }
+    }
+
+    if (!motivoLimpio) {
+      const msg = 'Debes indicar el motivo de eliminación'
+      setErrorMsg(msg)
+      showToast(msg, 'error')
+
+      return {
+        ok: false,
+        error: msg,
+      }
+    }
+
+    if (!sessionUserId) {
+      const msg = 'No se pudo identificar al usuario de la sesión'
+      setErrorMsg(msg)
+      showToast(msg, 'error')
+
+      return {
+        ok: false,
+        error: msg,
+      }
+    }
+
+    setCargando(true)
+
+    try {
+      await eliminarRegistroAuditado({
+        id,
+        motivo: motivoLimpio,
+        usuarioId: sessionUserId,
+      })
+
+      setMensaje('Registro eliminado')
+      showToast('Registro eliminado y guardado en auditoría', 'warning')
+
+      await cargar(cargaActivaId)
+
+      return {
+        ok: true,
+      }
+    } catch (error) {
+      console.error('[eliminarRegistro]', error)
+
+      const msg = `No se pudo eliminar: ${error?.message || 'Error desconocido'
+        }`
+
+      setErrorMsg(msg)
+      showToast(msg, 'error')
+
+      return {
+        ok: false,
+        error: msg,
+      }
+    } finally {
+      setCargando(false)
+    }
+  }
   const construirResumenCarga = (registrosDia, statsDia) => {
     const resumenPorCodigo = (registrosDia || []).reduce(
       (acc, registro) => {
@@ -1263,6 +1336,7 @@ function useNotificaciones({
     guardarLoteRegistros,
     actualizarRegistro,
     finalizarCarga,
+    eliminarRegistro
   }
 }
 
